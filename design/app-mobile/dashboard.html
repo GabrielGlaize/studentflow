@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f1f6f9" />
+    <title>Tableau de bord — StudyFlow</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="phone-shell">
+      <header class="app-header">
+        <div>
+          <span class="class-pill">L2 DEV · 2026–2027</span>
+          <h1>Bonjour Camille</h1>
+          <p>Voici l’essentiel de ta journée.</p>
+        </div>
+        <button class="avatar" type="button" aria-label="Ouvrir le profil" data-href="profile.html">CM</button>
+      </header>
+
+      <main>
+        <section class="announcement" aria-labelledby="announcement-title">
+          <div class="announcement-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 13h3l8 4V5L7 9H4v4Zm11-4c2 1 2 3 0 4" /></svg>
+          </div>
+          <div>
+            <span class="overline">Annonce épinglée</span>
+            <h2 id="announcement-title">La salle du partiel a changé</h2>
+            <p>Rendez-vous demain à 8h30 en amphithéâtre C.</p>
+            <small>Publié par Léa, déléguée · il y a 1 h</small>
+          </div>
+          <button class="icon-button" type="button" aria-label="Voir toutes les annonces" data-href="announcements.html">›</button>
+        </section>
+
+        <section class="section-block next-course" aria-labelledby="next-course-title">
+          <div class="section-heading light-heading">
+            <div><span class="overline">Dans 42 minutes</span><h2 id="next-course-title">Ton prochain cours</h2></div>
+            <a href="schedule.html">Voir l’emploi du temps</a>
+          </div>
+          <article class="course-content">
+            <div class="time-block"><strong>10:15</strong><span>→ 12:15</span></div>
+            <div class="course-info">
+              <span class="course-chip">Développement mobile</span>
+              <h3>Flutter — navigation et état</h3>
+              <div class="course-details">
+                <span><svg viewBox="0 0 24 24"><path d="M4 20V5h16v15M8 9h2m4 0h2M8 13h2m4 0h2M3 20h18" /></svg>Salle B204</span>
+                <span><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-5 4-7 8-7s7 2 8 7"/></svg>Mme Dupont</span>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="section-block" aria-labelledby="deadlines-title">
+          <div class="section-heading">
+            <div><span class="overline purple">À rendre bientôt</span><h2 id="deadlines-title">Devoirs et projets</h2></div>
+            <a href="agenda.html">Tout voir</a>
+          </div>
+          <div class="deadline-list">
+            <article class="deadline-card urgent">
+              <div class="date-tile"><strong>24</strong><span>JUIN</span></div>
+              <div class="deadline-content">
+                <span class="subject">Base de données</span>
+                <h3>Modèle relationnel du projet</h3>
+                <p>Demain · 23:59</p>
+              </div>
+              <span class="urgency">Urgent</span>
+            </article>
+            <article class="deadline-card">
+              <div class="date-tile green-date"><strong>27</strong><span>JUIN</span></div>
+              <div class="deadline-content">
+                <span class="subject green-text">Communication</span>
+                <h3>Présentation en équipe</h3>
+                <p>Vendredi · 14:00</p>
+              </div>
+              <span class="progress-ring" aria-label="Progression 50 %">50%</span>
+            </article>
+            <article class="deadline-card">
+              <div class="date-tile sand-date"><strong>02</strong><span>JUIL.</span></div>
+              <div class="deadline-content">
+                <span class="subject sand-text">Projet tutoré</span>
+                <h3>Prototype StudyFlow</h3>
+                <p>Dans 10 jours · 18:00</p>
+              </div>
+              <span class="progress-ring low" aria-label="Progression 20 %">20%</span>
+            </article>
+          </div>
+        </section>
+
+        <section class="section-block tasks-section" aria-labelledby="tasks-title">
+          <div class="section-heading">
+            <div><span class="overline green-text">Mon organisation</span><h2 id="tasks-title">Mes tâches</h2></div>
+            <button class="add-button" type="button" aria-label="Ajouter une tâche" data-href="task-form.html">+</button>
+          </div>
+          <div class="task-list">
+            <label class="task-row"><input type="checkbox" /><span><strong>Relire les notes Flutter</strong><small>Aujourd’hui</small></span><i class="priority high"></i></label>
+            <label class="task-row"><input type="checkbox" /><span><strong>Envoyer le schéma à l’équipe</strong><small>Aujourd’hui · 18:00</small></span><i class="priority medium"></i></label>
+            <label class="task-row"><input type="checkbox" /><span><strong>Préparer les questions pour le prof</strong><small>Demain</small></span><i class="priority"></i></label>
+          </div>
+          <a class="all-tasks" href="agenda.html">Ouvrir mon agenda <span>→</span></a>
+        </section>
+
+        <section class="career-nudge" aria-labelledby="career-title">
+          <div class="career-icon">↗</div>
+          <div><span class="overline">Alternances</span><h2 id="career-title">12 nouvelles opportunités</h2><p>Correspondent à ta recherche “Flutter à Paris”.</p></div>
+          <a href="../alternances-web/index.html#results" aria-label="Voir les nouvelles alternances">›</a>
+        </section>
+      </main>
+
+      <nav class="bottom-nav" aria-label="Navigation de l’application">
+        <a class="active" href="dashboard.html"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="m3 11 9-8 9 8v10h-6v-6H9v6H3V11Z"/></svg></span><span>Accueil</span></a>
+        <a href="schedule.html"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4m8-4v4M3 10h18"/></svg></span><span>Emploi</span></a>
+        <a href="agenda.html"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M9 11h9M9 16h9M5 11h.01M5 16h.01M5 6h14"/></svg></span><span>Agenda</span></a>
+        <a href="../alternances-web/index.html"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V4h8v3m-4 5v3m-9-3h18"/></svg></span><span>Alternances</span></a>
+        <a href="profile.html"><span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-5 4-7 8-7s7 2 8 7"/></svg></span><span>Profil</span></a>
+      </nav>
+    </div>
+    <script src="prototype.js"></script>
+  </body>
+</html>

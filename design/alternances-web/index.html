@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#073b4c" />
+    <title>Alternances — StudyFlow</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="index.html" aria-label="Accueil StudyFlow">
+        <span class="brand-mark" aria-hidden="true">S</span>
+        <span>StudyFlow</span>
+      </a>
+      <nav class="header-actions" aria-label="Navigation principale">
+        <a class="text-link desktop-only" href="#results" data-demo-message="Ajoute une offre aux favoris avec le cœur présent sur chaque carte.">Favoris</a>
+        <a class="button button-secondary" href="../app-mobile/auth.html">Se connecter</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <span class="eyebrow">La bonne alternance, au bon endroit</span>
+          <h1 id="hero-title">Trouve ton alternance sans perdre le fil.</h1>
+          <p>
+            Explore les opportunités partout en France. Aucun compte, aucune
+            classe et aucune installation nécessaires.
+          </p>
+        </div>
+
+        <form class="search-panel" action="#results">
+          <label class="field field-grow">
+            <span>Métier ou domaine</span>
+            <span class="input-shell">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z" />
+              </svg>
+              <input value="Développeur web" aria-label="Métier ou domaine" />
+            </span>
+          </label>
+          <label class="field location-field">
+            <span>Où ?</span>
+            <span class="input-shell">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
+                <circle cx="12" cy="10" r="2.5" />
+              </svg>
+              <input value="Paris" aria-label="Localisation" />
+            </span>
+          </label>
+          <button class="button button-primary search-button" type="submit">
+            Rechercher
+          </button>
+        </form>
+
+        <div class="quick-searches" aria-label="Recherches populaires">
+          <span>Recherches populaires :</span>
+          <button type="button">Marketing</button>
+          <button type="button">Cybersécurité</button>
+          <button type="button">Ressources humaines</button>
+        </div>
+      </section>
+
+      <section class="results-section" id="results" aria-labelledby="results-title">
+        <div class="results-heading">
+          <div>
+            <p class="section-kicker">Résultats pour “Développeur web”</p>
+            <h2 id="results-title">142 opportunités autour de Paris</h2>
+          </div>
+          <button class="button filter-mobile" type="button" aria-label="Afficher les filtres">
+            Filtres <span class="filter-count">2</span>
+          </button>
+        </div>
+
+        <div class="results-layout">
+          <aside class="filters" aria-label="Filtres de recherche">
+            <div class="filter-header">
+              <h3>Affiner la recherche</h3>
+              <button type="button">Réinitialiser</button>
+            </div>
+
+            <fieldset>
+              <legend>Distance</legend>
+              <div class="choice-grid">
+                <label><input type="radio" name="distance" /> 10 km</label>
+                <label><input type="radio" name="distance" checked /> 30 km</label>
+                <label><input type="radio" name="distance" /> 60 km</label>
+                <label><input type="radio" name="distance" /> 100 km</label>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Type d’opportunité</legend>
+              <label class="check-row"><input type="checkbox" checked /> Offres publiées</label>
+              <label class="check-row"><input type="checkbox" checked /> Candidatures spontanées</label>
+            </fieldset>
+
+            <fieldset>
+              <legend>Niveau visé</legend>
+              <label class="select-shell">
+                <select aria-label="Niveau visé">
+                  <option>Tous les niveaux</option>
+                  <option>Bac +2</option>
+                  <option>Bac +3</option>
+                  <option>Bac +5</option>
+                </select>
+              </label>
+            </fieldset>
+          </aside>
+
+          <div class="result-content">
+            <div class="active-filters">
+              <button type="button">30 km <span aria-hidden="true">×</span></button>
+              <button type="button">Toutes les opportunités <span aria-hidden="true">×</span></button>
+            </div>
+
+            <div class="result-list">
+              <article class="job-card featured">
+                <div class="job-topline">
+                  <span class="company-logo logo-indigo">NL</span>
+                  <div class="job-title">
+                    <span class="tag tag-accent">Nouvelle</span>
+                    <h3>Développeur web full-stack en alternance</h3>
+                    <p>Nova Labs · Paris 11e</p>
+                  </div>
+                  <button class="favorite" type="button" aria-label="Ajouter aux favoris">♡</button>
+                </div>
+                <p class="job-summary">
+                  Rejoins une petite équipe produit pour concevoir des interfaces utiles,
+                  développer des API et apprendre à livrer des fonctionnalités complètes.
+                </p>
+                <div class="job-meta">
+                  <span>Apprentissage</span><span>Bac +3 à Bac +5</span><span>Hybride</span>
+                </div>
+                <footer>
+                  <span>Publiée il y a 2 jours · 3,4 km</span>
+                  <a href="offre.html">Voir l’opportunité <span aria-hidden="true">→</span></a>
+                </footer>
+              </article>
+
+              <article class="job-card">
+                <div class="job-topline">
+                  <span class="company-logo logo-green">AT</span>
+                  <div class="job-title">
+                    <span class="tag">Partenaire</span>
+                    <h3>Alternant développeur front-end Flutter</h3>
+                    <p>Atelier Tech · Boulogne-Billancourt</p>
+                  </div>
+                  <button class="favorite" type="button" aria-label="Ajouter aux favoris">♡</button>
+                </div>
+                <p class="job-summary">
+                  Participe au développement d’applications mobiles Flutter et à la mise
+                  en place d’un design system partagé par plusieurs produits.
+                </p>
+                <div class="job-meta">
+                  <span>Apprentissage</span><span>Bac +2 à Bac +4</span><span>Sur site</span>
+                </div>
+                <footer>
+                  <span>Publiée il y a 4 jours · 8,1 km</span>
+                  <a href="offre.html">Voir l’opportunité <span aria-hidden="true">→</span></a>
+                </footer>
+              </article>
+
+              <article class="job-card spontaneous">
+                <div class="job-topline">
+                  <span class="company-logo logo-sand">PV</span>
+                  <div class="job-title">
+                    <span class="tag tag-warm">Candidature spontanée</span>
+                    <h3>Entreprise susceptible de recruter en développement</h3>
+                    <p>Pixel Vert · Montreuil</p>
+                  </div>
+                  <button class="favorite" type="button" aria-label="Ajouter aux favoris">♡</button>
+                </div>
+                <p class="job-summary">
+                  Cette entreprise a été identifiée par La bonne alternance comme ayant
+                  un potentiel d’embauche dans ton domaine.
+                </p>
+                <footer>
+                  <span>Entreprise à fort potentiel · 9,6 km</span>
+                  <a href="offre.html">Découvrir l’entreprise <span aria-hidden="true">→</span></a>
+                </footer>
+              </article>
+            </div>
+
+            <button class="button button-secondary load-more" type="button">Afficher plus de résultats</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="brand footer-brand"><span class="brand-mark">S</span><span>StudyFlow</span></div>
+      <p>Données d’opportunités fournies par La bonne alternance.</p>
+      <nav><a href="#privacy" data-demo-message="Aucune donnée réelle n’est collectée dans cette maquette.">Confidentialité</a><a href="#legal" data-demo-message="Les mentions légales seront rédigées avant la mise en ligne.">Mentions légales</a><a href="#accessibility" data-demo-message="Le prototype respecte la navigation clavier et les contrastes principaux.">Accessibilité</a></nav>
+    </footer>
+    <script src="prototype.js"></script>
+  </body>
+</html>

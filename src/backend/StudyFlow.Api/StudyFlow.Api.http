@@ -1,0 +1,50 @@
+@StudyFlow.Api_HostAddress = http://localhost:5028
+
+GET {{StudyFlow.Api_HostAddress}}/health
+Accept: application/json
+
+###
+
+GET {{StudyFlow.Api_HostAddress}}/api/status
+Accept: application/json
+
+###
+
+# Remplacer le token par un accessToken obtenu via /api/v1/auth/login.
+@accessToken = replace-with-access-token
+
+GET {{StudyFlow.Api_HostAddress}}/api/v1/notifications/preferences
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+###
+
+PUT {{StudyFlow.Api_HostAddress}}/api/v1/notifications/preferences
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "coursesEnabled": true,
+  "homeworkEnabled": true,
+  "apprenticeshipsEnabled": false,
+  "courseReminderMinutes": 5
+}
+
+###
+
+POST {{StudyFlow.Api_HostAddress}}/api/v1/notifications/devices
+Content-Type: application/json
+Authorization: Bearer {{accessToken}}
+
+{
+  "token": "demo-push-token-123456",
+  "platform": "web"
+}
+
+###
+
+GET {{StudyFlow.Api_HostAddress}}/api/v1/notifications/due-preview?lookBehindMinutes=5&lookAheadMinutes=60
+Accept: application/json
+Authorization: Bearer {{accessToken}}
+
+###

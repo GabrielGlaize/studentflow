@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f1f6f9" />
+    <title>Informations de la classe — StudyFlow</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="phone-shell announcements-shell">
+      <header class="screen-header info-header">
+        <div><span class="class-pill">L2 DEV</span><h1>Informations</h1><p>Les annonces importantes de ta classe.</p></div>
+        <button class="add-button" type="button" aria-label="Publier une annonce" data-demo-message="Le formulaire de publication sera réservé aux délégués.">+</button>
+      </header>
+
+      <main class="announcements-main">
+        <section class="delegate-banner">
+          <span class="delegate-badge">D</span>
+          <div><strong>Tu es déléguée</strong><p>Tu peux publier et épingler les informations importantes.</p></div>
+          <a href="class-management.html">Gérer</a>
+        </section>
+
+        <div class="info-filters" role="tablist" aria-label="Filtrer les annonces">
+          <button class="active" role="tab" aria-selected="true">Toutes <span>5</span></button>
+          <button role="tab" aria-selected="false">Épinglées <span>2</span></button>
+        </div>
+
+        <section class="pinned-section" aria-labelledby="pinned-title">
+          <div class="feed-heading"><div><span class="pin-symbol">◆</span><h2 id="pinned-title">À retenir</h2></div><small>2 annonces</small></div>
+          <article class="info-card pinned rose-card">
+            <div class="info-card-top"><span class="author-avatar rose-avatar">LM</span><div><strong>Léa Martin</strong><small>Déléguée · il y a 1 h</small></div><span class="pinned-label">Épinglée</span></div>
+            <h3>La salle du partiel a changé</h3>
+            <p>Le partiel de base de données aura lieu demain à 8h30 en amphithéâtre C, et non en B204.</p>
+            <footer><span>Modifiée il y a 45 min</span><button type="button">•••</button></footer>
+          </article>
+          <article class="info-card pinned sky-card">
+            <div class="info-card-top"><span class="author-avatar sky-avatar">NB</span><div><strong>Noé Bernard</strong><small>Délégué · hier</small></div><span class="pinned-label blue-label">Épinglée</span></div>
+            <h3>Soutenance du projet StudyFlow</h3>
+            <p>La soutenance est confirmée au 2 juillet à 14h. Pensez à déposer votre support avant midi.</p>
+            <a class="info-link" href="agenda.html">Voir le rappel dans l’Agenda →</a>
+          </article>
+        </section>
+
+        <section class="recent-section" aria-labelledby="recent-title">
+          <div class="feed-heading"><div><span class="group-dot green-dot"></span><h2 id="recent-title">Informations récentes</h2></div></div>
+          <article class="info-card compact-card">
+            <div class="info-card-top"><span class="author-avatar mint-avatar">LM</span><div><strong>Léa Martin</strong><small>Déléguée · lundi</small></div></div>
+            <h3>Absence de Mme Morel vendredi</h3>
+            <p>Le cours de communication sera remplacé par du travail en autonomie.</p>
+          </article>
+          <article class="info-card compact-card">
+            <div class="info-card-top"><span class="author-avatar blue-avatar">NB</span><div><strong>Noé Bernard</strong><small>Délégué · 19 juin</small></div></div>
+            <h3>Documents pour l’inscription</h3>
+            <p>Le secrétariat demande les justificatifs avant la fin du mois.</p>
+          </article>
+          <article class="info-card compact-card archived-card">
+            <div class="info-card-top"><span class="author-avatar gray-avatar">LM</span><div><strong>Léa Martin</strong><small>Déléguée · 12 juin</small></div></div>
+            <h3>Rappel : questionnaire de satisfaction</h3>
+            <p>Le questionnaire reste disponible jusqu’à dimanche soir.</p>
+          </article>
+        </section>
+      </main>
+
+      <button class="publish-fab" type="button" data-demo-message="Le formulaire de publication sera réservé aux délégués."><span>+</span> Publier une annonce</button>
+
+      <nav class="bottom-nav" aria-label="Navigation de l’application">
+        <a class="active" href="dashboard.html"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="m3 11 9-8 9 8v10h-6v-6H9v6H3V11Z"/></svg></span><span>Accueil</span></a>
+        <a href="schedule.html"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4m8-4v4M3 10h18"/></svg></span><span>Emploi</span></a>
+        <a href="agenda.html"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M9 11h9M9 16h9M5 11h.01M5 16h.01M5 6h14"/></svg></span><span>Agenda</span></a>
+        <a href="../alternances-web/index.html"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V4h8v3m-4 5v3m-9-3h18"/></svg></span><span>Alternances</span></a>
+        <a href="profile.html"><span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-5 4-7 8-7s7 2 8 7"/></svg></span><span>Profil</span></a>
+      </nav>
+    </div>
+    <script src="prototype.js"></script>
+  </body>
+</html>

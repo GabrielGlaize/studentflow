@@ -1,0 +1,23 @@
+# .NET
+.dotnet-home/
+.dotnet-sdk/
+**/bin/
+**/obj/
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+.data-protection-keys/
