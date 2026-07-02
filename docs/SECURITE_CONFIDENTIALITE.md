@@ -90,6 +90,12 @@ Les horaires précis et la salle sont dans `EncryptedData`.
 
 Pour retrouver une donnée sans la stocker en clair, le backend utilise parfois un hash HMAC.
 
+Règle retenue pour StudyFlow :
+
+- secret à vérifier mais jamais à relire : hash ;
+- donnée à réafficher ou réutiliser : chiffrement applicatif ;
+- donnée publique ou nécessaire à l’UX collaborative : stockage clair assumé, avec isolation par classe.
+
 Exemple : les professeurs.
 
 On veut empêcher les doublons dans une classe, mais sans stocker le nom normalisé du professeur en clair. Le backend calcule donc :
@@ -99,6 +105,8 @@ SearchNameHash = HMAC(Security:LookupKey, "teacher-search-name:NOM")
 ```
 
 La clé `Security:LookupKey` doit être différente de la clé JWT.
+
+Important : une donnée hachée ne peut pas être relue. StudyFlow hache donc les secrets et les valeurs utilisées uniquement pour chercher ou vérifier : mots de passe via ASP.NET Identity, refresh tokens, codes de classe de recherche, noms de professeurs normalisés, codes de réinitialisation de mot de passe et tokens techniques de notification. Les données qui doivent être affichées ou réutilisées restent chiffrées, pas hachées.
 
 ## Code de classe
 
@@ -115,8 +123,33 @@ L’authentification utilise :
 
 - access token JWT court ;
 - refresh token long ;
-- refresh token stocké en base sous forme de hash ;
+- refresh token stocké en base sous forme de HMAC avec `Security:LookupKey` ;
 - rotation du refresh token lors du renouvellement.
+
+Le JWT reste volontairement minimal : il contient l’identifiant utilisateur, un identifiant unique de jeton, le security stamp et les rôles nécessaires à `[Authorize(Roles = ...)]`. Il ne contient plus les informations personnelles comme le prénom, le nom, l’e-mail ou l’identifiant de classe, car ces données peuvent changer et n’ont pas besoin d’être copiées dans chaque jeton.
+
+À chaque requête authentifiée, le backend vérifie aussi que :
+
+- l’utilisateur existe toujours ;
+- son compte est actif ;
+- le security stamp du JWT correspond au security stamp actuel en base.
+
+Ainsi, un ancien JWT est invalidé si un changement sensible arrive, par exemple changement de rôle, retrait de classe ou réinitialisation de mot de passe.
+
+Les endpoints sensibles d’authentification sont aussi protégés par un rate limiting applicatif : inscription, création de classe, connexion, refresh token, demande de reset et reset de mot de passe. En local, la limite est de 10 requêtes par minute et par adresse IP, avec réponse HTTP `429 Too Many Requests` en cas d’abus.
+
+## Réinitialisation de mot de passe
+
+Le backend génère un code de réinitialisation aléatoire temporaire. La base ne stocke jamais le code en clair : elle stocke seulement `TokenHash`, calculé avec HMAC-SHA256 et `Security:LookupKey`.
+
+Le code est à usage unique :
+
+- il expire après `Security:PasswordResetTokenMinutes` minutes ;
+- il est marqué comme utilisé après changement du mot de passe ;
+- les autres codes actifs du même utilisateur sont révoqués.
+- les refresh tokens actifs de l’utilisateur sont aussi révoqués après changement du mot de passe.
+
+En développement, le code est renvoyé dans la réponse API pour pouvoir tester sans service mail. En production, il doit être envoyé par e-mail et masqué dans la réponse.
 
 Un refresh token brut n’est donc pas stocké directement en base.
 
@@ -124,7 +157,12 @@ Un refresh token brut n’est donc pas stocké directement en base.
 
 Les préférences de notification appartiennent à l’utilisateur.
 
-Les tokens d’appareil ne sont jamais renvoyés en clair dans l’API : l’endpoint de liste retourne seulement une prévisualisation masquée.
+Les tokens d’appareil sont protégés de deux façons :
+
+- `TokenHash` : permet de retrouver une installation sans stocker le token brut en clair ;
+- `EncryptedToken` : permet au futur service d’envoi push de relire le token si nécessaire.
+
+Ils ne sont jamais renvoyés en clair dans l’API : l’endpoint de liste retourne seulement une prévisualisation masquée.
 
 Les rappels côté backend respectent :
 
@@ -164,4 +202,3 @@ Avant d’ajouter une route scolaire, vérifier :
 6. Elle retourne `NotFound` pour une ressource d’une autre classe.
 7. Elle ne log pas de donnée déchiffrée.
 8. Les champs sensibles sont chiffrés avant sauvegarde.
-

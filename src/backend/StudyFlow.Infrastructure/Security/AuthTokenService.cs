@@ -15,9 +15,12 @@ namespace StudyFlow.Infrastructure.Security;
 public sealed class AuthTokenService(
     StudyFlowDbContext dbContext,
     UserManager<ApplicationUser> userManager,
-    IOptions<JwtOptions> options) : IAuthTokenService
+    IOptions<JwtOptions> options,
+    IOptions<SecurityOptions> securityOptions) : IAuthTokenService
 {
+    private const string SecurityStampClaimType = "sst";
     private readonly JwtOptions _options = options.Value;
+    private readonly SecurityOptions _securityOptions = securityOptions.Value;
 
     public async Task<AuthTokenPair> IssueAsync(Guid userId, CancellationToken cancellationToken = default)
     {
@@ -69,21 +72,16 @@ public sealed class AuthTokenService(
         var now = DateTimeOffset.UtcNow;
         var accessExpiresAt = now.AddMinutes(_options.AccessTokenMinutes);
         var roles = await userManager.GetRolesAsync(user);
+        var securityStamp = await userManager.GetSecurityStampAsync(user);
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
-            new(ClaimTypes.GivenName, user.FirstName),
-            new(ClaimTypes.Surname, user.LastName),
-            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new(SecurityStampClaimType, securityStamp)
         };
 
         claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
-        if (user.SchoolClassId is not null)
-        {
-            claims.Add(new Claim("class_id", user.SchoolClassId.Value.ToString()));
-        }
 
         var credentials = new SigningCredentials(
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.SigningKey)),
@@ -113,6 +111,10 @@ public sealed class AuthTokenService(
             refreshExpiresAt);
     }
 
-    private static string Hash(string value) =>
-        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value))).ToLowerInvariant();
+    private string Hash(string value)
+    {
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(_securityOptions.LookupKey));
+        return Convert.ToHexString(hmac.ComputeHash(Encoding.UTF8.GetBytes($"refresh-token:{value.Trim()}")))
+            .ToLowerInvariant();
+    }
 }

@@ -67,6 +67,7 @@ public sealed class DelegateMembershipController(
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        await userManager.UpdateSecurityStampAsync(student);
         await transaction.CommitAsync(cancellationToken);
         return NoContent();
     }

@@ -172,6 +172,7 @@ public sealed class SchoolClassesController(
             if (!result.Succeeded) return IdentityValidationProblem(result);
         }
 
+        await userManager.UpdateSecurityStampAsync(member);
         return NoContent();
     }
 
@@ -202,6 +203,7 @@ public sealed class SchoolClassesController(
         }
 
         await userManager.UpdateAsync(member);
+        await userManager.UpdateSecurityStampAsync(member);
         return NoContent();
     }
 
@@ -231,7 +233,10 @@ public sealed class SchoolClassesController(
         }
 
         var result = await userManager.RemoveFromRoleAsync(currentUser, nameof(UserRole.Delegue));
-        return result.Succeeded ? NoContent() : IdentityValidationProblem(result);
+        if (!result.Succeeded) return IdentityValidationProblem(result);
+
+        await userManager.UpdateSecurityStampAsync(currentUser);
+        return NoContent();
     }
 
     [HttpGet("current-request")]

@@ -54,7 +54,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Planning'), findsWidgets);
-    expect(find.text('Flutter'), findsOneWidget);
+    expect(find.byKey(const ValueKey('add-course-button')), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('add-course-button')));
     await tester.pumpAndSettle();
@@ -90,6 +90,15 @@ void main() {
     expect(find.text('Appeler une entreprise'), findsOneWidget);
 
     await tester.tap(find.text('Appeler une entreprise'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('École'), findsWidgets);
+    expect(find.text('Fermer'), findsOneWidget);
+
+    await tester.tap(find.text('Fermer'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('task-done-demo-task-2')));
     await tester.pumpAndSettle();
 
     expect(find.text('Appeler une entreprise'), findsNothing);

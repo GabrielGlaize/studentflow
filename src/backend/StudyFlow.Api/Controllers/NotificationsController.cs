@@ -1,10 +1,12 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StudyFlow.Api.Contracts;
 using StudyFlow.Application.Notifications;
+using StudyFlow.Application.Security;
 using StudyFlow.Domain.Notifications;
 using StudyFlow.Domain.Users;
 using StudyFlow.Infrastructure.Identity;
@@ -18,9 +20,11 @@ namespace StudyFlow.Api.Controllers;
 public sealed class NotificationsController(
     UserManager<ApplicationUser> userManager,
     StudyFlowDbContext dbContext,
-    INotificationReminderPlanner reminderPlanner) : ControllerBase
+    INotificationReminderPlanner reminderPlanner,
+    ISensitiveDataProtector protector) : ControllerBase
 {
     private static readonly int[] AllowedCourseReminderMinutes = [0, 5, 10, 15, 30, 60];
+    private const string NotificationDeviceTokenPurpose = "notification-device-token";
 
     [HttpGet("preferences")]
     public async Task<ActionResult<NotificationSettingsResponse>> GetPreferences(CancellationToken cancellationToken)
@@ -85,18 +89,20 @@ public sealed class NotificationsController(
         var platform = ParsePlatform(request.Platform);
         if (platform is null) return BadRequestProblem("Plateforme invalide. Valeurs possibles : android, ios, web.");
 
+        var tokenHash = protector.ComputeLookupHash(token, NotificationDeviceTokenPurpose);
         var device = await dbContext.NotificationDevices
-            .SingleOrDefaultAsync(x => x.Token == token, cancellationToken);
+            .SingleOrDefaultAsync(x => x.TokenHash == tokenHash, cancellationToken);
 
         if (device is null)
         {
-            device = new NotificationDevice { Token = token };
+            device = new NotificationDevice { TokenHash = tokenHash };
             dbContext.NotificationDevices.Add(device);
         }
 
         // A push token identifies one current installation. If it is reused after a login,
         // we safely attach it to the current user instead of creating duplicates.
         device.UserId = user.Id;
+        device.EncryptedToken = protector.Protect(token, NotificationDeviceTokenPurpose);
         device.Platform = platform.Value;
         device.LastSeenAt = DateTimeOffset.UtcNow;
 
@@ -181,11 +187,25 @@ public sealed class NotificationsController(
         settings.ApprenticeshipsEnabled,
         settings.CourseReminderMinutes);
 
-    private static NotificationDeviceResponse ToDeviceResponse(NotificationDevice device) => new(
-        device.Id,
-        device.Platform.ToString().ToLowerInvariant(),
-        ToTokenPreview(device.Token),
-        device.LastSeenAt);
+    private NotificationDeviceResponse ToDeviceResponse(NotificationDevice device)
+    {
+        var tokenPreview = "******";
+        try
+        {
+            tokenPreview = ToTokenPreview(protector.Unprotect(device.EncryptedToken, NotificationDeviceTokenPurpose));
+        }
+        catch (CryptographicException)
+        {
+            // Local development keys can change. Never leak the encrypted value;
+            // show a safe placeholder instead.
+        }
+
+        return new NotificationDeviceResponse(
+            device.Id,
+            device.Platform.ToString().ToLowerInvariant(),
+            tokenPreview,
+            device.LastSeenAt);
+    }
 
     private static NotificationReminderCandidateResponse ToReminderResponse(NotificationReminderCandidate reminder) => new(
         reminder.Type,

@@ -49,6 +49,7 @@ class CompanyDocumentsController extends ChangeNotifier {
     : _storage = storage;
 
   final CompanyDocumentsStorage _storage;
+  static const int maxDocuments = 80;
   final List<CompanyDocument> _documents = [];
 
   List<CompanyDocument> get documents => List.unmodifiable(_documents);
@@ -68,6 +69,10 @@ class CompanyDocumentsController extends ChangeNotifier {
     String? link,
     String? note,
   }) {
+    if (_documents.length >= maxDocuments) {
+      _documents.removeLast();
+    }
+
     final document = CompanyDocument(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       title: title.trim(),

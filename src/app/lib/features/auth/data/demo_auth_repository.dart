@@ -105,6 +105,35 @@ class DemoAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<PasswordResetRequestResult> requestPasswordReset({
+    required String email,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    if (email.trim().isEmpty || !email.contains('@')) {
+      throw const AuthException('Entre une adresse e-mail valide.');
+    }
+
+    return PasswordResetRequestResult(
+      message: 'Code de démonstration généré.',
+      developmentToken: 'DEMO-RESET',
+      expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 30)),
+    );
+  }
+
+  @override
+  Future<void> resetPassword({
+    required String email,
+    required String token,
+    required String newPassword,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    _validateAccount(email: email, password: newPassword);
+    if (token.trim().isEmpty) {
+      throw const AuthException('Entre le code de réinitialisation.');
+    }
+  }
+
+  @override
   Future<void> logout(AuthSession session) async {
     await Future<void>.delayed(const Duration(milliseconds: 120));
   }

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using StudyFlow.Api.Contracts;
 using StudyFlow.Application.Security;
@@ -18,8 +19,10 @@ public sealed class AuthController(
     UserManager<ApplicationUser> userManager,
     StudyFlowDbContext dbContext,
     IAuthTokenService tokenService,
+    IPasswordResetService passwordResetService,
     IClassCodeService classCodeService) : ControllerBase
 {
+    [EnableRateLimiting("auth-sensitive")]
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request, CancellationToken cancellationToken)
     {
@@ -30,6 +33,7 @@ public sealed class AuthController(
         return Ok(await CreateResponseAsync(user, cancellationToken));
     }
 
+    [EnableRateLimiting("auth-sensitive")]
     [HttpPost("register-and-create-class")]
     public async Task<ActionResult<AuthResponse>> RegisterAndCreateClass(
         RegisterAndCreateClassRequest request,
@@ -62,6 +66,7 @@ public sealed class AuthController(
         return Ok(await CreateResponseAsync(user, cancellationToken, code.Plaintext));
     }
 
+    [EnableRateLimiting("auth-sensitive")]
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest request, CancellationToken cancellationToken)
     {
@@ -74,6 +79,7 @@ public sealed class AuthController(
         return Ok(await CreateResponseAsync(user, cancellationToken));
     }
 
+    [EnableRateLimiting("auth-sensitive")]
     [HttpPost("refresh")]
     public async Task<ActionResult<AuthTokenPair>> Refresh(RefreshRequest request, CancellationToken cancellationToken)
     {
@@ -88,6 +94,61 @@ public sealed class AuthController(
         var userId = CurrentUserId();
         await tokenService.RevokeAsync(userId, request.RefreshToken, cancellationToken);
         return NoContent();
+    }
+
+    [EnableRateLimiting("auth-sensitive")]
+    [HttpPost("forgot-password")]
+    public async Task<ActionResult<ForgotPasswordResponse>> ForgotPassword(
+        ForgotPasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "L'adresse e-mail est obligatoire.",
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        var result = await passwordResetService.RequestResetAsync(request.Email, cancellationToken);
+
+        return Ok(new ForgotPasswordResponse(
+            "Si un compte existe avec cet e-mail, un lien de réinitialisation a été préparé.",
+            result.DevelopmentToken,
+            result.ExpiresAt));
+    }
+
+    [EnableRateLimiting("auth-sensitive")]
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword(
+        ResetPasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email)
+            || string.IsNullOrWhiteSpace(request.Token)
+            || string.IsNullOrWhiteSpace(request.NewPassword))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "E-mail, code et nouveau mot de passe sont obligatoires.",
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        var succeeded = await passwordResetService.ResetPasswordAsync(
+            request.Email,
+            request.Token,
+            request.NewPassword,
+            cancellationToken);
+
+        return succeeded
+            ? NoContent()
+            : BadRequest(new ProblemDetails
+            {
+                Title = "Le code de réinitialisation est invalide ou expiré.",
+                Status = StatusCodes.Status400BadRequest
+            });
     }
 
     [Authorize]

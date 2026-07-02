@@ -7,6 +7,9 @@ public sealed record RegisterAndCreateClassRequest(string Email, string Password
 public sealed record LoginRequest(string Email, string Password);
 public sealed record RefreshRequest(string RefreshToken);
 public sealed record LogoutRequest(string RefreshToken);
+public sealed record ForgotPasswordRequest(string Email);
+public sealed record ForgotPasswordResponse(string Message, string? DevelopmentToken = null, DateTimeOffset? ExpiresAt = null);
+public sealed record ResetPasswordRequest(string Email, string Token, string NewPassword);
 public sealed record AuthResponse(AuthTokenPair Tokens, UserSummary User, string? ClassCode = null);
 public sealed record UserSummary(Guid Id, string Email, string FirstName, string LastName, Guid? SchoolClassId, IReadOnlyCollection<string> Roles);
 

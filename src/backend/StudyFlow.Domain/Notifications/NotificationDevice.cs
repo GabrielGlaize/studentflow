@@ -12,7 +12,8 @@ public enum NotificationPlatform
 public sealed class NotificationDevice : Entity
 {
     public Guid UserId { get; set; }
-    public string Token { get; set; } = string.Empty;
+    public string TokenHash { get; set; } = string.Empty;
+    public string EncryptedToken { get; set; } = string.Empty;
     public NotificationPlatform Platform { get; set; }
     public DateTimeOffset LastSeenAt { get; set; } = DateTimeOffset.UtcNow;
 }

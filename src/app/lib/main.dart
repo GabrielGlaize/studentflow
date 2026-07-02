@@ -113,6 +113,7 @@ class _StudyFlowAppState extends State<StudyFlowApp> {
       storage: SecureCompanyDocumentsStorage(),
     );
     _notificationScheduler = NativeLocalNotificationScheduler();
+    unawaited(_notificationScheduler.replaceAll(const []));
     final authRepository = _buildAuthRepository();
     _sessionController = SessionController(
       authRepository: authRepository,

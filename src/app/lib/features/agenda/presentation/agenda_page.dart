@@ -61,7 +61,7 @@ class _AgendaPageState extends State<AgendaPage> {
             trailing: ProtoActionButton(
               icon: Icons.add,
               tooltip: 'Nouvelle tâche',
-              onPressed: _openCreateMenu,
+              onPressed: _openCreateTaskSheet,
             ),
           ),
           Padding(
@@ -185,6 +185,7 @@ class _AgendaPageState extends State<AgendaPage> {
                           (item) => _TaskCard(
                             task: item,
                             color: _categoryColor,
+                            onOpenDetails: () => _openTaskDetails(item),
                             onToggleDone: () =>
                                 _setTaskDone(item, isDone: !item.isDone),
                             onDelete: () => _confirmDeleteTask(item),
@@ -247,7 +248,7 @@ class _AgendaPageState extends State<AgendaPage> {
     final created = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -262,7 +263,7 @@ class _AgendaPageState extends State<AgendaPage> {
   Future<void> _openCreateMenu() async {
     final action = await showModalBottomSheet<_AgendaCreateAction>(
       context: context,
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -281,11 +282,29 @@ class _AgendaPageState extends State<AgendaPage> {
     }
   }
 
+  Future<void> _openTaskDetails(AgendaTaskItem task) {
+    return showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (context) => _TaskDetailsSheet(
+        task: task,
+        color: _categoryColor,
+        onDelete: () {
+          Navigator.pop(context);
+          _confirmDeleteTask(task);
+        },
+      ),
+    );
+  }
+
   Future<void> _openEventSheet([PersonalEventItem? event]) async {
     final saved = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -302,7 +321,7 @@ class _AgendaPageState extends State<AgendaPage> {
     final saved = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -458,10 +477,10 @@ class _CreateAgendaMenu extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             _CreateMenuTile(
-              icon: Icons.assignment_outlined,
-              title: 'Devoir de classe',
-              subtitle: 'Visible par tous les élèves approuvés.',
-              onTap: () => Navigator.pop(context, _AgendaCreateAction.homework),
+              icon: Icons.checklist_outlined,
+              title: 'Tâche personnelle',
+              subtitle: 'Visible uniquement dans ton agenda courant.',
+              onTap: () => Navigator.pop(context, _AgendaCreateAction.task),
             ),
             _CreateMenuTile(
               icon: Icons.event_available_outlined,
@@ -470,10 +489,10 @@ class _CreateAgendaMenu extends StatelessWidget {
               onTap: () => Navigator.pop(context, _AgendaCreateAction.event),
             ),
             _CreateMenuTile(
-              icon: Icons.checklist_outlined,
-              title: 'Tâche personnelle',
-              subtitle: 'Visible uniquement dans ton agenda.',
-              onTap: () => Navigator.pop(context, _AgendaCreateAction.task),
+              icon: Icons.assignment_outlined,
+              title: 'Devoir de classe',
+              subtitle: 'Visible par tous les élèves approuvés.',
+              onTap: () => Navigator.pop(context, _AgendaCreateAction.homework),
             ),
           ],
         ),
@@ -509,8 +528,8 @@ class _CreateMenuTile extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: AppColors.petrol,
+                  style: TextStyle(
+                    color: context.sfText,
                     fontSize: 12,
                     fontWeight: FontWeight.w900,
                   ),
@@ -520,7 +539,7 @@ class _CreateMenuTile extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(Icons.chevron_right, color: AppColors.muted),
+          Icon(Icons.chevron_right, color: context.sfChevron),
         ],
       ),
     );
@@ -670,6 +689,98 @@ class _CreateTaskSheet extends StatefulWidget {
 
   @override
   State<_CreateTaskSheet> createState() => _CreateTaskSheetState();
+}
+
+class _TaskDetailsSheet extends StatelessWidget {
+  const _TaskDetailsSheet({
+    required this.task,
+    required this.color,
+    required this.onDelete,
+  });
+
+  final AgendaTaskItem task;
+  final Color color;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              ProtoIconBox(
+                icon: task.isDone
+                    ? Icons.check_circle_outline
+                    : Icons.checklist_outlined,
+                backgroundColor: color.withValues(alpha: 0.16),
+                foregroundColor: color,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ProtoSectionHeading(
+                  overline: _categoryLabel(task.category),
+                  title: task.title,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if ((task.description ?? '').trim().isNotEmpty)
+            ProtoMutedText(task.description!)
+          else
+            const ProtoMutedText('Aucune description.'),
+          const SizedBox(height: 10),
+          ProtoMutedText(
+            [
+              if (task.deadline != null)
+                'Échéance ${_formatDate(task.deadline!)}',
+              task.notificationsEnabled ? 'Rappel actif' : 'Aucun rappel',
+              task.isDone ? 'Terminée' : 'À faire',
+            ].join(' · '),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Fermer'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextButton.icon(
+                  onPressed: onDelete,
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Supprimer'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _categoryLabel(String value) {
+    return switch (value) {
+      'company' => 'Entreprise',
+      'apprenticeship' => 'Alternance',
+      _ => 'École',
+    };
+  }
+
+  String _formatDate(DateTime value) {
+    final day = value.day.toString().padLeft(2, '0');
+    final month = value.month.toString().padLeft(2, '0');
+    final hour = value.hour.toString().padLeft(2, '0');
+    final minute = value.minute.toString().padLeft(2, '0');
+    return '$day/$month à $hour:$minute';
+  }
 }
 
 class _CreateTaskSheetState extends State<_CreateTaskSheet> {
@@ -1112,11 +1223,11 @@ class _PickerLine extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: AppColors.petrol),
+      leading: Icon(icon, color: context.sfIcon),
       title: Text(
         title,
-        style: const TextStyle(
-          color: AppColors.petrol,
+        style: TextStyle(
+          color: context.sfText,
           fontSize: 11,
           fontWeight: FontWeight.w900,
         ),
@@ -1223,10 +1334,10 @@ class _HomeworkFormSheetState extends State<_HomeworkFormSheet> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Échéance',
                             style: TextStyle(
-                              color: AppColors.petrol,
+                              color: context.sfText,
                               fontSize: 11,
                               fontWeight: FontWeight.w900,
                             ),
@@ -1358,9 +1469,9 @@ class _SectionTitle extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w900,
-                color: AppColors.petrol,
+                color: context.sfText,
                 fontSize: 14,
               ),
             ),
@@ -1375,8 +1486,8 @@ class _SectionTitle extends StatelessWidget {
             ),
             child: Text(
               '$count',
-              style: const TextStyle(
-                color: AppColors.muted,
+              style: TextStyle(
+                color: context.sfMuted,
                 fontSize: 9,
                 fontWeight: FontWeight.w900,
               ),
@@ -1417,7 +1528,7 @@ class _HomeworkCard extends StatelessWidget {
             ? Icons.notifications_active_outlined
             : Icons.notifications_off_outlined,
         size: 18,
-        color: AppColors.muted,
+        color: context.sfChevron,
       ),
       isDone: homework.isDone,
       menu: PopupMenuButton<_HomeworkAction>(
@@ -1478,7 +1589,7 @@ class _PersonalEventCard extends StatelessWidget {
             ? Icons.notifications_active_outlined
             : Icons.notifications_off_outlined,
         size: 18,
-        color: AppColors.muted,
+        color: context.sfChevron,
       ),
       menu: PopupMenuButton<_PersonalEventAction>(
         tooltip: 'Actions événement',
@@ -1511,19 +1622,21 @@ class _TaskCard extends StatelessWidget {
   const _TaskCard({
     required this.task,
     required this.color,
+    required this.onOpenDetails,
     required this.onToggleDone,
     required this.onDelete,
   });
 
   final AgendaTaskItem task;
   final Color color;
+  final VoidCallback onOpenDetails;
   final VoidCallback onToggleDone;
   final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
     return _AgendaItemShell(
-      onTap: onToggleDone,
+      onTap: onOpenDetails,
       color: color,
       leading: InkWell(
         onTap: onToggleDone,
@@ -1534,7 +1647,7 @@ class _TaskCard extends StatelessWidget {
           height: 22,
           margin: const EdgeInsets.only(top: 3),
           decoration: BoxDecoration(
-            color: task.isDone ? AppColors.green : Colors.white,
+            color: task.isDone ? AppColors.green : context.sfCard,
             borderRadius: BorderRadius.circular(7),
             border: Border.all(
               color: task.isDone ? AppColors.green : AppColors.blueGray,
@@ -1556,7 +1669,7 @@ class _TaskCard extends StatelessWidget {
         tooltip: 'Supprimer',
         onPressed: onDelete,
         icon: const Icon(Icons.more_horiz),
-        color: AppColors.muted,
+        color: context.sfChevron,
       ),
       isDone: task.isDone,
     );
@@ -1618,7 +1731,7 @@ class _AgendaItemShell extends StatelessWidget {
                   Text(
                     title,
                     style: TextStyle(
-                      color: AppColors.petrol,
+                      color: context.sfText,
                       fontSize: 12,
                       height: 1.3,
                       fontWeight: FontWeight.w900,
@@ -1658,8 +1771,10 @@ class _DateTile extends StatelessWidget {
         children: [
           Text(
             '${date.day}'.padLeft(2, '0'),
-            style: const TextStyle(
-              color: AppColors.petrolDark,
+            style: TextStyle(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white
+                  : AppColors.petrolDark,
               fontSize: 17,
               fontWeight: FontWeight.w900,
               height: 1,
@@ -1668,8 +1783,10 @@ class _DateTile extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             _monthLabel(date),
-            style: const TextStyle(
-              color: AppColors.petrolDark,
+            style: TextStyle(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white70
+                  : AppColors.petrolDark,
               fontSize: 8,
               fontWeight: FontWeight.w900,
             ),

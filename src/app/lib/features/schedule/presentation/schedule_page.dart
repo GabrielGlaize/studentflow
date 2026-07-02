@@ -58,7 +58,9 @@ class _SchedulePageState extends State<SchedulePage> {
                         ? Colors.white
                         : AppColors.petrol,
                     side: BorderSide(
-                      color: isSelectedToday ? AppColors.petrol : AppColors.line,
+                      color: isSelectedToday
+                          ? AppColors.petrol
+                          : AppColors.line,
                     ),
                   ),
                   child: const Text('Aujourd’hui'),
@@ -218,7 +220,7 @@ class _SchedulePageState extends State<SchedulePage> {
     final saved = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -269,7 +271,7 @@ class _SchedulePageState extends State<SchedulePage> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -314,11 +316,7 @@ class _AddCourseIcon extends StatelessWidget {
       clipBehavior: Clip.none,
       children: [
         Icon(Icons.calendar_today_outlined, size: 20),
-        Positioned(
-          right: -7,
-          top: -7,
-          child: Icon(Icons.add_circle, size: 15),
-        ),
+        Positioned(right: -7, top: -7, child: Icon(Icons.add_circle, size: 15)),
       ],
     );
   }
@@ -349,16 +347,16 @@ class _WeekPicker extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border.symmetric(horizontal: BorderSide(color: AppColors.line)),
+      decoration: BoxDecoration(
+        color: context.sfCard,
+        border: Border.symmetric(horizontal: BorderSide(color: context.sfLine)),
       ),
       child: Row(
         children: [
           IconButton(
             onPressed: onPrevious,
             icon: const Icon(Icons.chevron_left),
-            color: AppColors.muted,
+            color: context.sfChevron,
           ),
           Expanded(
             child: Row(
@@ -379,7 +377,7 @@ class _WeekPicker extends StatelessWidget {
           IconButton(
             onPressed: onNext,
             icon: const Icon(Icons.chevron_right),
-            color: AppColors.muted,
+            color: context.sfChevron,
           ),
         ],
       ),
@@ -402,6 +400,7 @@ class _DayPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final names = ['LUN', 'MAR', 'MER', 'JEU', 'VEN'];
     final label = names[(day.weekday - 1).clamp(0, 4)];
 
@@ -415,12 +414,13 @@ class _DayPill extends StatelessWidget {
           color: isActive ? AppColors.petrol : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
           border: isToday && !isActive
-              ? Border.all(color: AppColors.petrol.withValues(alpha: 0.25))
+              ? Border.all(color: context.sfLine)
               : null,
           boxShadow: isActive
               ? [
                   BoxShadow(
-                    color: AppColors.petrol.withValues(alpha: 0.22),
+                    color: (isDark ? Colors.black : AppColors.petrol)
+                        .withValues(alpha: 0.22),
                     blurRadius: 14,
                     offset: const Offset(0, 7),
                   ),
@@ -433,7 +433,7 @@ class _DayPill extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                color: isActive ? Colors.white70 : AppColors.muted,
+                color: isActive ? Colors.white70 : context.sfMuted,
                 fontSize: 8,
                 fontWeight: FontWeight.w900,
               ),
@@ -442,7 +442,7 @@ class _DayPill extends StatelessWidget {
             Text(
               '${day.day}',
               style: TextStyle(
-                color: isActive ? Colors.white : AppColors.petrol,
+                color: isActive ? Colors.white : context.sfText,
                 fontSize: 15,
                 fontWeight: FontWeight.w900,
               ),
@@ -452,7 +452,7 @@ class _DayPill extends StatelessWidget {
               width: 4,
               height: 4,
               decoration: BoxDecoration(
-                color: isActive ? Colors.white : AppColors.petrol,
+                color: isActive ? Colors.white : context.sfText,
                 shape: BoxShape.circle,
               ),
             ),
@@ -506,10 +506,14 @@ class _PlanningViewSwitch extends StatelessWidget {
       selected: {showWholeWeek},
       onSelectionChanged: (selection) => onChanged(selection.first),
       style: SegmentedButton.styleFrom(
-        backgroundColor: Colors.white,
-        selectedBackgroundColor: AppColors.petrol,
-        selectedForegroundColor: Colors.white,
-        foregroundColor: AppColors.petrol,
+        backgroundColor: context.sfCard,
+        selectedBackgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.mint
+            : AppColors.petrol,
+        selectedForegroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.petrol
+            : Colors.white,
+        foregroundColor: context.sfText,
       ),
     );
   }
@@ -542,7 +546,7 @@ class _DayTimeline extends StatelessWidget {
             child: Text(
               _weekdayLabel(day),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: AppColors.petrol,
+                color: context.sfText,
                 fontWeight: FontWeight.w900,
                 letterSpacing: -0.4,
               ),
@@ -596,16 +600,16 @@ class _TimelineCourseCard extends StatelessWidget {
                 children: [
                   Text(
                     course.startsAt,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w900,
-                      color: AppColors.petrol,
+                      color: context.sfText,
                     ),
                   ),
                   const SizedBox(height: 3),
                   Text(
                     course.endsAt,
-                    style: const TextStyle(fontSize: 9, color: AppColors.muted),
+                    style: TextStyle(fontSize: 9, color: context.sfMuted),
                   ),
                 ],
               ),
@@ -665,7 +669,7 @@ class _TimelineCourseCard extends StatelessWidget {
                               PopupMenuButton<_CourseAction>(
                                 tooltip: 'Actions cours',
                                 icon: const Icon(Icons.more_horiz),
-                                color: Colors.white,
+                                color: context.sfCard,
                                 onSelected: (action) {
                                   switch (action) {
                                     case _CourseAction.edit:
@@ -696,7 +700,7 @@ class _TimelineCourseCard extends StatelessWidget {
                           Text(
                             course.subjectName,
                             style: TextStyle(
-                              color: AppColors.petrol,
+                              color: context.sfText,
                               fontSize: 14,
                               fontWeight: FontWeight.w900,
                               decoration: course.isCancelled
@@ -756,9 +760,9 @@ class _TinyDetail extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: AppColors.muted),
+        Icon(icon, size: 14, color: context.sfMuted),
         const SizedBox(width: 4),
-        Text(text, style: const TextStyle(color: AppColors.muted, fontSize: 9)),
+        Text(text, style: TextStyle(color: context.sfMuted, fontSize: 9)),
       ],
     );
   }
@@ -909,8 +913,8 @@ class _CourseRevisionTile extends StatelessWidget {
               children: [
                 Text(
                   '${_revisionActionLabel(revision.action)} · v${revision.version}',
-                  style: const TextStyle(
-                    color: AppColors.petrol,
+                  style: TextStyle(
+                    color: context.sfText,
                     fontSize: 11,
                     fontWeight: FontWeight.w900,
                   ),

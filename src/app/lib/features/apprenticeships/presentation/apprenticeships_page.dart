@@ -192,7 +192,7 @@ class _ApprenticeshipsPageState extends State<ApprenticeshipsPage> {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -263,7 +263,7 @@ class _ApprenticeshipsPageState extends State<ApprenticeshipsPage> {
     final shared = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -513,11 +513,40 @@ class _ApplicationDocumentsSection extends StatelessWidget {
               (document) => _ApplicationDocumentLine(
                 document: document,
                 onDelete: () => onDeleteDocument(document.id),
+                onOpen: () => _openDocument(context, document),
               ),
             ),
         ],
       ),
     );
+  }
+
+  Future<void> _openDocument(
+    BuildContext context,
+    CompanyDocument document,
+  ) async {
+    final link = document.link?.trim();
+    if (link == null || link.isEmpty) {
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Ajoute un lien pour ouvrir ce document.'),
+          ),
+        );
+      return;
+    }
+
+    final uri = Uri.tryParse(link);
+    if (uri == null ||
+        !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          const SnackBar(content: Text('Lien impossible à ouvrir.')),
+        );
+    }
   }
 }
 
@@ -525,10 +554,12 @@ class _ApplicationDocumentLine extends StatelessWidget {
   const _ApplicationDocumentLine({
     required this.document,
     required this.onDelete,
+    required this.onOpen,
   });
 
   final CompanyDocument document;
   final VoidCallback onDelete;
+  final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -538,48 +569,52 @@ class _ApplicationDocumentLine extends StatelessWidget {
       if (document.note != null) document.note!,
     ].join(' · ');
 
-    return Container(
-      margin: const EdgeInsets.only(top: 9),
-      padding: const EdgeInsets.all(11),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.line),
-      ),
-      child: Row(
-        children: [
-          ProtoIconBox(
-            icon: _documentIcon(document.kind),
-            size: 34,
-            backgroundColor: AppColors.primarySoft,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  document.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.petrol,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                ProtoMutedText(details, maxLines: 2),
-              ],
+    return InkWell(
+      onTap: onOpen,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        margin: const EdgeInsets.only(top: 9),
+        padding: const EdgeInsets.all(11),
+        decoration: BoxDecoration(
+          color: context.sfCard,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: context.sfLine),
+        ),
+        child: Row(
+          children: [
+            ProtoIconBox(
+              icon: _documentIcon(document.kind),
+              size: 34,
+              backgroundColor: AppColors.primarySoft,
             ),
-          ),
-          IconButton(
-            tooltip: 'Supprimer',
-            onPressed: onDelete,
-            icon: const Icon(Icons.delete_outline, size: 18),
-            color: AppColors.muted,
-          ),
-        ],
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    document.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: context.sfText,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  ProtoMutedText(details, maxLines: 2),
+                ],
+              ),
+            ),
+            IconButton(
+              tooltip: 'Supprimer',
+              onPressed: onDelete,
+              icon: const Icon(Icons.delete_outline, size: 18),
+              color: context.sfChevron,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -841,9 +876,9 @@ class _FavoriteOfferLine extends StatelessWidget {
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(11),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.sfCard,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.line),
+        border: Border.all(color: context.sfLine),
       ),
       child: Row(
         children: [
@@ -864,8 +899,8 @@ class _FavoriteOfferLine extends StatelessWidget {
                     offer.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppColors.petrol,
+                    style: TextStyle(
+                      color: context.sfText,
                       fontSize: 11,
                       fontWeight: FontWeight.w900,
                     ),
@@ -878,7 +913,7 @@ class _FavoriteOfferLine extends StatelessWidget {
                     ].join(' · '),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: AppColors.muted, fontSize: 9),
+                    style: TextStyle(color: context.sfMuted, fontSize: 9),
                   ),
                 ],
               ),
@@ -922,27 +957,29 @@ class _CommunitySection extends StatelessWidget {
         children: [
           Row(
             children: [
-              const ProtoIconBox(
+              ProtoIconBox(
                 icon: Icons.campaign_outlined,
-                backgroundColor: Colors.white,
+                backgroundColor: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white.withValues(alpha: 0.14)
+                    : Colors.white,
               ),
               const SizedBox(width: 11),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ProtoOverline('Communauté', color: AppColors.petrol),
-                    SizedBox(height: 3),
+                    ProtoOverline('Communauté', color: context.sfText),
+                    const SizedBox(height: 3),
                     Text(
                       'Offres partagées par la classe',
                       style: TextStyle(
-                        color: AppColors.petrol,
+                        color: context.sfText,
                         fontSize: 14,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    SizedBox(height: 3),
-                    ProtoMutedText(
+                    const SizedBox(height: 3),
+                    const ProtoMutedText(
                       'Centralise les bons plans sans remplacer Discord.',
                     ),
                   ],
@@ -995,9 +1032,9 @@ class _CommunityMessageCard extends StatelessWidget {
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(11),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.sfCard,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.line),
+        border: Border.all(color: context.sfLine),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1007,8 +1044,8 @@ class _CommunityMessageCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   message.authorName,
-                  style: const TextStyle(
-                    color: AppColors.petrol,
+                  style: TextStyle(
+                    color: context.sfText,
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
                   ),
@@ -1016,7 +1053,7 @@ class _CommunityMessageCard extends StatelessWidget {
               ),
               Text(
                 _shortDate(message.createdAt),
-                style: const TextStyle(color: AppColors.muted, fontSize: 8),
+                style: TextStyle(color: context.sfMuted, fontSize: 8),
               ),
             ],
           ),
@@ -1209,8 +1246,8 @@ class _OpportunityCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       opportunity.title,
-                      style: const TextStyle(
-                        color: AppColors.petrol,
+                      style: TextStyle(
+                        color: context.sfText,
                         fontSize: 15,
                         fontWeight: FontWeight.w900,
                         height: 1.25,
@@ -1224,10 +1261,7 @@ class _OpportunityCard extends StatelessWidget {
                         if (opportunity.distanceKm != null)
                           '${opportunity.distanceKm!.toStringAsFixed(1)} km',
                       ].join(' · '),
-                      style: const TextStyle(
-                        color: AppColors.muted,
-                        fontSize: 10,
-                      ),
+                      style: TextStyle(color: context.sfMuted, fontSize: 10),
                     ),
                   ],
                 ),

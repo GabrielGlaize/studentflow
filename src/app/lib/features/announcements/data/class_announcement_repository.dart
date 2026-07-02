@@ -12,6 +12,12 @@ abstract interface class ClassAnnouncementRepository {
     String? accessToken,
   });
 
+  Future<ClassAnnouncement> updateAnnouncement({
+    required ClassAnnouncement announcement,
+    required bool isPinned,
+    String? accessToken,
+  });
+
   Future<void> deleteAnnouncement({
     required String announcementId,
     String? accessToken,

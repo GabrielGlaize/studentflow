@@ -163,6 +163,20 @@ class _FakeAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<PasswordResetRequestResult> requestPasswordReset({
+    required String email,
+  }) async {
+    return const PasswordResetRequestResult(message: 'OK');
+  }
+
+  @override
+  Future<void> resetPassword({
+    required String email,
+    required String token,
+    required String newPassword,
+  }) async {}
+
+  @override
   Future<void> logout(AuthSession session) async {}
 }
 
@@ -201,6 +215,20 @@ class _FailingLogoutAuthRepository implements AuthRepository {
   Future<AuthTokenPair> refresh(String refreshToken) async {
     return _session.tokens;
   }
+
+  @override
+  Future<PasswordResetRequestResult> requestPasswordReset({
+    required String email,
+  }) async {
+    return const PasswordResetRequestResult(message: 'OK');
+  }
+
+  @override
+  Future<void> resetPassword({
+    required String email,
+    required String token,
+    required String newPassword,
+  }) async {}
 
   @override
   Future<void> logout(AuthSession session) async {
@@ -250,6 +278,20 @@ class _RefreshingAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<PasswordResetRequestResult> requestPasswordReset({
+    required String email,
+  }) async {
+    return const PasswordResetRequestResult(message: 'OK');
+  }
+
+  @override
+  Future<void> resetPassword({
+    required String email,
+    required String token,
+    required String newPassword,
+  }) async {}
+
+  @override
   Future<void> logout(AuthSession session) async {}
 }
 
@@ -288,6 +330,20 @@ class _FailingRefreshAuthRepository implements AuthRepository {
   Future<AuthTokenPair> refresh(String refreshToken) async {
     throw const AuthException('Refresh invalide.');
   }
+
+  @override
+  Future<PasswordResetRequestResult> requestPasswordReset({
+    required String email,
+  }) async {
+    return const PasswordResetRequestResult(message: 'OK');
+  }
+
+  @override
+  Future<void> resetPassword({
+    required String email,
+    required String token,
+    required String newPassword,
+  }) async {}
 
   @override
   Future<void> logout(AuthSession session) async {}

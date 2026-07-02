@@ -108,7 +108,7 @@ class _DashboardContent extends StatelessWidget {
                         dashboard.hasClass
                             ? 'Voici l’essentiel de ta journée.'
                             : 'Organise ta recherche d’alternance et rejoins ta classe plus tard.',
-                        style: const TextStyle(color: AppColors.muted),
+                        style: TextStyle(color: context.sfMuted),
                       ),
                     ],
                   ),
@@ -185,7 +185,7 @@ class _DashboardContent extends StatelessWidget {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -204,13 +204,15 @@ class _ClassPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.primarySoft,
+        color: Theme.of(context).brightness == Brightness.dark
+            ? Colors.white.withValues(alpha: 0.14)
+            : AppColors.primarySoft,
         borderRadius: BorderRadius.circular(99),
       ),
       child: Text(
         text.toUpperCase(),
-        style: const TextStyle(
-          color: AppColors.petrolDark,
+        style: TextStyle(
+          color: context.sfText,
           fontSize: 10,
           fontWeight: FontWeight.w900,
           letterSpacing: .6,
@@ -319,7 +321,7 @@ class _PinnedAnnouncementCard extends StatelessWidget {
                   announcement == null
                       ? 'Le fil officiel reste accessible ici.'
                       : '${announcement.authorName} · toucher pour ouvrir le fil',
-                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                  style: TextStyle(color: context.sfMuted, fontSize: 12),
                 ),
               ],
             ),
@@ -373,10 +375,15 @@ class _Overline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final effectiveColor = isDark && color == AppColors.petrol
+        ? Colors.white70
+        : color;
+
     return Text(
       text.toUpperCase(),
       style: TextStyle(
-        color: color,
+        color: effectiveColor,
         fontSize: 10,
         fontWeight: FontWeight.w900,
         letterSpacing: .8,
@@ -491,9 +498,12 @@ class _ClassFeedSectionState extends State<_ClassFeedSection> {
             children: [
               Row(
                 children: [
-                  const ProtoIconBox(
+                  ProtoIconBox(
                     icon: Icons.campaign_outlined,
-                    backgroundColor: Colors.white,
+                    backgroundColor:
+                        Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white.withValues(alpha: 0.14)
+                        : Colors.white,
                   ),
                   const SizedBox(width: 11),
                   const Expanded(
@@ -507,13 +517,13 @@ class _ClassFeedSectionState extends State<_ClassFeedSection> {
                       tooltip: 'Publier une info',
                       onPressed: _openCreateSheet,
                       icon: const Icon(Icons.add),
-                      color: AppColors.petrol,
+                      color: context.sfIcon,
                     ),
                   IconButton(
                     tooltip: 'Ouvrir le fil',
                     onPressed: widget.onOpenFullFeed,
                     icon: const Icon(Icons.chevron_right),
-                    color: AppColors.petrol,
+                    color: context.sfChevron,
                   ),
                 ],
               ),
@@ -530,8 +540,9 @@ class _ClassFeedSectionState extends State<_ClassFeedSection> {
                     .map(
                       (announcement) => _AnnouncementMiniCard(
                         announcement,
-                        canDelete: canPublish,
+                        canManage: canPublish,
                         onDelete: () => _deleteAnnouncement(announcement),
+                        onTogglePin: () => _togglePin(announcement),
                       ),
                     ),
             ],
@@ -558,7 +569,7 @@ class _ClassFeedSectionState extends State<_ClassFeedSection> {
     final created = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -598,29 +609,45 @@ class _ClassFeedSectionState extends State<_ClassFeedSection> {
 
     if (mounted) await _refresh();
   }
+
+  Future<void> _togglePin(ClassAnnouncement announcement) async {
+    final appScope = AppScope.of(context);
+    final accessToken = await appScope.sessionController.accessTokenForApi();
+    await appScope.classAnnouncementRepository.updateAnnouncement(
+      announcement: announcement,
+      isPinned: !announcement.isPinned,
+      accessToken: accessToken,
+    );
+
+    if (mounted) await _refresh();
+  }
 }
 
 class _AnnouncementMiniCard extends StatelessWidget {
   const _AnnouncementMiniCard(
     this.announcement, {
-    this.canDelete = false,
+    this.canManage = false,
     this.onDelete,
+    this.onTogglePin,
   });
 
   final ClassAnnouncement announcement;
-  final bool canDelete;
+  final bool canManage;
   final VoidCallback? onDelete;
+  final VoidCallback? onTogglePin;
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(11),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.sfCard,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: announcement.isPinned ? AppColors.rose : AppColors.line,
+          color: announcement.isPinned ? AppColors.rose : context.sfLine,
           width: announcement.isPinned ? 1.5 : 1,
         ),
       ),
@@ -631,7 +658,11 @@ class _AnnouncementMiniCard extends StatelessWidget {
             announcement.isPinned
                 ? Icons.push_pin_outlined
                 : Icons.info_outline,
-            color: announcement.isPinned ? AppColors.rose : AppColors.petrol,
+            color: announcement.isPinned
+                ? AppColors.rose
+                : isDark
+                ? Colors.white
+                : AppColors.petrol,
             size: 18,
           ),
           const SizedBox(width: 9),
@@ -643,8 +674,8 @@ class _AnnouncementMiniCard extends StatelessWidget {
                   announcement.content,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.petrol,
+                  style: TextStyle(
+                    color: context.sfText,
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
                     height: 1.35,
@@ -652,24 +683,52 @@ class _AnnouncementMiniCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  announcement.authorName,
-                  style: const TextStyle(color: AppColors.muted, fontSize: 8),
+                  '${announcement.authorName} · ${_formatDate(announcement.updatedAt)}',
+                  style: TextStyle(color: context.sfMuted, fontSize: 8),
                 ),
               ],
             ),
           ),
-          if (canDelete)
-            IconButton(
-              tooltip: 'Supprimer l’annonce',
-              onPressed: onDelete,
-              icon: const Icon(Icons.delete_outline, size: 18),
-              color: AppColors.muted,
+          if (canManage)
+            PopupMenuButton<_AnnouncementAction>(
+              tooltip: 'Actions annonce',
+              icon: const Icon(Icons.more_horiz, size: 18),
+              onSelected: (action) {
+                switch (action) {
+                  case _AnnouncementAction.togglePin:
+                    onTogglePin?.call();
+                  case _AnnouncementAction.delete:
+                    onDelete?.call();
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: _AnnouncementAction.togglePin,
+                  child: Text(
+                    announcement.isPinned ? 'Désépingler' : 'Épingler',
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: _AnnouncementAction.delete,
+                  child: Text('Supprimer'),
+                ),
+              ],
             ),
         ],
       ),
     );
   }
+
+  String _formatDate(DateTime value) {
+    final day = value.day.toString().padLeft(2, '0');
+    final month = value.month.toString().padLeft(2, '0');
+    final hour = value.hour.toString().padLeft(2, '0');
+    final minute = value.minute.toString().padLeft(2, '0');
+    return '$day/$month $hour:$minute';
+  }
 }
+
+enum _AnnouncementAction { togglePin, delete }
 
 class _CreateAnnouncementSheet extends StatefulWidget {
   const _CreateAnnouncementSheet();
@@ -801,6 +860,8 @@ class _SummaryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return ProtoCard(
       onTap: onTap,
       margin: const EdgeInsets.only(bottom: 10),
@@ -811,10 +872,12 @@ class _SummaryTile extends StatelessWidget {
             width: 45,
             height: 51,
             decoration: BoxDecoration(
-              color: AppColors.primarySoft,
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.14)
+                  : AppColors.primarySoft,
               borderRadius: BorderRadius.circular(13),
             ),
-            child: Icon(icon, color: AppColors.petrol),
+            child: Icon(icon, color: context.sfIcon),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -830,13 +893,13 @@ class _SummaryTile extends StatelessWidget {
                   subtitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                  style: TextStyle(color: context.sfMuted, fontSize: 12),
                 ),
               ],
             ),
           ),
           if (onTap != null)
-            const Icon(Icons.chevron_right, color: AppColors.muted),
+            Icon(Icons.chevron_right, color: context.sfChevron),
         ],
       ),
     );
@@ -881,7 +944,7 @@ class _ClassFeedFullListState extends State<_ClassFeedFullList> {
   @override
   Widget build(BuildContext context) {
     final user = AppScope.of(context).sessionController.session?.user;
-    final canDelete = user?.isDelegate == true;
+    final canManage = user?.isDelegate == true;
 
     return FutureBuilder<List<ClassAnnouncement>>(
       future: _future,
@@ -909,8 +972,9 @@ class _ClassFeedFullListState extends State<_ClassFeedFullList> {
               ...announcements.map(
                 (announcement) => _AnnouncementMiniCard(
                   announcement,
-                  canDelete: canDelete,
+                  canManage: canManage,
                   onDelete: () => _deleteAnnouncement(announcement),
+                  onTogglePin: () => _togglePin(announcement),
                 ),
               ),
           ],
@@ -957,6 +1021,18 @@ class _ClassFeedFullListState extends State<_ClassFeedFullList> {
     final accessToken = await appScope.sessionController.accessTokenForApi();
     await appScope.classAnnouncementRepository.deleteAnnouncement(
       announcementId: announcement.id,
+      accessToken: accessToken,
+    );
+
+    if (mounted) await _refresh();
+  }
+
+  Future<void> _togglePin(ClassAnnouncement announcement) async {
+    final appScope = AppScope.of(context);
+    final accessToken = await appScope.sessionController.accessTokenForApi();
+    await appScope.classAnnouncementRepository.updateAnnouncement(
+      announcement: announcement,
+      isPinned: !announcement.isPinned,
       accessToken: accessToken,
     );
 

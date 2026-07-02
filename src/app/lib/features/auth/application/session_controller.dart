@@ -164,6 +164,24 @@ class SessionController extends ChangeNotifier {
     }
   }
 
+  Future<PasswordResetRequestResult> requestPasswordReset({
+    required String email,
+  }) {
+    return _authRepository.requestPasswordReset(email: email);
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String token,
+    required String newPassword,
+  }) {
+    return _authRepository.resetPassword(
+      email: email,
+      token: token,
+      newPassword: newPassword,
+    );
+  }
+
   Future<void> logout() async {
     final sessionToRevoke = _session;
     try {

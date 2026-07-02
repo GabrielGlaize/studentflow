@@ -22,8 +22,10 @@ class OnboardingPage extends StatelessWidget {
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(Icons.chevron_left),
                   style: IconButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: AppColors.petrol,
+                    backgroundColor: isDark
+                        ? Colors.white.withValues(alpha: 0.14)
+                        : Colors.white,
+                    foregroundColor: isDark ? Colors.white : AppColors.petrol,
                   ),
                 ),
                 const Spacer(),
@@ -130,7 +132,9 @@ class _ChoiceCard extends StatelessWidget {
         children: [
           ProtoIconBox(
             icon: icon,
-            backgroundColor: Colors.white,
+            backgroundColor: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white.withValues(alpha: 0.14)
+                : Colors.white,
             foregroundColor: color,
             size: 55,
           ),
@@ -147,8 +151,8 @@ class _ChoiceCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: AppColors.petrol,
+                  style: TextStyle(
+                    color: context.sfText,
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
                   ),
@@ -156,10 +160,10 @@ class _ChoiceCard extends StatelessWidget {
                 const SizedBox(height: 6),
                 ProtoMutedText(subtitle),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'Continuer →',
                   style: TextStyle(
-                    color: AppColors.petrol,
+                    color: context.sfText,
                     fontSize: 9,
                     fontWeight: FontWeight.w900,
                   ),
@@ -183,22 +187,22 @@ class RegisterWithoutClassPage extends StatefulWidget {
 
 class _RegisterWithoutClassPageState extends State<RegisterWithoutClassPage> {
   final _formKey = GlobalKey<FormState>();
-  static const _useDemoAuth = bool.fromEnvironment(
-    'STUDYFLOW_USE_DEMO_AUTH',
+  static const _prefillDevelopmentCredentials = bool.fromEnvironment(
+    'STUDYFLOW_PREFILL_DEV_CREDENTIALS',
     defaultValue: true,
   );
 
   late final _firstNameController = TextEditingController(
-    text: _useDemoAuth ? 'Gabriel' : '',
+    text: _prefillDevelopmentCredentials ? 'Futur' : '',
   );
   late final _lastNameController = TextEditingController(
-    text: _useDemoAuth ? 'Demo' : '',
+    text: _prefillDevelopmentCredentials ? 'Eleve' : '',
   );
   late final _emailController = TextEditingController(
-    text: _useDemoAuth ? 'futur@studyflow.dev' : '',
+    text: _prefillDevelopmentCredentials ? 'futur@studyflow.dev' : '',
   );
   late final _passwordController = TextEditingController(
-    text: _useDemoAuth ? 'Password123' : '',
+    text: _prefillDevelopmentCredentials ? 'Password1234' : '',
   );
   final _classCodeController = TextEditingController();
 
@@ -342,28 +346,28 @@ class CreateClassPage extends StatefulWidget {
 
 class _CreateClassPageState extends State<CreateClassPage> {
   final _formKey = GlobalKey<FormState>();
-  static const _useDemoAuth = bool.fromEnvironment(
-    'STUDYFLOW_USE_DEMO_AUTH',
+  static const _prefillDevelopmentCredentials = bool.fromEnvironment(
+    'STUDYFLOW_PREFILL_DEV_CREDENTIALS',
     defaultValue: true,
   );
 
   late final _firstNameController = TextEditingController(
-    text: _useDemoAuth ? 'Gabriel' : '',
+    text: _prefillDevelopmentCredentials ? 'Gabriel' : '',
   );
   late final _lastNameController = TextEditingController(
-    text: _useDemoAuth ? 'Demo' : '',
+    text: _prefillDevelopmentCredentials ? 'Glz' : '',
   );
   late final _emailController = TextEditingController(
-    text: _useDemoAuth ? 'delegue@studyflow.dev' : '',
+    text: _prefillDevelopmentCredentials ? 'nouveau.delegue@studyflow.dev' : '',
   );
   late final _passwordController = TextEditingController(
-    text: _useDemoAuth ? 'Password123' : '',
+    text: _prefillDevelopmentCredentials ? 'Password1234' : '',
   );
   late final _classNameController = TextEditingController(
-    text: _useDemoAuth ? 'BTS SIO 1' : '',
+    text: _prefillDevelopmentCredentials ? 'BTS SIO 1' : '',
   );
   late final _schoolYearController = TextEditingController(
-    text: _useDemoAuth ? '2026-2027' : '',
+    text: _prefillDevelopmentCredentials ? '2026-2027' : '',
   );
 
   @override
@@ -512,8 +516,10 @@ class _RegisterScaffold extends StatelessWidget {
                 onPressed: () => Navigator.pop(context),
                 icon: const Icon(Icons.chevron_left),
                 style: IconButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: AppColors.petrol,
+                  backgroundColor: isDark
+                      ? Colors.white.withValues(alpha: 0.14)
+                      : Colors.white,
+                  foregroundColor: isDark ? Colors.white : AppColors.petrol,
                 ),
               ),
             ),

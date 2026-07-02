@@ -45,4 +45,18 @@ class HttpClassAnnouncementRepository implements ClassAnnouncementRepository {
       accessToken: accessToken,
     );
   }
+
+  @override
+  Future<ClassAnnouncement> updateAnnouncement({
+    required ClassAnnouncement announcement,
+    required bool isPinned,
+    String? accessToken,
+  }) async {
+    final json = await _apiClient.putJson(
+      '/api/v1/class-announcements/${announcement.id}',
+      body: {'content': announcement.content.trim(), 'isPinned': isPinned},
+      accessToken: accessToken,
+    );
+    return ClassAnnouncement.fromJson(json);
+  }
 }

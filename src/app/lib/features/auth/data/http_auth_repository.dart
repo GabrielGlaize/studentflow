@@ -92,6 +92,42 @@ class HttpAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<PasswordResetRequestResult> requestPasswordReset({
+    required String email,
+  }) async {
+    try {
+      final json = await _apiClient.postJson(
+        '/api/v1/auth/forgot-password',
+        body: {'email': email.trim()},
+      );
+
+      return PasswordResetRequestResult.fromJson(json);
+    } on ApiException catch (error) {
+      throw AuthException(error.message);
+    }
+  }
+
+  @override
+  Future<void> resetPassword({
+    required String email,
+    required String token,
+    required String newPassword,
+  }) async {
+    try {
+      await _apiClient.postNoContent(
+        '/api/v1/auth/reset-password',
+        body: {
+          'email': email.trim(),
+          'token': token.trim(),
+          'newPassword': newPassword,
+        },
+      );
+    } on ApiException catch (error) {
+      throw AuthException(error.message);
+    }
+  }
+
+  @override
   Future<void> logout(AuthSession session) async {
     try {
       await _apiClient.postNoContent(

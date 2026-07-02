@@ -113,3 +113,25 @@ class UserSummary {
     };
   }
 }
+
+class PasswordResetRequestResult {
+  const PasswordResetRequestResult({
+    required this.message,
+    this.developmentToken,
+    this.expiresAt,
+  });
+
+  final String message;
+  final String? developmentToken;
+  final DateTime? expiresAt;
+
+  factory PasswordResetRequestResult.fromJson(Map<String, Object?> json) {
+    return PasswordResetRequestResult(
+      message: json['message'] as String? ?? 'Demande prise en compte.',
+      developmentToken: json['developmentToken'] as String?,
+      expiresAt: json['expiresAt'] == null
+          ? null
+          : DateTime.parse(json['expiresAt'] as String),
+    );
+  }
+}

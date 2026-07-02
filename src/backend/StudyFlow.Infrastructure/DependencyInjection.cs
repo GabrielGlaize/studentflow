@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Text;
 using StudyFlow.Application.Apprenticeships;
 using StudyFlow.Application.Notifications;
@@ -41,7 +43,8 @@ public static class DependencyInjection
                 options.Password.RequireNonAlphanumeric = false;
             })
             .AddRoles<IdentityRole<Guid>>()
-            .AddEntityFrameworkStores<StudyFlowDbContext>();
+            .AddEntityFrameworkStores<StudyFlowDbContext>()
+            .AddDefaultTokenProviders();
 
         var jwtOptions = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
             ?? throw new InvalidOperationException("La configuration JWT est absente.");
@@ -59,7 +62,9 @@ public static class DependencyInjection
 
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
         services.Configure<SecurityOptions>(configuration.GetSection(SecurityOptions.SectionName));
+        services.Configure<AdzunaOptions>(configuration.GetSection(AdzunaOptions.SectionName));
         services.Configure<LaBonneAlternanceOptions>(configuration.GetSection(LaBonneAlternanceOptions.SectionName));
+        services.Configure<FranceTravailOptions>(configuration.GetSection(FranceTravailOptions.SectionName));
         services.Configure<NotificationWorkerOptions>(configuration.GetSection(NotificationWorkerOptions.SectionName));
 
         var dataProtection = services.AddDataProtection().SetApplicationName("StudyFlow");
@@ -86,16 +91,51 @@ public static class DependencyInjection
                     NameClaimType = "sub",
                     RoleClaimType = System.Security.Claims.ClaimTypes.Role
                 };
+                options.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = async context =>
+                    {
+                        const string securityStampClaimType = "sst";
+                        var principal = context.Principal;
+                        var userId = principal?.FindFirstValue(ClaimTypes.NameIdentifier)
+                            ?? principal?.FindFirstValue(JwtRegisteredClaimNames.Sub);
+                        var tokenSecurityStamp = principal?.FindFirstValue(securityStampClaimType);
+
+                        if (!Guid.TryParse(userId, out _) || string.IsNullOrWhiteSpace(tokenSecurityStamp))
+                        {
+                            context.Fail("Jeton invalide.");
+                            return;
+                        }
+
+                        var userManager = context.HttpContext.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
+                        var user = await userManager.FindByIdAsync(userId);
+                        if (user is null || !user.IsActive)
+                        {
+                            context.Fail("Compte introuvable ou desactive.");
+                            return;
+                        }
+
+                        var currentSecurityStamp = await userManager.GetSecurityStampAsync(user);
+                        if (!string.Equals(tokenSecurityStamp, currentSecurityStamp, StringComparison.Ordinal))
+                        {
+                            context.Fail("Jeton expire par changement de securite.");
+                        }
+                    }
+                };
             });
         services.AddAuthorization();
 
         services.AddScoped<ISensitiveDataProtector, SensitiveDataProtector>();
         services.AddScoped<IClassCodeService, ClassCodeService>();
         services.AddScoped<IAuthTokenService, AuthTokenService>();
+        services.AddScoped<IPasswordResetService, PasswordResetService>();
         services.AddScoped<INotificationReminderPlanner, NotificationReminderPlanner>();
         services.AddScoped<INotificationSender, LoggingNotificationSender>();
         services.AddHostedService<NotificationDispatchWorker>();
-        services.AddHttpClient<IApprenticeshipOpportunityProvider, LaBonneAlternanceOpportunityProvider>();
+        services.AddHttpClient<LaBonneAlternanceOpportunityProvider>();
+        services.AddHttpClient<AdzunaOpportunityProvider>();
+        services.AddHttpClient<FranceTravailOpportunityProvider>();
+        services.AddScoped<IApprenticeshipOpportunityProvider, CompositeApprenticeshipOpportunityProvider>();
 
         return services;
     }

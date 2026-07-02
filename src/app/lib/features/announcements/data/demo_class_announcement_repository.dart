@@ -75,4 +75,33 @@ class DemoClassAnnouncementRepository implements ClassAnnouncementRepository {
       (announcement) => announcement.id == announcementId,
     );
   }
+
+  @override
+  Future<ClassAnnouncement> updateAnnouncement({
+    required ClassAnnouncement announcement,
+    required bool isPinned,
+    String? accessToken,
+  }) async {
+    final index = _announcements.indexWhere(
+      (item) => item.id == announcement.id,
+    );
+    if (index == -1) return announcement;
+
+    final updated = ClassAnnouncement(
+      id: announcement.id,
+      content: announcement.content,
+      isPinned: isPinned,
+      authorName: announcement.authorName,
+      createdAt: announcement.createdAt,
+      updatedAt: DateTime.now(),
+    );
+    _announcements[index] = updated;
+    _announcements.sort((left, right) {
+      final pinCompare = (right.isPinned ? 1 : 0) - (left.isPinned ? 1 : 0);
+      return pinCompare != 0
+          ? pinCompare
+          : right.updatedAt.compareTo(left.updatedAt);
+    });
+    return updated;
+  }
 }

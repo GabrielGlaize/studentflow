@@ -94,6 +94,14 @@ Public avec un jeton de renouvellement valide. Renouvelle la session et effectue
 
 Authentifié. Révoque le refresh token fourni.
 
+### `POST /api/v1/auth/forgot-password`
+
+Public. Reçoit un e-mail et prépare un code de réinitialisation temporaire. La réponse reste générique pour éviter de révéler si le compte existe. En développement seulement, la réponse peut contenir `developmentToken` pour tester sans serveur mail.
+
+### `POST /api/v1/auth/reset-password`
+
+Public. Reçoit `email`, `token` et `newPassword`. Le backend compare le hash du token reçu avec le hash stocké en base, puis réinitialise le mot de passe si le code est valide, non expiré et non utilisé.
+
 ### `GET /api/v1/me`
 
 Authentifié. Retourne l’utilisateur courant, ses rôles, sa classe éventuelle et ses préférences utiles à l’interface. `classe` vaut `null` pour un futur élève qui utilise uniquement les alternances.

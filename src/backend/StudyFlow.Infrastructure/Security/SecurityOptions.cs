@@ -6,4 +6,5 @@ public sealed class SecurityOptions
 
     public string LookupKey { get; set; } = string.Empty;
     public string? DataProtectionKeysPath { get; set; }
+    public int PasswordResetTokenMinutes { get; set; } = 30;
 }

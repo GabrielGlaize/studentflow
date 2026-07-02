@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -94,7 +95,12 @@ public sealed class ClassResourcesController(
             .OrderBy(x => x.CreatedAt)
             .ToListAsync(cancellationToken);
 
-        return Ok(teachers.Select(ToResponse).ToArray());
+        var responses = teachers
+            .Select(TryToResponse)
+            .OfType<TeacherResponse>()
+            .ToArray();
+
+        return Ok(responses);
     }
 
     [HttpPost("teachers")]
@@ -151,6 +157,20 @@ public sealed class ClassResourcesController(
         protector.Unprotect(teacher.EncryptedDisplayName, ProfessorDisplayPurpose),
         UnprotectOptional(teacher.EncryptedInformation, ProfessorInfoPurpose),
         teacher.IsActive);
+
+    private TeacherResponse? TryToResponse(Teacher teacher)
+    {
+        try
+        {
+            return ToResponse(teacher);
+        }
+        catch (CryptographicException)
+        {
+            // Local development databases can contain old encrypted demo rows after a key
+            // change. We skip unreadable rows instead of breaking the whole resource screen.
+            return null;
+        }
+    }
 
     private async Task<ApplicationUser?> CurrentUserAsync() =>
         await userManager.FindByIdAsync(User.FindFirstValue(ClaimTypes.NameIdentifier)!);

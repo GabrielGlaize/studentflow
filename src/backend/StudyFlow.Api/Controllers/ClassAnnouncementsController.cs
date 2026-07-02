@@ -37,7 +37,7 @@ public sealed class ClassAnnouncementsController(
 
         var announcements = await query
             .OrderByDescending(x => x.IsPinned)
-            .ThenByDescending(x => x.CreatedAt)
+            .ThenByDescending(x => x.UpdatedAt)
             .Take(30)
             .ToListAsync(cancellationToken);
 

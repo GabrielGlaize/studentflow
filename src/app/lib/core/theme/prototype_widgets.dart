@@ -28,8 +28,8 @@ class ProtoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final effectiveBackground = backgroundColor == Colors.white && isDark
-        ? AppColors.petrol
+    final effectiveBackground = isDark
+        ? _darkCardBackground(backgroundColor)
         : backgroundColor;
     final effectiveBorder = borderColor == AppColors.line && isDark
         ? Colors.white.withValues(alpha: 0.14)
@@ -43,7 +43,15 @@ class ProtoCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(borderRadius),
         border: Border.all(color: effectiveBorder),
       ),
-      child: child,
+      child: isDark
+          ? IconTheme.merge(
+              data: IconThemeData(color: Colors.white.withValues(alpha: 0.82)),
+              child: DefaultTextStyle.merge(
+                style: const TextStyle(color: Colors.white),
+                child: child,
+              ),
+            )
+          : child,
     );
 
     if (onTap == null) return card;
@@ -56,6 +64,14 @@ class ProtoCard extends StatelessWidget {
         child: card,
       ),
     );
+  }
+
+  Color _darkCardBackground(Color color) {
+    if (color == Colors.white || color.computeLuminance() > 0.72) {
+      return const Color(0xFF0A4658);
+    }
+
+    return color;
   }
 }
 
@@ -220,14 +236,23 @@ class ProtoIconBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final effectiveBackground =
+        isDark && backgroundColor.computeLuminance() > 0.72
+        ? Colors.white.withValues(alpha: 0.14)
+        : backgroundColor;
+    final effectiveForeground = isDark && foregroundColor == AppColors.petrol
+        ? Colors.white
+        : foregroundColor;
+
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: effectiveBackground,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Icon(icon, color: foregroundColor, size: size * 0.52),
+      child: Icon(icon, color: effectiveForeground, size: size * 0.52),
     );
   }
 }
@@ -246,16 +271,25 @@ class ProtoChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final effectiveBackground =
+        isDark && backgroundColor.computeLuminance() > 0.72
+        ? Colors.white.withValues(alpha: 0.14)
+        : backgroundColor;
+    final effectiveForeground = isDark && foregroundColor == AppColors.petrol
+        ? Colors.white
+        : foregroundColor;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: effectiveBackground,
         borderRadius: BorderRadius.circular(99),
       ),
       child: Text(
         label,
         style: TextStyle(
-          color: foregroundColor,
+          color: effectiveForeground,
           fontSize: 8,
           fontWeight: FontWeight.w900,
           letterSpacing: 0.3,

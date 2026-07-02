@@ -7,6 +7,7 @@ import 'package:studyflow_app/core/theme/prototype_widgets.dart';
 import 'package:studyflow_app/features/company/application/company_contacts_controller.dart';
 import 'package:studyflow_app/features/company/application/company_documents_controller.dart';
 import 'package:studyflow_app/features/profile/domain/app_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class CompanyPage extends StatefulWidget {
   const CompanyPage({required this.onOpenCompanyTasks, super.key});
@@ -52,7 +53,7 @@ class _CompanyPageState extends State<CompanyPage> {
                       title,
                       style: Theme.of(context).textTheme.headlineSmall
                           ?.copyWith(
-                            color: AppColors.petrol,
+                            color: context.sfText,
                             fontWeight: FontWeight.w900,
                             letterSpacing: -1.2,
                           ),
@@ -125,7 +126,7 @@ class _CompanyPageState extends State<CompanyPage> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -150,9 +151,11 @@ class _CompanyNameCard extends StatelessWidget {
       backgroundColor: AppColors.greenSoft,
       child: Row(
         children: [
-          const ProtoIconBox(
+          ProtoIconBox(
             icon: Icons.business_center_outlined,
-            backgroundColor: Colors.white,
+            backgroundColor: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white.withValues(alpha: 0.14)
+                : Colors.white,
             foregroundColor: AppColors.green,
           ),
           const SizedBox(width: 12),
@@ -164,8 +167,8 @@ class _CompanyNameCard extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   hasName ? companyName!.trim() : 'Nom de ton entreprise',
-                  style: const TextStyle(
-                    color: AppColors.petrol,
+                  style: TextStyle(
+                    color: context.sfText,
                     fontSize: 15,
                     fontWeight: FontWeight.w900,
                   ),
@@ -361,14 +364,14 @@ class _CompanyMetric extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Icon(icon, color: AppColors.petrol, size: 18),
+          Icon(icon, color: context.sfIcon, size: 18),
           const SizedBox(height: 7),
           Text(
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.petrol,
+            style: TextStyle(
+              color: context.sfText,
               fontSize: 11,
               fontWeight: FontWeight.w900,
             ),
@@ -378,8 +381,8 @@ class _CompanyMetric extends StatelessWidget {
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.muted,
+            style: TextStyle(
+              color: context.sfMuted,
               fontSize: 8,
               fontWeight: FontWeight.w800,
             ),
@@ -455,6 +458,7 @@ class _DocumentsSection extends StatelessWidget {
                 (document) => _DocumentTile(
                   document: document,
                   onDelete: () => onDeleteDocument(document.id),
+                  onOpen: () => _openDocument(context, document),
                 ),
               ),
           ],
@@ -462,13 +466,48 @@ class _DocumentsSection extends StatelessWidget {
       ),
     );
   }
+
+  Future<void> _openDocument(
+    BuildContext context,
+    CompanyDocument document,
+  ) async {
+    final link = document.link?.trim();
+    if (link == null || link.isEmpty) {
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Ajoute un lien Drive, iCloud ou fichier pour ouvrir ce document.',
+            ),
+          ),
+        );
+      return;
+    }
+
+    final uri = Uri.tryParse(link);
+    if (uri == null ||
+        !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          const SnackBar(content: Text('Lien impossible à ouvrir.')),
+        );
+    }
+  }
 }
 
 class _DocumentTile extends StatelessWidget {
-  const _DocumentTile({required this.document, required this.onDelete});
+  const _DocumentTile({
+    required this.document,
+    required this.onDelete,
+    required this.onOpen,
+  });
 
   final CompanyDocument document;
   final VoidCallback onDelete;
+  final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -478,40 +517,44 @@ class _DocumentTile extends StatelessWidget {
       if (document.note != null) document.note!,
     ].join(' · ');
 
-    return Container(
-      padding: const EdgeInsets.only(top: 11),
-      margin: const EdgeInsets.only(top: 10),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: AppColors.line)),
-      ),
-      child: Row(
-        children: [
-          const ProtoIconBox(icon: Icons.description_outlined, size: 34),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  document.title,
-                  style: const TextStyle(
-                    color: AppColors.petrol,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
+    return InkWell(
+      onTap: onOpen,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.only(top: 11),
+        margin: const EdgeInsets.only(top: 10),
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: context.sfLine)),
+        ),
+        child: Row(
+          children: [
+            const ProtoIconBox(icon: Icons.description_outlined, size: 34),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    document.title,
+                    style: TextStyle(
+                      color: context.sfText,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 3),
-                ProtoMutedText(details, maxLines: 2),
-              ],
+                  const SizedBox(height: 3),
+                  ProtoMutedText(details, maxLines: 2),
+                ],
+              ),
             ),
-          ),
-          IconButton(
-            tooltip: 'Supprimer le document',
-            onPressed: onDelete,
-            icon: const Icon(Icons.delete_outline),
-            color: AppColors.muted,
-          ),
-        ],
+            IconButton(
+              tooltip: 'Supprimer le document',
+              onPressed: onDelete,
+              icon: const Icon(Icons.delete_outline),
+              color: context.sfChevron,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -614,7 +657,10 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
   }
 
   String? _required(String? value) {
-    return (value ?? '').trim().isEmpty ? 'Champ obligatoire.' : null;
+    final cleaned = (value ?? '').trim();
+    if (cleaned.isEmpty) return 'Champ obligatoire.';
+    if (cleaned.length > 120) return 'Maximum 120 caractères.';
+    return null;
   }
 
   void _save() {
@@ -721,8 +767,8 @@ class _ContactTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.only(top: 11),
       margin: const EdgeInsets.only(top: 10),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: AppColors.line)),
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: context.sfLine)),
       ),
       child: Row(
         children: [
@@ -738,8 +784,8 @@ class _ContactTile extends StatelessWidget {
               children: [
                 Text(
                   contact.name,
-                  style: const TextStyle(
-                    color: AppColors.petrol,
+                  style: TextStyle(
+                    color: context.sfText,
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
                   ),
@@ -753,7 +799,7 @@ class _ContactTile extends StatelessWidget {
             tooltip: 'Supprimer le contact',
             onPressed: onDelete,
             icon: const Icon(Icons.delete_outline),
-            color: AppColors.muted,
+            color: context.sfChevron,
           ),
         ],
       ),
@@ -915,8 +961,8 @@ class _CompanyActionCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: AppColors.petrol,
+                  style: TextStyle(
+                    color: context.sfText,
                     fontSize: 11,
                     fontWeight: FontWeight.w900,
                   ),
@@ -926,7 +972,7 @@ class _CompanyActionCard extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(Icons.chevron_right, color: AppColors.muted),
+          Icon(Icons.chevron_right, color: context.sfChevron),
         ],
       ),
     );

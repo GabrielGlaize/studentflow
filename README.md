@@ -74,11 +74,43 @@ dotnet restore StudyFlow.sln
 dotnet run --project src/backend/StudyFlow.Api
 ```
 
-En environnement `Development`, le backend applique les migrations et seed une classe locale si `DevelopmentSeed:Enabled=true` :
+En environnement `Development`, le backend applique les migrations et seed une classe locale si `DevelopmentSeed:Enabled=true`.
+
+Par défaut, `DevelopmentSeed:ResetOnStartup=true` dans `appsettings.Development.json` : à chaque relance du backend, la base locale est supprimée puis recréée avec les données seedées. C’est pratique pour une démo propre. Pour conserver tes modifications locales entre deux lancements, passe cette valeur à `false`.
 
 - compte délégué : `gabriel@studyflow.dev`
+- élèves seedés : `garance@studyflow.dev`, `liam@studyflow.dev`
+- demande d’approbation seedée : `nina@studyflow.dev`
 - mot de passe : `Password1234`
 - classe : `BTS SIO 1`, année `2026-2027`
+- cours principaux : C, Architecture web, HTML/CSS/JS, Administration Windows, Flutter, API ASP.NET Core, Base de données et Anglais.
+
+Ces identifiants sont aussi affichés dans le terminal au lancement de `dotnet run`.
+
+La recherche d’alternance agrège plusieurs sources côté backend : La Bonne Alternance, Adzuna et France Travail. Les vraies clés ne doivent pas être mises dans Git. En local, le backend charge automatiquement le fichier `.env` placé à la racine du projet :
+
+```env
+Adzuna__AppId=ton-app-id
+Adzuna__AppKey=ton-app-key
+FranceTravail__ClientId=ton-client-id
+FranceTravail__ClientSecret=ton-client-secret
+```
+
+Sans clés configurées, l’API garde des résultats de démonstration pour les sources prévues à cet effet afin que l’app reste testable. France Travail nécessite un compte développeur et un couple client id/secret.
+
+La réinitialisation de mot de passe utilise des codes temporaires stockés uniquement sous forme de hash en base. En environnement `Development`, l’API renvoie aussi le code dans la réponse pour tester sans serveur e-mail. En production, il faudra envoyer ce code par e-mail et ne jamais l’afficher dans la réponse.
+
+Après ajout ou modification d’une entité backend, génère puis applique la migration :
+
+```bash
+dotnet ef migrations add AddPasswordResetTokens \
+  --project src/backend/StudyFlow.Infrastructure \
+  --startup-project src/backend/StudyFlow.Api
+
+dotnet ef database update \
+  --project src/backend/StudyFlow.Infrastructure \
+  --startup-project src/backend/StudyFlow.Api
+```
 
 Points de contrôle disponibles :
 

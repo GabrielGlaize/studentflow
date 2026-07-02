@@ -155,7 +155,11 @@ abstract final class AppTheme {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: Colors.white.withValues(alpha: 0.08),
+      fillColor: Colors.white.withValues(alpha: 0.10),
+      labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.78)),
+      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.56)),
+      prefixIconColor: Colors.white.withValues(alpha: 0.72),
+      suffixIconColor: Colors.white.withValues(alpha: 0.72),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
@@ -173,6 +177,17 @@ abstract final class AppTheme {
     textTheme: ThemeData.dark().textTheme.apply(
       bodyColor: Colors.white,
       displayColor: Colors.white,
+    ),
+    dividerTheme: DividerThemeData(color: Colors.white.withValues(alpha: 0.18)),
+    iconTheme: IconThemeData(color: Colors.white.withValues(alpha: 0.82)),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.mint,
+        side: BorderSide(color: AppColors.mint.withValues(alpha: 0.72)),
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(foregroundColor: AppColors.mint),
     ),
   );
 }

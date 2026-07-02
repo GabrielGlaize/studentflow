@@ -35,6 +35,7 @@ class ProfilePage extends StatelessWidget {
           }
         }
         final studentCardId = studentCard?.id;
+        final isDark = Theme.of(context).brightness == Brightness.dark;
 
         return SafeArea(
           child: ListView(
@@ -43,7 +44,7 @@ class ProfilePage extends StatelessWidget {
               Text(
                 'Profil et réglages',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: AppColors.petrol,
+                  color: isDark ? Colors.white : AppColors.petrol,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -1.2,
                 ),
@@ -200,10 +201,10 @@ class ProfilePage extends StatelessWidget {
                 label: const Text('Se déconnecter'),
               ),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'StudyFlow Pro · version étudiante',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.muted, fontSize: 8),
+                style: TextStyle(color: context.sfMuted, fontSize: 8),
               ),
             ],
           ),
@@ -216,7 +217,7 @@ class ProfilePage extends StatelessWidget {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -295,7 +296,7 @@ class _ScheduledRemindersCardState extends State<_ScheduledRemindersCard> {
                 ...reminders.take(3).map(_ReminderPreviewLine.new),
               const SizedBox(height: 8),
               const ProtoMutedText(
-                'V1 : l’app calcule les rappels et les garde prêts. Les notifications natives iOS/Android seront branchées ensuite.',
+                'Les rappels sont programmés localement sur ton téléphone quand les autorisations iOS/Android sont acceptées.',
               ),
             ],
           ),
@@ -369,8 +370,8 @@ class _ReminderPreviewLine extends StatelessWidget {
               children: [
                 Text(
                   reminder.title,
-                  style: const TextStyle(
-                    color: AppColors.petrol,
+                  style: TextStyle(
+                    color: context.sfText,
                     fontWeight: FontWeight.w900,
                     fontSize: 12,
                   ),
@@ -378,8 +379,8 @@ class _ReminderPreviewLine extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   '${_formatDateTime(reminder.scheduledAt)} · ${reminder.body}',
-                  style: const TextStyle(
-                    color: AppColors.muted,
+                  style: TextStyle(
+                    color: context.sfMuted,
                     fontSize: 10,
                     height: 1.3,
                   ),
@@ -571,8 +572,8 @@ class _ProfileCard extends StatelessWidget {
               children: [
                 Text(
                   name,
-                  style: const TextStyle(
-                    color: AppColors.petrol,
+                  style: TextStyle(
+                    color: context.sfText,
                     fontWeight: FontWeight.w900,
                     fontSize: 15,
                   ),
@@ -580,7 +581,7 @@ class _ProfileCard extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   email,
-                  style: const TextStyle(color: AppColors.muted, fontSize: 9),
+                  style: TextStyle(color: context.sfMuted, fontSize: 9),
                 ),
                 if (isDelegate) ...[
                   const SizedBox(height: 6),
@@ -640,8 +641,8 @@ class _StudentCardSection extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   hasCard ? document!.title : 'Importer ma carte étudiante',
-                  style: const TextStyle(
-                    color: AppColors.petrol,
+                  style: TextStyle(
+                    color: context.sfText,
                     fontSize: 14,
                     fontWeight: FontWeight.w900,
                   ),
@@ -1181,7 +1182,7 @@ class _ClassManagementSectionState extends State<_ClassManagementSection> {
     final updated = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -1236,7 +1237,7 @@ class _ClassManagementSectionState extends State<_ClassManagementSection> {
     final requested = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -1261,7 +1262,7 @@ class _ClassManagementSectionState extends State<_ClassManagementSection> {
     final created = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -1278,7 +1279,7 @@ class _ClassManagementSectionState extends State<_ClassManagementSection> {
     final created = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -1804,8 +1805,8 @@ class _ClassMemberRow extends StatelessWidget {
                     Expanded(
                       child: Text(
                         member.displayName,
-                        style: const TextStyle(
-                          color: AppColors.petrol,
+                        style: TextStyle(
+                          color: context.sfText,
                           fontSize: 10,
                           fontWeight: FontWeight.w900,
                         ),
@@ -1817,7 +1818,7 @@ class _ClassMemberRow extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   member.email,
-                  style: const TextStyle(color: AppColors.muted, fontSize: 8),
+                  style: TextStyle(color: context.sfMuted, fontSize: 8),
                 ),
                 const SizedBox(height: 8),
                 Wrap(
@@ -1875,8 +1876,8 @@ class _ResourceWrap extends StatelessWidget {
       children: [
         Text(
           title,
-          style: const TextStyle(
-            color: AppColors.petrol,
+          style: TextStyle(
+            color: context.sfText,
             fontSize: 10,
             fontWeight: FontWeight.w900,
           ),
@@ -1892,13 +1893,16 @@ class _ResourceWrap extends StatelessWidget {
                 .map(
                   (subject) => InputChip(
                     label: Text(subject.name),
-                    labelStyle: const TextStyle(
-                      color: AppColors.petrol,
+                    labelStyle: TextStyle(
+                      color: context.sfText,
                       fontWeight: FontWeight.w800,
                     ),
-                    backgroundColor: AppColors.primarySoft,
-                    deleteIconColor: AppColors.petrol,
-                    side: const BorderSide(color: AppColors.line),
+                    backgroundColor:
+                        Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white.withValues(alpha: 0.14)
+                        : AppColors.primarySoft,
+                    deleteIconColor: context.sfChevron,
+                    side: BorderSide(color: context.sfLine),
                     onDeleted: isDelegate
                         ? () => onDeleteSubject(subject)
                         : null,
@@ -1927,10 +1931,10 @@ class _TeacherList extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Professeurs',
           style: TextStyle(
-            color: AppColors.petrol,
+            color: context.sfText,
             fontSize: 10,
             fontWeight: FontWeight.w900,
           ),
@@ -1943,8 +1947,8 @@ class _TeacherList extends StatelessWidget {
             (teacher) => Container(
               padding: const EdgeInsets.only(top: 9),
               margin: const EdgeInsets.only(top: 7),
-              decoration: const BoxDecoration(
-                border: Border(top: BorderSide(color: AppColors.line)),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: context.sfLine)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1961,8 +1965,8 @@ class _TeacherList extends StatelessWidget {
                       children: [
                         Text(
                           teacher.displayName,
-                          style: const TextStyle(
-                            color: AppColors.petrol,
+                          style: TextStyle(
+                            color: context.sfText,
                             fontSize: 10,
                             fontWeight: FontWeight.w900,
                           ),
@@ -1979,7 +1983,7 @@ class _TeacherList extends StatelessWidget {
                       tooltip: 'Retirer le professeur',
                       onPressed: () => onDeleteTeacher(teacher),
                       icon: const Icon(Icons.close),
-                      color: AppColors.muted,
+                      color: context.sfChevron,
                     ),
                 ],
               ),
@@ -2264,8 +2268,8 @@ class _PendingRequestRow extends StatelessWidget {
               children: [
                 Text(
                   request.displayName,
-                  style: const TextStyle(
-                    color: AppColors.petrol,
+                  style: TextStyle(
+                    color: context.sfText,
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
                   ),
@@ -2273,7 +2277,7 @@ class _PendingRequestRow extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   request.email,
-                  style: const TextStyle(color: AppColors.muted, fontSize: 8),
+                  style: TextStyle(color: context.sfMuted, fontSize: 8),
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -2321,12 +2325,14 @@ class _SettingsGroupTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
       child: Text(
         title,
-        style: const TextStyle(
-          color: AppColors.petrol,
+        style: TextStyle(
+          color: isDark ? Colors.white : AppColors.petrol,
           fontSize: 12,
           fontWeight: FontWeight.w900,
         ),
@@ -2342,12 +2348,16 @@ class _SettingsGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.petrol : Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.line),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.14) : AppColors.line,
+        ),
       ),
       child: Column(children: children),
     );
@@ -2376,6 +2386,8 @@ class _SwitchSettingLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -2383,8 +2395,14 @@ class _SwitchSettingLine extends StatelessWidget {
         child: Container(
           constraints: const BoxConstraints(minHeight: 58),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: const BoxDecoration(
-            border: Border(top: BorderSide(color: AppColors.line)),
+          decoration: BoxDecoration(
+            border: Border(
+              top: BorderSide(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.14)
+                    : AppColors.line,
+              ),
+            ),
           ),
           child: Row(
             children: [
@@ -2396,8 +2414,8 @@ class _SwitchSettingLine extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
-                        color: AppColors.petrol,
+                      style: TextStyle(
+                        color: isDark ? Colors.white : AppColors.petrol,
                         fontSize: 10,
                         fontWeight: FontWeight.w900,
                       ),
@@ -2405,8 +2423,8 @@ class _SwitchSettingLine extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       subtitle,
-                      style: const TextStyle(
-                        color: AppColors.muted,
+                      style: TextStyle(
+                        color: isDark ? Colors.white70 : AppColors.muted,
                         fontSize: 8,
                       ),
                     ),

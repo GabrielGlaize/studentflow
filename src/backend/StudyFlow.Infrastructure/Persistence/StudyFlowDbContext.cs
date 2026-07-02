@@ -33,6 +33,7 @@ public sealed class StudyFlowDbContext(
     public DbSet<ApprenticeshipSearch> ApprenticeshipSearches => Set<ApprenticeshipSearch>();
     public DbSet<FavoriteOffer> FavoriteOffers => Set<FavoriteOffer>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -74,6 +75,16 @@ public sealed class StudyFlowDbContext(
             entity.ToTable("refresh_tokens");
             entity.Property(x => x.TokenHash).HasMaxLength(64).IsRequired();
             entity.Property(x => x.ReplacedByTokenHash).HasMaxLength(64);
+            entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(x => x.TokenHash).IsUnique();
+            entity.HasIndex(x => new { x.UserId, x.ExpiresAt });
+        });
+
+        modelBuilder.Entity<PasswordResetToken>(entity =>
+        {
+            entity.ToTable("password_reset_tokens");
+            entity.Property(x => x.TokenHash).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.RequestIpHash).HasMaxLength(64);
             entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(x => x.TokenHash).IsUnique();
             entity.HasIndex(x => new { x.UserId, x.ExpiresAt });
@@ -227,10 +238,11 @@ public sealed class StudyFlowDbContext(
         modelBuilder.Entity<NotificationDevice>(entity =>
         {
             entity.ToTable("notification_devices");
-            entity.Property(x => x.Token).IsRequired();
+            entity.Property(x => x.TokenHash).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.EncryptedToken).IsRequired();
             entity.Property(x => x.Platform).HasConversion<string>().HasMaxLength(20);
             entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
-            entity.HasIndex(x => x.Token).IsUnique();
+            entity.HasIndex(x => x.TokenHash).IsUnique();
         });
 
         modelBuilder.Entity<NotificationDelivery>(entity =>

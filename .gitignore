@@ -8,6 +8,7 @@
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
+.flutter-plugins-dependencies *
 .packages
 build/
 
@@ -21,3 +22,8 @@ build/
 .env.*
 !.env.example
 .data-protection-keys/
+
+# Accidental macOS duplicate copies of generated Flutter/iOS files.
+src/app/ios/Podfile *.lock
+src/app/ios/Flutter/* 2.*
+src/app/ios/Flutter/* 3.*
