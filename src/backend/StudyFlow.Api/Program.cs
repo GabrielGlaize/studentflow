@@ -19,8 +19,8 @@ builder.Services.AddRateLimiter(options =>
             context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 10,
-                Window = TimeSpan.FromMinutes(1),
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(15),
                 QueueLimit = 0,
                 AutoReplenishment = true
             }));
@@ -30,11 +30,21 @@ builder.Services.AddCors(options =>
     options.AddPolicy("StudyFlowApp", policy =>
         policy
             .WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
-            .AllowAnyHeader()
-            .AllowAnyMethod());
+            .WithHeaders("Authorization", "Content-Type")
+            .WithMethods("GET", "POST", "PUT", "DELETE"));
 });
 
 var app = builder.Build();
+
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+    context.Response.Headers.Append("X-Frame-Options", "DENY");
+    context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
+    context.Response.Headers.Append("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'");
+
+    await next();
+});
 
 if (app.Environment.IsDevelopment() && builder.Configuration.GetValue<bool>("DevelopmentSeed:Enabled"))
 {

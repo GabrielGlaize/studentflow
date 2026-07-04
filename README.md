@@ -81,7 +81,7 @@ Par défaut, `DevelopmentSeed:ResetOnStartup=true` dans `appsettings.Development
 - compte délégué : `gabriel@studyflow.dev`
 - élèves seedés : `garance@studyflow.dev`, `liam@studyflow.dev`
 - demande d’approbation seedée : `nina@studyflow.dev`
-- mot de passe : `Password1234`
+- mot de passe : `Password1234!`
 - classe : `BTS SIO 1`, année `2026-2027`
 - cours principaux : C, Architecture web, HTML/CSS/JS, Administration Windows, Flutter, API ASP.NET Core, Base de données et Anglais.
 

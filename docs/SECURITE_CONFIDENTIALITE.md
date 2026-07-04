@@ -86,6 +86,12 @@ Les cours gardent seulement en clair ce qui est nécessaire pour requêter effic
 
 Les horaires précis et la salle sont dans `EncryptedData`.
 
+Les clés ASP.NET Core Data Protection sont persistées dans le dossier configuré par
+`Security:DataProtectionKeysPath`. En développement local, ce dossier vaut
+`.data-protection-keys` et il est ignoré par Git. C’est important : si les clés
+étaient seulement en mémoire, un redémarrage du backend rendrait les anciennes
+données chiffrées illisibles.
+
 ## Hash de recherche
 
 Pour retrouver une donnée sans la stocker en clair, le backend utilise parfois un hash HMAC.
@@ -136,7 +142,22 @@ Le JWT reste volontairement minimal : il contient l’identifiant utilisateur, u
 
 Ainsi, un ancien JWT est invalidé si un changement sensible arrive, par exemple changement de rôle, retrait de classe ou réinitialisation de mot de passe.
 
-Les endpoints sensibles d’authentification sont aussi protégés par un rate limiting applicatif : inscription, création de classe, connexion, refresh token, demande de reset et reset de mot de passe. En local, la limite est de 10 requêtes par minute et par adresse IP, avec réponse HTTP `429 Too Many Requests` en cas d’abus.
+Les endpoints sensibles d’authentification sont aussi protégés par un rate limiting applicatif : inscription, création de classe, connexion, refresh token, demande de reset et reset de mot de passe. La limite appliquée est de 5 requêtes toutes les 15 minutes par adresse IP, avec réponse HTTP `429 Too Many Requests` en cas d’abus. Ce choix réduit le risque de brute force sans bloquer les usages normaux.
+
+Les mots de passe exigent au minimum :
+
+- 10 caractères ;
+- une minuscule ;
+- une majuscule ;
+- un chiffre ;
+- un caractère spécial.
+
+Exemple accepté en développement : `Password1234!`.
+
+Les clés JWT et HMAC ne sont pas stockées dans `appsettings.Development.json`.
+En local, elles sont chargées depuis le fichier `.env`, ignoré par Git. En
+production, elles doivent venir de variables d’environnement du serveur ou d’un
+gestionnaire de secrets.
 
 ## Réinitialisation de mot de passe
 

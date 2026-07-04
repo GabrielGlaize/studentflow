@@ -40,7 +40,7 @@ public static class DependencyInjection
                 options.Password.RequireDigit = true;
                 options.Password.RequireLowercase = true;
                 options.Password.RequireUppercase = true;
-                options.Password.RequireNonAlphanumeric = false;
+                options.Password.RequireNonAlphanumeric = true;
             })
             .AddRoles<IdentityRole<Guid>>()
             .AddEntityFrameworkStores<StudyFlowDbContext>()

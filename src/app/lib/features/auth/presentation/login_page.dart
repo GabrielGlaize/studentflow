@@ -24,7 +24,7 @@ class _LoginPageState extends State<LoginPage> {
     text: _prefillDevelopmentCredentials ? 'gabriel@studyflow.dev' : '',
   );
   late final _passwordController = TextEditingController(
-    text: _prefillDevelopmentCredentials ? 'Password1234' : '',
+    text: _prefillDevelopmentCredentials ? 'Password1234!' : '',
   );
 
   @override
@@ -209,7 +209,7 @@ class _LoginPageState extends State<LoginPage> {
                   backgroundColor: const Color(0xFFEDF8FD),
                   borderColor: const Color(0xFFA6D9F7),
                   child: Text(
-                    'Compte dev prérempli : gabriel@studyflow.dev / Password1234.',
+                    'Compte dev prérempli : gabriel@studyflow.dev / Password1234!.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: context.sfText,

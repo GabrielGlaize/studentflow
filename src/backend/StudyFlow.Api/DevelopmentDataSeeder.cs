@@ -15,7 +15,7 @@ namespace StudyFlow.Api;
 public static class DevelopmentDataSeeder
 {
     private const string DelegateEmail = "gabriel@studyflow.dev";
-    private const string DelegatePassword = "Password1234";
+    private const string DelegatePassword = "Password1234!";
     private const string CourseDataPurpose = "course-data";
     private const string TeacherDisplayPurpose = "teacher-display-name";
     private const string TeacherLookupPurpose = "teacher-search-name";

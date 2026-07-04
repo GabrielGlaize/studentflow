@@ -21,7 +21,7 @@ Compte principal :
 
 ```txt
 gabriel@studyflow.dev
-Password1234
+Password1234!
 ```
 
 ## 2. Lancer l’app sur émulateur Android
@@ -44,6 +44,75 @@ C’est l’adresse spéciale qui permet à l’émulateur Android de joindre le
 ## 3. Lancer l’app sur iPhone physique
 
 Le backend tourne sur le Mac. L’iPhone doit donc appeler l’adresse IP locale du Mac, pas `localhost`.
+
+### Bloc complet recommandé
+
+Le plus simple est d’utiliser le script automatisé. Il copie le projet dans
+`/Users/gab/Developer/studentflow`, nettoie les attributs macOS qui cassent
+parfois le codesign iOS, trouve l’IP du Mac et lance Flutter avec la bonne URL
+backend.
+
+Terminal 1 — backend :
+
+```bash
+cd /Users/gab/Documents/studentflow
+
+open -a Docker
+docker compose up -d postgres
+
+dotnet run --project src/backend/StudyFlow.Api \
+  --urls http://0.0.0.0:5028
+```
+
+Terminal 2 — app iPhone :
+
+```bash
+cd /Users/gab/Documents/studentflow
+./scripts/run_iphone_developer.sh
+```
+
+Si Xcode/iOS recommence à parler de `resource fork`, relance en mode réparation :
+
+```bash
+cd /Users/gab/Documents/studentflow
+./scripts/run_iphone_developer.sh --clean
+```
+
+### Bloc manuel si besoin
+
+Terminal 1 — backend :
+
+```bash
+cd /Users/gab/Documents/studentflow
+
+open -a Docker
+docker compose up -d postgres
+
+dotnet run --project src/backend/StudyFlow.Api \
+  --urls http://0.0.0.0:5028
+```
+
+Terminal 2 — app iPhone :
+
+```bash
+cd /Users/gab/Documents/studentflow/src/app
+
+MAC_IP="$(ipconfig getifaddr en0)"
+
+flutter devices
+
+flutter run -d 00008120-0009098822A2201E \
+  --dart-define=STUDYFLOW_API_URL=http://$MAC_IP:5028
+```
+
+Si `ipconfig getifaddr en0` ne renvoie rien, utilise cette variante :
+
+```bash
+MAC_IP="$(ifconfig en0 | awk '/inet / {print $2; exit}')"
+
+flutter run -d 00008120-0009098822A2201E \
+  --dart-define=STUDYFLOW_API_URL=http://$MAC_IP:5028
+```
 
 ### Étape 1 — trouver l’IP du Mac
 

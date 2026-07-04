@@ -202,7 +202,7 @@ class _RegisterWithoutClassPageState extends State<RegisterWithoutClassPage> {
     text: _prefillDevelopmentCredentials ? 'futur@studyflow.dev' : '',
   );
   late final _passwordController = TextEditingController(
-    text: _prefillDevelopmentCredentials ? 'Password1234' : '',
+    text: _prefillDevelopmentCredentials ? 'Password1234!' : '',
   );
   final _classCodeController = TextEditingController();
 
@@ -361,7 +361,7 @@ class _CreateClassPageState extends State<CreateClassPage> {
     text: _prefillDevelopmentCredentials ? 'nouveau.delegue@studyflow.dev' : '',
   );
   late final _passwordController = TextEditingController(
-    text: _prefillDevelopmentCredentials ? 'Password1234' : '',
+    text: _prefillDevelopmentCredentials ? 'Password1234!' : '',
   );
   late final _classNameController = TextEditingController(
     text: _prefillDevelopmentCredentials ? 'BTS SIO 1' : '',
