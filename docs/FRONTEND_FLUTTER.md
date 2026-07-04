@@ -1,6 +1,6 @@
 # Application Flutter : ce qui est implémenté et pourquoi
 
-Dernière mise à jour : 25 juin 2026.
+Dernière mise à jour : 4 juillet 2026.
 
 ## Objectif de l’app
 
@@ -23,6 +23,9 @@ Exemples :
 - `classes` : code de classe, demandes d’adhésion, rôle délégué ;
 - `schedule` : emploi du temps et CRUD des cours ;
 - `agenda` : devoirs de classe et tâches personnelles ;
+- `announcements` : fil officiel et annonces épinglées ;
+- `apprenticeships` : recherche, favoris, recherches sauvegardées et entraide ;
+- `company` : espace Entreprise, ressources, contacts et documents ;
 - `profile` : réglages, préférences et gestion de classe ;
 - `notifications` : calcul des rappels prévus.
 
@@ -39,6 +42,29 @@ Ce découpage évite d’avoir toute la logique dans les écrans.
 Par défaut, l’app démarre maintenant en mode dev réel : elle appelle le backend local.
 
 Sur Android Emulator, l’URL locale est automatiquement `http://10.0.2.2:5028`. Sur les autres cibles locales, l’app utilise `http://localhost:5028`, sauf si `STUDYFLOW_API_URL` est fourni.
+
+Sur iPhone physique, on utilise maintenant le script racine :
+
+```bash
+cd /Users/gab/Documents/studentflow
+./scripts/run_iphone_developer.sh
+```
+
+Ce script copie le projet vers `/Users/gab/Developer/studentflow`, nettoie les attributs macOS qui peuvent casser le codesign, détecte l’IP du Mac et lance Flutter avec `STUDYFLOW_API_URL=http://IP_DU_MAC:5028`.
+
+Pour une installation autonome sur iPhone, utilise une build release :
+
+```bash
+./scripts/run_iphone_developer.sh --clean --release
+```
+
+Pour pointer l'app vers une API sur NAS :
+
+```bash
+./scripts/run_iphone_developer.sh --clean --release --api-url=http://IP_DU_NAS:5028
+```
+
+Le guide de déploiement NAS est dans [`NAS_DEPLOIEMENT.md`](./NAS_DEPLOIEMENT.md).
 
 Commandes principales :
 
@@ -60,11 +86,13 @@ Pourquoi ce choix ?
 L’app sait maintenant gérer :
 
 - connexion ;
+- affichage ou masquage du mot de passe ;
 - inscription ;
 - inscription avec création de classe ;
 - inscription sans classe avec code optionnel ;
 - restauration de session ;
 - refresh du token quand il arrive bientôt à expiration ;
+- demande et saisie d’un code de réinitialisation de mot de passe ;
 - messages d’erreur plus lisibles en cas de validation API, mauvais mot de passe ou réseau indisponible.
 
 Le contrôleur principal est `SessionController`. Il centralise l’état de session pour éviter que chaque écran gère son propre token.
@@ -80,7 +108,11 @@ Le parcours classe couvre maintenant :
 - approuver ou refuser une demande d’adhésion ;
 - régénérer le code de classe ;
 - modifier les informations principales de la classe ;
-- afficher les actions délégué seulement au bon rôle.
+- afficher les actions délégué seulement au bon rôle ;
+- lister les membres ;
+- retirer un élève ;
+- nommer un autre délégué ;
+- quitter son propre rôle délégué.
 
 Le rôle délégué reste volontairement léger. Il ne sert pas à approuver les cours ou devoirs, car le concept StudyFlow repose sur l’autosuffisance des élèves.
 
@@ -114,6 +146,7 @@ Cela permet à StudyFlow de servir à la fois aux élèves déjà en classe et a
 L’écran Alternances couvre maintenant :
 
 - recherche d’offres via le repository alternance ;
+- interrogation du backend, qui agrège La Bonne Alternance, Adzuna et France Travail lorsque les clés sont configurées ;
 - sauvegarde d’une recherche avec mots-clés et ville ;
 - relance rapide d’une recherche sauvegardée ;
 - suppression d’une recherche sauvegardée ;
@@ -143,15 +176,14 @@ Notes importantes :
 - la logique métier est testable sans configuration iOS/Android complexe ;
 - les règles de rappel sont déjà visibles dans l’app ;
 - Android demande la permission `POST_NOTIFICATIONS` ;
-- le dossier iOS n’est pas encore présent dans le workspace actuel, donc la configuration iPhone devra être générée avec la plateforme iOS Flutter :
+- iOS nécessite une signature Apple valide dans Xcode ;
+- le lancement iPhone est simplifié par le script racine :
 
 ```bash
-cd src/app
-flutter create --platforms=ios .
-open ios/Runner.xcworkspace
+./scripts/run_iphone_developer.sh
 ```
 
-Dans Xcode, il faudra ensuite choisir une équipe Apple dans `Runner > Signing & Capabilities`, puis tester les notifications sur un vrai iPhone.
+Dans Xcode, il faut garder une équipe Apple valide dans `Runner > Signing & Capabilities`, puis tester les notifications sur un vrai iPhone.
 
 ## Réglages
 
@@ -160,6 +192,7 @@ L’écran Profil gère :
 - thème clair, sombre ou système ;
 - mode Alternance ou Entreprise ;
 - nom d’entreprise ;
+- ressources, documents et contacts utiles dans l’espace Entreprise ;
 - notifications de cours ;
 - délai de rappel avant cours ;
 - notifications de devoirs ;
@@ -217,7 +250,7 @@ dotnet build src/backend/StudyFlow.Api/StudyFlow.Api.csproj
 Les gros blocs restants sont :
 
 - filtres avancés et alertes automatiques pour les alternances ;
-- génération et vérification du dossier iOS ;
 - captures finales et micro-ajustements visuels après test sur vrai iPhone ;
-- revue sécurité/confidentialité finale ;
+- vraie distribution TestFlight/Play Store si le projet sort du cadre local ;
+- vrai service mail pour la réinitialisation de mot de passe en production ;
 - captures d’écran finales pour le rendu.

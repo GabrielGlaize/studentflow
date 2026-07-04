@@ -4,6 +4,21 @@ Ce document explique ce qui a été fait sur le backend, pourquoi ces choix ont 
 
 L’objectif n’est pas seulement de lister des fichiers. Le but est que l’équipe comprenne la logique du projet, puisse l’expliquer à l’oral, et puisse continuer le développement proprement.
 
+## État actuel — 4 juillet 2026
+
+Depuis la première version de cette documentation, le backend a été durci et complété :
+
+- authentification JWT avec refresh token HMAC et rotation ;
+- validation du security stamp à chaque requête authentifiée ;
+- réinitialisation de mot de passe avec code temporaire hashé ;
+- rate limiting sur les routes d’authentification sensibles ;
+- CORS limité aux origines, méthodes et headers nécessaires ;
+- headers HTTP de sécurité ;
+- DataProtection persistée dans `.data-protection-keys` en local ;
+- clés JWT/HMAC chargées depuis `.env`, pas depuis `appsettings.Development.json` ;
+- tokens d’appareils de notification stockés sous forme hashée + chiffrée ;
+- recherche alternance via agrégation La Bonne Alternance, Adzuna et France Travail selon configuration.
+
 ---
 
 ## 1. Objectif actuel du backend

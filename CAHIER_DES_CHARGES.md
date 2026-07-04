@@ -1,6 +1,7 @@
 # Cahier des charges — StudyFlow Pro
 
 > Application de gestion scolaire et de recherche d’alternances pour les élèves d’une classe
+> Dernière mise à jour : 4 juillet 2026
 
 ---
 
@@ -66,8 +67,8 @@ Le projet est réalisé par une équipe de **deux membres**.
 
 | Rôle | Responsable | Missions principales |
 | :--- | :--- | :--- |
-| **Membre 1 — Backend et données** | À définir | Modélisation de la base, entités C#, EF Core, migrations, API ASP.NET Core, authentification et intégration des offres d’alternance. |
-| **Membre 2 — Flutter et produit** | À définir | Maquettes UI/UX, application Flutter, espace élève, fonctions délégué, notifications, tests fonctionnels et documentation. |
+| **Membre 1 — Produit, Flutter et intégration** | Gabriel | Parcours utilisateur, application Flutter, design, démonstration, intégration mobile/backend et documentation de présentation. |
+| **Membre 2 — Sécurité, données et revue technique** | Garance | Revue sécurité, confidentialité, authentification, protection des données, base PostgreSQL, tests et documentation sécurité. |
 
 Les deux membres participent aux choix techniques, aux revues de code et aux tests de bout en bout.
 
@@ -124,7 +125,8 @@ Un délégué est également un élève. En plus des fonctionnalités précéden
 - générer, communiquer et renouveler le code permettant de rejoindre la classe ;
 - approuver ou refuser les demandes d’adhésion à la classe ;
 - retirer un élève de la classe ;
-- nommer ou retirer un autre délégué ;
+- nommer un autre délégué ;
+- quitter son propre rôle délégué ;
 - gérer la liste commune des professeurs ;
 - gérer la liste commune des matières ;
 - publier des annonces officielles visibles par toute la classe ;
@@ -161,7 +163,7 @@ Le tableau de bord rassemble les informations les plus urgentes :
 
 Sans classe, le tableau de bord remplace les contenus scolaires par le prochain événement personnel, les candidatures à relancer et les tâches liées à la recherche d’alternance.
 
-### 6.3 Emploi du temps collaboratif
+### 6.3 Planning collaboratif
 
 - affichage des cours du jour ;
 - affichage de la semaine ;
@@ -178,13 +180,12 @@ Sans classe, le tableau de bord remplace les contenus scolaires par le prochain 
 - modification et suppression d’un cours ;
 - définition de la date, de l’heure de début et de l’heure de fin ;
 - saisie de la matière, de la salle et du nom du professeur ;
-- possibilité de répéter un cours chaque semaine ;
 - contrôle des conflits horaires simples ;
 - conservation de l’auteur et des dates de modification ;
 - possibilité pour n’importe quel élève de corriger ou supprimer une information ;
 - suppression logique et historique minimal pour restaurer une modification erronée.
 
-Le principe d’autosuffisance est prioritaire : un délégué n’approuve jamais la création ou la correction d’un cours. Les modifications concurrentes sont détectées et l’historique indique l’auteur et l’état précédent.
+Le principe d’autosuffisance est prioritaire : un délégué n’approuve jamais la création ou la correction d’un cours. Les cours récurrents ne font pas partie du MVP final. Les modifications concurrentes sont détectées et l’historique indique l’auteur et l’état précédent.
 
 ### 6.5 Agenda, devoirs et tâches
 
@@ -196,7 +197,7 @@ Deux catégories sont distinguées :
 Les tâches personnelles peuvent être classées dans trois espaces :
 
 - `Ecole` pour les études ;
-- `Entreprise` pour les missions professionnelles lorsque l’élève est en alternance.
+- `Entreprise` pour les missions professionnelles lorsque l’élève est en alternance ;
 - `Alternance` pour les candidatures, relances, entretiens et démarches d’un futur élève.
 
 L’emploi du temps personnel accepte également des événements `Alternance` ou `Entreprise`, indépendamment de l’appartenance à une classe.
@@ -246,7 +247,7 @@ La recherche, les filtres, la consultation d’une offre et l’ouverture du sit
 
 Pour le MVP, StudyFlow ne stocke pas toutes les offres externes. La base conserve uniquement les favoris, les recherches sauvegardées et, si nécessaire, un cache temporaire.
 
-Le scraping de sites n’est pas prévu dans le MVP. L’API officielle La bonne alternance constitue l’unique source initiale.
+Le scraping de sites n’est pas prévu dans le MVP. L’intégration passe par des APIs ou fournisseurs autorisés. Le backend peut agréger La Bonne Alternance, Adzuna et France Travail lorsque les clés nécessaires sont configurées.
 
 Le canal d’entraide n’est ni public ni un chat généraliste : il est limité aux alternances et isolé par classe. Le fil officiel des délégués reste distinct, et Discord reste utilisé pour les conversations ordinaires.
 
@@ -353,25 +354,23 @@ Les offres favorites conservent quelques informations utiles afin de rester iden
 
 ---
 
-## 9. API envisagée
-
-Les routes définitives seront précisées pendant la conception.
+## 9. API actuelle du MVP
 
 ```text
-/api/auth
-/api/utilisateurs
-/api/classes
-/api/cours
-/api/devoirs
-/api/annonces
-/api/notifications
-/api/public/alternances
-/api/public/alternances/{source}/{id}
-/api/alternances/recherches-sauvegardees
-/api/alternances/favoris
+/api/v1/auth
+/api/v1/classes
+/api/v1/courses
+/api/v1/homework
+/api/v1/class-announcements
+/api/v1/class-resources
+/api/v1/notifications
+/api/v1/personal-agenda
+/api/v1/apprenticeships
+/api/v1/apprenticeship-messages
+/api/v1/public/alternances
 ```
 
-Les routes `/api/public/alternances` sont accessibles sans authentification, avec validation des paramètres, cache et limitation du nombre de requêtes. Les données scolaires nécessitent une connexion et une appartenance à la classe. La gestion du code, des matières, des professeurs et des annonces officielles nécessite le rôle `Delegue`.
+La route `/api/v1/public/alternances` est accessible sans authentification. Les données scolaires nécessitent une connexion et une appartenance à la classe. La gestion du code, des matières, des professeurs et des annonces officielles nécessite le rôle `Delegue`.
 
 Une appartenance n’est effective qu’après approbation. Un utilisateur en attente ne reçoit ni le rôle `Eleve`, ni les clés ou données permettant de lire l’emploi du temps.
 
@@ -540,9 +539,9 @@ Le MVP est considéré comme réussi si :
 
 ## 14. Décisions restant à prendre
 
-- répartition nominative des missions entre les deux membres ;
-- obtention du jeton développeur de l’API La bonne alternance retenue pour le MVP ;
+- obtention et sécurisation des accès API externes réellement utilisés en production ;
 - stratégie précise de notifications push ;
 - hébergement de l’API et de PostgreSQL ;
 - fournisseur de gestion des clés de chiffrement en production ;
-- identité visuelle définitive de StudyFlow Pro.
+- service SMTP pour la réinitialisation de mot de passe ;
+- identité visuelle définitive de StudyFlow Pro pour une éventuelle publication.

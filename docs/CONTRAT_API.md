@@ -102,15 +102,15 @@ Public. Reçoit un e-mail et prépare un code de réinitialisation temporaire. L
 
 Public. Reçoit `email`, `token` et `newPassword`. Le backend compare le hash du token reçu avec le hash stocké en base, puis réinitialise le mot de passe si le code est valide, non expiré et non utilisé.
 
-### `GET /api/v1/me`
+### `GET /api/v1/auth/me`
 
 Authentifié. Retourne l’utilisateur courant, ses rôles, sa classe éventuelle et ses préférences utiles à l’interface. `classe` vaut `null` pour un futur élève qui utilise uniquement les alternances.
 
-### `POST /api/v1/classes/rejoindre`
+### `POST /api/v1/classes/join`
 
 Authentifié sans classe. Reçoit un code valide et crée une demande d’adhésion `EnAttente`. La réponse ne contient ni nom de professeur, ni cours, ni annonce, ni autre donnée de la classe.
 
-### `GET /api/v1/classes/demande-courante`
+### `GET /api/v1/classes/current-request`
 
 Retourne uniquement le statut de la demande courante : `EnAttente`, `Approuvee`, `Refusee` ou `Annulee`.
 
@@ -136,19 +136,13 @@ Public. Paramètres :
 
 | Paramètre | Obligatoire | Description |
 | :--- | :---: | :--- |
-| `q` | Oui | Texte utilisateur servant à proposer un métier |
-| `romeCodes` | Oui pour la recherche finale | Codes ROME issus du métier sélectionné |
+| `keywords` | Oui | Métier, domaine ou mots-clés recherchés |
 | `location` | Non | Ville, code postal ou zone |
+| `latitude` / `longitude` | Non | Coordonnées si déjà résolues par le client |
 | `distanceKm` | Non | Rayon lorsque la source le permet |
-| `educationLevel` | Non | Niveau d’études normalisé |
-| `page` | Non | Page, valeur initiale `1` |
-| `pageSize` | Non | De `1` à `50` |
+| `romeCodes` | Non | Codes ROME facultatifs si disponibles |
 
-Le client commence par résoudre `q` en suggestions de métiers. Le backend n’envoie à la source externe que les codes et filtres qu’elle prend réellement en charge.
-
-### `GET /api/v1/public/alternances/metiers`
-
-Public. Reçoit `q` et retourne une courte liste de métiers avec leur libellé et leurs codes ROME. La première version peut utiliser un référentiel limité aux domaines de la classe ; la version publique devra utiliser un référentiel officiel complet.
+Le backend normalise ensuite la requête et appelle les fournisseurs configurés : La Bonne Alternance, Adzuna et France Travail.
 
 Réponse `200` :
 
@@ -176,9 +170,7 @@ Réponse `200` :
 
 Si le fournisseur ne communique pas le total, `total` vaut `null` et `hasNextPage` reste utilisable.
 
-### `GET /api/v1/public/alternances/{source}/{externalId}`
-
-Public. Retourne le détail normalisé et l’URL d’origine. Aucun contenu provenant d’une source externe ne doit être conservé ou redistribué au-delà de ses conditions d’utilisation.
+Le détail dynamique public d’une offre n’est pas encore une route dédiée dans le MVP. L’application conserve l’URL d’origine et redirige l’utilisateur vers la source pour candidater.
 
 ## 6. Données personnelles liées aux alternances
 
@@ -186,10 +178,10 @@ Toutes ces routes nécessitent une authentification.
 
 ### Recherches sauvegardées
 
-- `GET /api/v1/alternances/recherches`
-- `POST /api/v1/alternances/recherches`
-- `PUT /api/v1/alternances/recherches/{id}`
-- `DELETE /api/v1/alternances/recherches/{id}`
+- `GET /api/v1/apprenticeships/saved-searches`
+- `POST /api/v1/apprenticeships/saved-searches`
+- `PUT /api/v1/apprenticeships/saved-searches/{id}`
+- `DELETE /api/v1/apprenticeships/saved-searches/{id}`
 
 Création :
 
@@ -208,9 +200,9 @@ Création :
 
 ### Favoris
 
-- `GET /api/v1/alternances/favoris`
-- `POST /api/v1/alternances/favoris`
-- `DELETE /api/v1/alternances/favoris/{id}`
+- `GET /api/v1/apprenticeships/favorite-offers`
+- `POST /api/v1/apprenticeships/favorite-offers`
+- `DELETE /api/v1/apprenticeships/favorite-offers/{id}`
 
 Le `POST` reçoit les informations normalisées de l’offre affichée. L’API vérifie l’URL, la source, les longueurs et l’unicité avant l’enregistrement.
 

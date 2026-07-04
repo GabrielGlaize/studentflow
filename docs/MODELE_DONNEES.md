@@ -227,7 +227,8 @@ Ces événements alimentent l’emploi du temps personnel, même sans classe.
 | :--- | :--- | :--- |
 | `id` | UUID | Clé primaire |
 | `utilisateur_id` | UUID | Obligatoire |
-| `token` | TEXT | Obligatoire et unique |
+| `token_hash` | VARCHAR(64) | HMAC du token, obligatoire et unique |
+| `encrypted_token` | TEXT | Token chiffré, nécessaire au futur envoi push |
 | `plateforme` | VARCHAR(20) | `Android`, `iOS` ou `Web` |
 | `derniere_activite_at` | TIMESTAMPTZ | Obligatoire |
 

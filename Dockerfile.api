@@ -1,0 +1,26 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+COPY global.json StudyFlow.sln ./
+COPY src/backend/StudyFlow.Domain/StudyFlow.Domain.csproj src/backend/StudyFlow.Domain/
+COPY src/backend/StudyFlow.Application/StudyFlow.Application.csproj src/backend/StudyFlow.Application/
+COPY src/backend/StudyFlow.Infrastructure/StudyFlow.Infrastructure.csproj src/backend/StudyFlow.Infrastructure/
+COPY src/backend/StudyFlow.Api/StudyFlow.Api.csproj src/backend/StudyFlow.Api/
+
+RUN dotnet restore src/backend/StudyFlow.Api/StudyFlow.Api.csproj
+
+COPY src/backend/ src/backend/
+RUN dotnet publish src/backend/StudyFlow.Api/StudyFlow.Api.csproj \
+    --configuration Release \
+    --output /app/publish \
+    /p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS runtime
+WORKDIR /app
+
+ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 8080
+
+COPY --from=build /app/publish .
+
+ENTRYPOINT ["dotnet", "StudyFlow.Api.dll"]

@@ -3,7 +3,7 @@
 - Fichier de travail : [StudyFlow Pro — MVP](https://www.figma.com/design/ecUTTTa55gZ59MYblQzmKb)
 - Design system retenu : Material 3 Design Kit
 - Cibles : Flutter Android et Flutter Web responsive
-- État : parcours MVP maquettés et vérifiés localement ; intégration Figma à reprendre lorsque le quota le permettra
+- État : parcours MVP maquettés, repris dans Flutter et vérifiés localement ; intégration Figma à reprendre lorsque le quota le permettra
 
 ## Prototype Web local
 
@@ -38,6 +38,8 @@ Une seconde maquette locale est disponible dans [`design/app-mobile`](../design/
 - annonces épinglées et publication réservée aux délégués ;
 - gestion du code, des membres, matières, professeurs et délégués ;
 - profil, thème, notifications et bascule Alternances/Entreprise.
+
+Depuis la maquette, l’application Flutter a aussi intégré le lancement iPhone, les états sombres lisibles, la réinitialisation de mot de passe, les documents/contacts Entreprise et les corrections de sécurité backend.
 - connexion et création de compte sans appartenance obligatoire à une classe ;
 - choix d'entrée entre recherche d'alternance et vie de classe ;
 - saisie facultative du code, prévisualisation puis adhésion à la classe.

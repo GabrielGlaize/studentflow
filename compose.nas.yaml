@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: studyflow-nas-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${STUDYFLOW_POSTGRES_DB:-studyflow}
+      POSTGRES_USER: ${STUDYFLOW_POSTGRES_USER:-studyflow}
+      POSTGRES_PASSWORD: ${STUDYFLOW_POSTGRES_PASSWORD:?Set STUDYFLOW_POSTGRES_PASSWORD in .env.nas}
+    volumes:
+      - studyflow-nas-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${STUDYFLOW_POSTGRES_USER:-studyflow} -d ${STUDYFLOW_POSTGRES_DB:-studyflow}"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: studyflow-api:nas
+    container_name: studyflow-nas-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__PostgreSql: Host=postgres;Port=5432;Database=${STUDYFLOW_POSTGRES_DB:-studyflow};Username=${STUDYFLOW_POSTGRES_USER:-studyflow};Password=${STUDYFLOW_POSTGRES_PASSWORD}
+      Database__ApplyMigrationsOnStartup: "true"
+      Jwt__SigningKey: ${STUDYFLOW_JWT_SIGNING_KEY:?Set STUDYFLOW_JWT_SIGNING_KEY in .env.nas}
+      Security__LookupKey: ${STUDYFLOW_SECURITY_LOOKUP_KEY:?Set STUDYFLOW_SECURITY_LOOKUP_KEY in .env.nas}
+      Security__DataProtectionKeysPath: /var/lib/studyflow/data-protection-keys
+      Cors__AllowedOrigins__0: ${STUDYFLOW_CORS_ORIGIN:-http://localhost:8080}
+      Adzuna__AppId: ${ADZUNA_APP_ID:-}
+      Adzuna__AppKey: ${ADZUNA_APP_KEY:-}
+      FranceTravail__ClientId: ${FRANCE_TRAVAIL_CLIENT_ID:-}
+      FranceTravail__ClientSecret: ${FRANCE_TRAVAIL_CLIENT_SECRET:-}
+    ports:
+      - "${STUDYFLOW_API_PORT:-5028}:8080"
+    volumes:
+      - studyflow-nas-api-keys:/var/lib/studyflow/data-protection-keys
+
+volumes:
+  studyflow-nas-postgres-data:
+  studyflow-nas-api-keys:

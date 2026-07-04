@@ -27,6 +27,8 @@ Elle constitue une porte d’entrée publique vers StudyFlow, distincte des fonc
 
 Implémentation actuelle : `design/alternances-web/index.html` appelle `/api/v1/public/alternances` via `prototype.js`. Si le backend n’est pas lancé ou refuse l’appel, la page affiche automatiquement des résultats de démonstration pour rester présentable.
 
+La route publique est servie par le backend StudyFlow. Celui-ci peut ensuite interroger La Bonne Alternance, Adzuna et France Travail selon les clés configurées. Les clés restent côté serveur et ne sont jamais exposées dans le JavaScript public.
+
 ### Résultats
 
 - rappel des critères ;

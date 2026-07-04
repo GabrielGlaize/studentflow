@@ -1,10 +1,12 @@
 # Recette de la maquette
 
-Dernière vérification : 25 juin 2026.
+Dernière vérification : 4 juillet 2026.
 
 ## Parcours validés
 
 - connexion, création de compte et restauration de session ;
+- affichage/masquage du mot de passe ;
+- réinitialisation de mot de passe côté API avec code temporaire hashé ;
 - création d’un compte sans classe avec code de classe optionnel ;
 - création d’une classe avec création simultanée du compte délégué ;
 - choix entre la recherche d’alternance, l’usage sans classe et la création d’une classe ;
@@ -34,8 +36,11 @@ Dernière vérification : 25 juin 2026.
 - recherche publique, recherches populaires, filtres mobiles et réinitialisation ;
 - recherche publique branchée sur `/api/v1/public/alternances` avec fallback de démonstration ;
 - chargement de résultats et fiche détaillée d’une offre ;
-- entraide alternance privée de classe.
-- notifications locales natives branchées côté Flutter avec `flutter_local_notifications`.
+- entraide alternance privée de classe ;
+- agrégation backend de sources alternance : La Bonne Alternance, Adzuna et France Travail selon configuration ;
+- notifications locales natives branchées côté Flutter avec `flutter_local_notifications` ;
+- lancement iPhone automatisé via `scripts/run_iphone_developer.sh` ;
+- durcissement sécurité backend : CORS limité, rate limiting auth, headers HTTP, DataProtection persistée et politique de mot de passe renforcée.
 
 ## Responsive vérifié
 
@@ -45,12 +50,11 @@ Dernière vérification : 25 juin 2026.
 
 ## Limites volontaires du prototype
 
-Le mode démo permet encore de tester sans backend. En mode API réelle, les écrans Flutter sont branchables via `dart-define` sur les routes d’authentification, classes, cours, devoirs, annonces, préférences et alternances déjà prévues.
+Le mode démo permet encore de tester sans backend. En mode API réelle, les écrans Flutter sont branchés via `dart-define` sur les routes d’authentification, classes, cours, devoirs, annonces, préférences et alternances.
 
 ## Évolution à intégrer dans la prochaine recette
 
 - alertes alternance et filtres de recherche plus avancés ;
-- configuration iOS native à générer lorsque le dossier `ios/` sera ajouté au projet Flutter ;
 - captures finales des écrans Flutter ;
 - tests de bout en bout avec backend, base PostgreSQL et app mobile ;
-- revue sécurité production : rate limiting, sauvegardes, rotation des clés.
+- revue production : HTTPS public, SMTP réel, sauvegardes, rotation des clés et monitoring.

@@ -1,6 +1,6 @@
 # Sécurité et confidentialité
 
-Dernière mise à jour : 25 juin 2026.
+Dernière mise à jour : 4 juillet 2026.
 
 ## Objectif
 
@@ -92,6 +92,10 @@ Les clés ASP.NET Core Data Protection sont persistées dans le dossier configur
 étaient seulement en mémoire, un redémarrage du backend rendrait les anciennes
 données chiffrées illisibles.
 
+En production, ce dossier devra être sauvegardé et protégé comme un secret
+d’infrastructure. Perdre ces clés empêcherait de relire les données chiffrées
+déjà stockées.
+
 ## Hash de recherche
 
 Pour retrouver une donnée sans la stocker en clair, le backend utilise parfois un hash HMAC.
@@ -158,6 +162,16 @@ Les clés JWT et HMAC ne sont pas stockées dans `appsettings.Development.json`.
 En local, elles sont chargées depuis le fichier `.env`, ignoré par Git. En
 production, elles doivent venir de variables d’environnement du serveur ou d’un
 gestionnaire de secrets.
+
+Le backend ajoute aussi des headers HTTP de défense :
+
+- `X-Content-Type-Options: nosniff` ;
+- `X-Frame-Options: DENY` ;
+- `Referrer-Policy: strict-origin-when-cross-origin` ;
+- `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`.
+
+Le CORS n’autorise que les origines configurées et limite les méthodes à `GET`,
+`POST`, `PUT` et `DELETE`, avec les headers `Authorization` et `Content-Type`.
 
 ## Réinitialisation de mot de passe
 

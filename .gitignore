@@ -21,6 +21,7 @@ build/
 .env
 .env.*
 !.env.example
+!.env.nas.example
 .data-protection-keys/
 
 # Accidental macOS duplicate copies of generated Flutter/iOS files.

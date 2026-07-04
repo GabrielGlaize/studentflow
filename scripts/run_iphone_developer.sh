@@ -14,6 +14,8 @@ DEV_ROOT="${STUDYFLOW_DEV_ROOT:-/Users/gab/Developer/studentflow}"
 DEVICE_ID="${STUDYFLOW_IOS_DEVICE_ID:-00008120-0009098822A2201E}"
 SHOULD_SYNC=true
 SHOULD_CLEAN=false
+BUILD_MODE="debug"
+API_URL=""
 
 for argument in "$@"; do
   case "$argument" in
@@ -23,12 +25,24 @@ for argument in "$@"; do
     --clean)
       SHOULD_CLEAN=true
       ;;
+    --debug)
+      BUILD_MODE="debug"
+      ;;
+    --profile)
+      BUILD_MODE="profile"
+      ;;
+    --release)
+      BUILD_MODE="release"
+      ;;
+    --api-url=*)
+      API_URL="${argument#--api-url=}"
+      ;;
     --device=*)
       DEVICE_ID="${argument#--device=}"
       ;;
     *)
       echo "Unknown argument: $argument"
-      echo "Usage: scripts/run_iphone_developer.sh [--clean] [--no-sync] [--device=DEVICE_ID]"
+      echo "Usage: scripts/run_iphone_developer.sh [--clean] [--no-sync] [--debug|--profile|--release] [--api-url=URL] [--device=DEVICE_ID]"
       exit 1
       ;;
   esac
@@ -68,18 +82,23 @@ if [ "$SHOULD_CLEAN" = true ]; then
   rm -rf build .dart_tool ios/Pods ios/Podfile.lock
 fi
 
-MAC_IP="$(ipconfig getifaddr en0 2>/dev/null || true)"
-if [ -z "$MAC_IP" ]; then
-  MAC_IP="$(ifconfig en0 | awk '/inet / {print $2; exit}')"
+if [ -z "$API_URL" ]; then
+  MAC_IP="$(ipconfig getifaddr en0 2>/dev/null || true)"
+  if [ -z "$MAC_IP" ]; then
+    MAC_IP="$(ifconfig en0 | awk '/inet / {print $2; exit}')"
+  fi
+
+  if [ -z "$MAC_IP" ]; then
+    echo "Could not detect Mac IP. Check Wi-Fi, then retry."
+    exit 1
+  fi
+
+  API_URL="http://$MAC_IP:5028"
 fi
 
-if [ -z "$MAC_IP" ]; then
-  echo "Could not detect Mac IP. Check Wi-Fi, then retry."
-  exit 1
-fi
-
-echo "Mac IP: $MAC_IP"
 echo "iPhone device: $DEVICE_ID"
+echo "Build mode: $BUILD_MODE"
+echo "API URL: $API_URL"
 
 flutter pub get
 
@@ -88,5 +107,5 @@ if [ ! -d "ios/Pods" ]; then
   (cd ios && pod install)
 fi
 
-flutter run -d "$DEVICE_ID" \
-  --dart-define=STUDYFLOW_API_URL="http://$MAC_IP:5028"
+flutter run "--$BUILD_MODE" -d "$DEVICE_ID" \
+  --dart-define=STUDYFLOW_API_URL="$API_URL"

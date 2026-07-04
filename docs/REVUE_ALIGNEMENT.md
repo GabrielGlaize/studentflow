@@ -1,6 +1,6 @@
 # Revue d’alignement produit et maquettes
 
-Dernière revue : 25 juin 2026.
+Dernière revue : 4 juillet 2026.
 
 Ce document sert de garde-fou entre trois sources :
 
@@ -10,7 +10,7 @@ Ce document sert de garde-fou entre trois sources :
 
 ## Ce qui est bien aligné
 
-- L’app mobile reprend la navigation principale voulue : Accueil, Emploi du temps, Agenda, Alternances ou Entreprise, Profil.
+- L’app mobile reprend la navigation principale voulue : Accueil, Planning, Agenda, Alternances ou Entreprise, Profil.
 - Le rôle délégué reste léger : code de classe, demandes d’adhésion, informations communes, matières et professeurs.
 - Les élèves gardent l’autosuffisance sur les cours, devoirs et tâches : l’objectif n’est pas de bloquer derrière une validation.
 - L’onglet Alternances contient la recherche, les recherches sauvegardées, les favoris et l’entraide de classe.
@@ -18,6 +18,9 @@ Ce document sert de garde-fou entre trois sources :
 - Le mode futur élève sans classe dispose d’un agenda et d’un planning personnel pour organiser candidatures, entretiens et relances.
 - Le Web public Alternances peut appeler l’API publique puis utiliser un fallback de démonstration si le backend n’est pas disponible.
 - Les notifications locales natives sont branchées côté Flutter pour les rappels calculés.
+- Le backend d’alternance peut agréger La Bonne Alternance, Adzuna et France Travail selon les clés configurées.
+- Le lancement iPhone est automatisé par `scripts/run_iphone_developer.sh` pour éviter les erreurs récurrentes de codesign liées aux attributs macOS.
+- La sécurité backend est alignée avec les remarques de revue : DataProtection persistée, clés locales dans `.env`, CORS limité, rate limiting auth, headers HTTP et mot de passe avec caractère spécial.
 - La palette, les cartes arrondies, les états vides, les badges et les chargements utilisent la direction artistique du prototype HTML.
 
 ## Petites corrections intégrées après revue
@@ -30,7 +33,9 @@ Ce document sert de garde-fou entre trois sources :
 - Ajout de la gestion délégué des membres : retirer un élève, nommer un autre délégué, quitter son propre rôle.
 - Branchement de la page publique Alternances sur `/api/v1/public/alternances`.
 - Branchement du scheduler natif `flutter_local_notifications`.
-- Mise à jour de la recette de maquette avec ces deux comportements.
+- Ajout de la réinitialisation de mot de passe côté API.
+- Ajout du mot de passe seedé renforcé : `Password1234!`.
+- Mise à jour de la recette de maquette avec ces comportements.
 
 ## Écarts à décider avant gros développement
 
@@ -52,7 +57,7 @@ Décision : ne pas ajouter cette action, pour éviter les conflits de pouvoir da
 
 Le concept prévoit qu’un futur élève puisse utiliser l’emploi du temps et l’agenda pour gérer sa recherche d’alternance avant d’être dans une classe. Les événements personnels sont maintenant disponibles dans l’agenda.
 
-Suite possible : afficher ces événements aussi dans l’écran Emploi du temps, pas seulement dans l’Agenda.
+Suite possible : afficher ces événements aussi dans l’écran Planning, pas seulement dans l’Agenda.
 
 ### 4. Web public alternance final
 
@@ -64,14 +69,18 @@ Suite possible : créer une vraie fiche détail dynamique par offre.
 
 Le planificateur de rappels existe, les préférences sont visibles et le scheduler natif Flutter est branché.
 
-Suite possible : générer/configurer le dossier iOS et tester sur vrai iPhone.
+Suite possible : stabiliser les tests sur vrai iPhone, puis ajouter de vraies notifications push serveur si le projet est mis en production.
+
+### 6. Sécurité production
+
+Le MVP local est mieux protégé, mais une production nécessiterait encore un serveur HTTPS, un SMTP réel pour la réinitialisation de mot de passe, une rotation des clés, des sauvegardes automatiques et du monitoring.
 
 ## Priorité proposée
 
 Pour rester cohérent avec ton idée et avec une soutenance étudiante, l’ordre le plus rentable est :
 
-1. finaliser la fluidité auth/session ;
-2. tester sur vrai téléphone ;
-3. générer/configurer iOS ;
-4. faire une fiche détail web dynamique ;
-5. préparer les captures finales et le rapport.
+1. figer le scénario de démonstration ;
+2. tester backend + iPhone avec le script automatisé ;
+3. préparer les captures finales ;
+4. préparer le support oral Gabriel/Garance ;
+5. garder les améliorations production comme perspectives, pas comme promesse de MVP.

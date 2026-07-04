@@ -30,6 +30,17 @@ Des teintes plus claires ou plus foncées peuvent être dérivées de ces cinq c
 - éviter de placer du texte blanc sur les teintes claires de la palette ;
 - conserver des surfaces largement blanches ou légèrement bleutées pour ne pas surcharger les écrans.
 
+## Thème sombre
+
+Le thème sombre conserve la même direction artistique, mais n’utilise pas simplement les couleurs claires inversées. Les textes importants restent très contrastés et les cartes reçoivent des surfaces plus foncées pour éviter le problème initial de texte blanc ou pastel peu lisible.
+
+Règle retenue :
+
+- texte principal clair sur fond pétrole foncé ;
+- texte secondaire suffisamment contrasté, jamais en bleu-gris trop transparent ;
+- cartes claires seulement lorsque le texte est foncé ;
+- cartes foncées avec bordure ou accent visuel lorsque l’écran est en thème sombre.
+
 ## Composants Flutter partagés
 
 Le fichier `src/app/lib/core/theme/prototype_widgets.dart` centralise les petits composants visuels inspirés du prototype HTML :

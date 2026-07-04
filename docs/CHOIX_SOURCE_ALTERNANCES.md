@@ -1,161 +1,95 @@
-# Choix de la source d’offres d’alternance
+# Choix des sources d’offres d’alternance
 
-> Décision du 22 juin 2026 — à revalider avant la mise en production
+> Dernière mise à jour : 4 juillet 2026
 
-## 1. Source retenue
+## 1. Décision actuelle
 
-La source unique retenue pour le MVP est l’[API La bonne alternance](https://api.apprentissage.beta.gouv.fr/fr/explorer/recherche-offre), service public porté par la Mission interministérielle pour l’apprentissage.
+Le MVP s’appuie maintenant sur un agrégateur backend. Il expose une recherche normalisée StudyFlow et peut interroger plusieurs fournisseurs :
 
-Cette source est particulièrement adaptée à StudyFlow car elle :
+- **La Bonne Alternance** : source publique française orientée alternance ;
+- **Adzuna** : API d’offres d’emploi, utile comme source complémentaire ;
+- **France Travail — Offres d’emploi v2** : source institutionnelle française, utilisable avec client id / client secret.
 
-- centralise des offres déposées sur La bonne alternance et des offres de partenaires ;
-- expose aussi des entreprises susceptibles de recruter pour des candidatures spontanées ;
-- couvre le territoire français ;
-- fournit des critères ROME, RNCP, géographiques, de niveau de diplôme et de rayon ;
-- fournit les informations de redirection ou de candidature disponibles ;
-- est mise à jour quotidiennement ;
-- propose une API documentée et un widget de secours.
-
-## 2. Conditions et limites connues
-
-- Un compte développeur et un jeton d’accès sont nécessaires.
-- L’utilisation annoncée est gratuite pour les usages non lucratifs.
-- La revente des données ou la facturation de leur accès est interdite.
-- Les quotas indiqués varient selon les routes, actuellement entre 5 et 20 appels par seconde.
-- Le service public affiche un taux de disponibilité qui n’est pas de 100 % ; StudyFlow doit donc gérer les indisponibilités.
-- Les clés et jetons de l’API ne doivent jamais être intégrés dans Flutter.
-
-StudyFlow étant un projet de démonstration au service d’une classe et sans monétisation des offres, son usage prévu est cohérent avec la restriction non lucrative. Les conditions devront être relues si le projet devient commercial.
-
-## 3. Mode d’intégration
+Flutter et l’interface Web publique ne contactent jamais directement ces APIs externes. Elles appellent uniquement le backend StudyFlow :
 
 ```text
-Flutter Android ou Web
-          |
-          v
-API publique StudyFlow
-          |
-          +--> cache court
-          |
-          +--> adaptateur LaBonneAlternance
-                         |
-                         v
-                API La bonne alternance
+Flutter / Web public
+        |
+        v
+API StudyFlow
+        |
+        +--> La Bonne Alternance
+        +--> Adzuna
+        +--> France Travail
 ```
 
-Le backend ASP.NET Core :
+Ce choix protège les clés API et permet de garder un format de résultat stable même si un fournisseur change.
 
-1. valide et normalise la recherche ;
-2. transforme le métier choisi en un ou plusieurs codes ROME ;
-3. résout la localisation en coordonnées lorsque nécessaire ;
-4. consulte son cache ;
-5. appelle l’API externe avec le jeton serveur ;
-6. transforme la réponse dans le modèle public de StudyFlow ;
-7. retire les coordonnées de contact qui ne sont pas nécessaires au MVP ;
-8. retourne les résultats à Flutter.
+## 2. Pourquoi plusieurs sources ?
 
-## 4. Recherche par mots-clés
+La recherche d’alternance est importante dans le projet, mais une seule API peut être incomplète, indisponible ou limitée par ses critères de recherche.
 
-La route d’offres officielle recherche principalement à partir de codes ROME ou RNCP, et non d’un texte métier libre directement transmis tel quel.
+L’agrégation permet :
 
-L’interface StudyFlow présentera donc un champ de recherche avec suggestions :
+- d’obtenir davantage de résultats ;
+- de comparer des sources publiques et privées ;
+- de garder une démonstration fonctionnelle même si une source est mal configurée ;
+- de brancher de nouvelles sources plus tard sans changer l’app mobile.
 
-1. l’utilisateur saisit par exemple `développeur web` ;
-2. StudyFlow propose des métiers correspondants ;
-3. le métier sélectionné fournit un ou plusieurs codes ROME ;
-4. ces codes sont transmis à la recherche d’offres.
+Le backend normalise les réponses dans un modèle commun : titre, entreprise, lieu, résumé, source, identifiant externe et URL de candidature.
 
-Pour le tout premier prototype, le référentiel métier peut être limité aux domaines utiles à la classe. Avant la version publique, il faudra brancher un référentiel ROME complet et officiel.
+## 3. Configuration locale
 
-## 5. Localisation
+Les clés restent côté backend, dans `.env`, jamais dans Flutter et jamais dans Git.
 
-La saisie de ville ou de code postal est transformée en coordonnées géographiques. Le rayon proposé dans le MVP utilise les valeurs prises en charge par la source :
+Exemple :
 
-- 10 km ;
-- 30 km ;
-- 60 km ;
-- 100 km.
+```env
+Adzuna__AppId=ton-app-id
+Adzuna__AppKey=ton-app-key
 
-Le backend conserve les coordonnées normalisées dans les recherches sauvegardées afin d’éviter de résoudre la même ville à chaque alerte.
-
-## 6. Modèle normalisé StudyFlow
-
-L’API interne ne reproduit pas directement le modèle du fournisseur. Elle expose un modèle stable :
-
-```text
-AlternanceSearchResult
-├── source
-├── externalId
-├── opportunityType
-├── title
-├── company
-├── location
-├── distanceKm
-├── publishedAt
-├── expiresAt
-├── contractTypes
-├── targetDiploma
-├── remoteMode
-├── summary
-└── applicationUrl
+FranceTravail__ClientId=ton-client-id
+FranceTravail__ClientSecret=ton-client-secret
 ```
 
-`opportunityType` distingue :
+La Bonne Alternance peut aussi être configurée si un jeton est nécessaire :
 
-- une offre publiée ;
-- une offre partenaire ;
-- une entreprise ouverte à une candidature spontanée.
-
-Cette couche de normalisation garde la possibilité d’ajouter un autre fournisseur plus tard, sans que cela fasse partie du MVP.
-
-## 7. Composants backend prévus
-
-```text
-IAlternanceProvider
-├── SearchAsync(...)
-└── GetByIdAsync(...)
-
-LaBonneAlternanceProvider : IAlternanceProvider
-AlternanceSearchService
-AlternanceResultMapper
-AlternanceCache
-LocationResolver
-OccupationResolver
+```env
+LaBonneAlternance__BaseUrl=https://api.apprentissage.beta.gouv.fr
+LaBonneAlternance__SearchPath=/fr/explorer/recherche-offre
+LaBonneAlternance__AccessToken=ton-token-si-necessaire
 ```
 
-Le contrôleur public dépend de `AlternanceSearchService`, jamais directement du fournisseur externe.
+## 4. Mode démonstration
 
-## 8. Résilience et protection
+Pour garder l’application présentable même sans toutes les clés :
 
-- cache initial recommandé : 5 minutes pour une recherche identique ;
-- délai maximal d’appel externe : à tester, avec une valeur initiale courte ;
-- un nouvel essai uniquement sur les erreurs temporaires et avec attente progressive ;
-- limite de requêtes par adresse IP sur l’API publique StudyFlow ;
-- message clair si la source est momentanément indisponible ;
-- conservation possible du dernier résultat en cache pendant une indisponibilité courte ;
-- journalisation du fournisseur, de la durée et du statut, sans journaliser le jeton.
+- La Bonne Alternance peut retourner un résultat de démonstration si elle n’est pas configurée ;
+- Adzuna peut retourner un résultat de démonstration si elle n’est pas configurée ;
+- France Travail est désactivé si ses identifiants ne sont pas fournis, car son OAuth nécessite une configuration réelle.
 
-## 9. Solution de repli
+Cela permet de tester l’écran Alternances sans bloquer la soutenance sur une clé externe.
 
-Si l’accès API n’est pas obtenu à temps, le widget officiel La bonne alternance peut être intégré temporairement à la version Web. Cette option permet une démonstration rapide, mais elle offre moins de contrôle visuel et ne permet pas une expérience identique dans Flutter Android.
+## 5. Limites actuelles
 
-Le développement doit donc prévoir :
+Le MVP ne fait pas encore :
 
-- un fournisseur simulé pour travailler sans jeton ;
-- l’adaptateur API comme cible principale ;
-- le widget uniquement comme solution de repli Web.
+- déduplication avancée entre fournisseurs ;
+- cache persistant des résultats ;
+- alertes automatiques envoyées par mail ou push ;
+- tri intelligent par pertinence ;
+- géolocalisation avancée ;
+- vérification juridique complète des conditions de chaque fournisseur pour une production publique.
 
-## 10. Actions nécessaires
+Ces points sont à traiter avant une mise en production ouverte.
 
-1. Créer un compte sur l’espace développeurs La bonne alternance.
-2. Demander ou générer un jeton d’accès.
-3. Stocker le jeton dans les secrets du backend local et de l’hébergement.
-4. Tester les recherches correspondant aux formations de la classe.
-5. Vérifier les champs et quotas réels avec le jeton attribué.
-6. Relire les conditions d’utilisation avant toute ouverture publique.
+## 6. Position produit
 
-## 11. Sources officielles consultées
+StudyFlow ne remplace pas les sites de candidature. L’app aide à chercher, sauvegarder et organiser les démarches, puis redirige l’élève vers le site source pour candidater.
 
-- [Espace développeurs La bonne alternance](https://labonnealternance.apprentissage.beta.gouv.fr/espace-developpeurs)
-- [Documentation de la recherche d’opportunités](https://api.apprentissage.beta.gouv.fr/fr/explorer/recherche-offre)
-- [Fiche API sur data.gouv.fr](https://www.data.gouv.fr/dataservices/api-la-bonne-alternance)
+La valeur ajoutée StudyFlow est donc :
+
+- centraliser la recherche ;
+- relier la recherche d’alternance aux tâches et événements personnels ;
+- permettre l’entraide entre élèves d’une même classe ;
+- garder un espace Carrière/Entreprise pour CV, contacts, ressources et relances.

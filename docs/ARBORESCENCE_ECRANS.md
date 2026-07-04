@@ -23,7 +23,7 @@ La recherche d’alternances est un véritable parcours Web public autonome, des
 La navigation principale utilise cinq destinations :
 
 ```text
-Tableau de bord | Emploi du temps | Agenda | Alternances ou Entreprise | Profil
+Tableau de bord | Planning | Agenda | Alternances ou Entreprise | Profil
 ```
 
 Le profil et les réglages constituent la dernière destination de la navigation principale.
@@ -38,7 +38,7 @@ Le profil et les réglages constituent la dernière destination de la navigation
 - prochaines échéances de la journée ou de la semaine ;
 - résumé Alternance ou Entreprise si cela reste lisible.
 
-### Emploi du temps
+### Planning
 
 - vue personnelle disponible même sans classe ;
 - événements de candidature, entretien, relance ou entreprise ;

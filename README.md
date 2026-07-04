@@ -2,7 +2,46 @@
 
 StudyFlow aide une classe à partager son emploi du temps, ses devoirs et ses informations importantes. L’outil public de recherche d’alternances reste accessible sans compte depuis un navigateur.
 
-Un compte sans classe peut organiser ses candidatures dans un planning personnel. Les rattachements scolaires sont approuvés par un délégué, tandis que les cours restent modifiables librement par tous les élèves approuvés. Les identités des professeurs, salles et horaires précis sont destinés à être chiffrés avant stockage.
+Un compte sans classe peut organiser ses candidatures dans un agenda personnel. Les rattachements scolaires sont approuvés par un délégué, tandis que les cours et devoirs restent modifiables librement par tous les élèves approuvés. Les identités des professeurs, salles, horaires précis, tokens techniques et événements personnels sont protégés côté backend.
+
+## Démarrage le plus simple
+
+La procédure complète est dans [`docs/LANCEMENT_RAPIDE.md`](./docs/LANCEMENT_RAPIDE.md).
+
+Backend :
+
+```bash
+cd /Users/gab/Documents/studentflow
+
+open -a Docker
+docker compose up -d postgres
+
+dotnet run --project src/backend/StudyFlow.Api \
+  --urls http://0.0.0.0:5028
+```
+
+App iPhone avec le script automatisé :
+
+```bash
+cd /Users/gab/Documents/studentflow
+./scripts/run_iphone_developer.sh
+```
+
+Le script copie le projet dans `/Users/gab/Developer/studentflow`, nettoie les attributs macOS qui peuvent casser le codesign iOS, trouve l’IP locale du Mac et lance Flutter avec la bonne URL backend.
+
+Pour installer une version autonome sur iPhone pendant la durée du provisioning gratuit Apple, utilise le mode release :
+
+```bash
+./scripts/run_iphone_developer.sh --clean --release
+```
+
+Pour que l’app reste utile Mac éteint, fais tourner l’API sur un NAS ou serveur local et installe l’app avec son URL :
+
+```bash
+./scripts/run_iphone_developer.sh --clean --release --api-url=http://IP_DU_NAS:5028
+```
+
+Le guide NAS complet est dans [`docs/NAS_DEPLOIEMENT.md`](./docs/NAS_DEPLOIEMENT.md).
 
 ## Tester l’application Flutter sur iPhone
 
@@ -12,13 +51,10 @@ Pour lancer StudyFlow sur un iPhone physique :
 2. Branche l’iPhone en USB.
 3. Sur l’iPhone, accepte “Faire confiance à cet ordinateur”.
 4. Si iOS le demande, active le mode développeur dans `Réglages > Confidentialité et sécurité > Mode développeur`.
-5. Depuis l’application Flutter, lance :
+5. Depuis la racine du projet, lance :
 
 ```bash
-cd src/app
-flutter doctor
-flutter devices
-flutter run -d ton_iphone
+./scripts/run_iphone_developer.sh
 ```
 
 Si Xcode bloque la signature Apple :
@@ -29,7 +65,7 @@ open ios/Runner.xcworkspace
 
 Dans Xcode, sélectionne `Runner`, puis `Signing & Capabilities`, et choisis ton Apple ID dans `Team`.
 
-Par défaut, l’app utilise le backend réel. Depuis l’iPhone, il faut utiliser l’adresse IP du Mac sur le même Wi-Fi, pas `localhost` :
+Par défaut, l’app utilise le backend réel. Depuis l’iPhone, il faut utiliser l’adresse IP du Mac sur le même Wi-Fi, pas `localhost`. Le script le fait automatiquement. La commande manuelle reste possible :
 
 ```bash
 flutter run -d ton_iphone \
@@ -38,11 +74,17 @@ flutter run -d ton_iphone \
 
 Remplace `192.168.1.42` par l’adresse IP locale de ton Mac.
 
+Pour un usage iPhone débranché, préfère le mode release :
+
+```bash
+./scripts/run_iphone_developer.sh --clean --release
+```
+
 ## Stack
 
 - API ASP.NET Core 8 ;
 - architecture Domain / Application / Infrastructure / API ;
-- application Flutter pour Android, Web et iOS à générer ;
+- application Flutter pour Android, iOS et Web ;
 - PostgreSQL 16, Entity Framework Core et ASP.NET Core Identity.
 
 ## Prérequis
@@ -71,7 +113,8 @@ Le conteneur expose PostgreSQL sur le port hôte `5433` afin de ne pas entrer en
 
 ```bash
 dotnet restore StudyFlow.sln
-dotnet run --project src/backend/StudyFlow.Api
+dotnet run --project src/backend/StudyFlow.Api \
+  --urls http://0.0.0.0:5028
 ```
 
 En environnement `Development`, le backend applique les migrations et seed une classe locale si `DevelopmentSeed:Enabled=true`.
@@ -90,13 +133,16 @@ Ces identifiants sont aussi affichés dans le terminal au lancement de `dotnet r
 La recherche d’alternance agrège plusieurs sources côté backend : La Bonne Alternance, Adzuna et France Travail. Les vraies clés ne doivent pas être mises dans Git. En local, le backend charge automatiquement le fichier `.env` placé à la racine du projet :
 
 ```env
+Jwt__SigningKey=une-cle-locale-longue
+Security__LookupKey=une-autre-cle-locale-longue
+Security__DataProtectionKeysPath=.data-protection-keys
 Adzuna__AppId=ton-app-id
 Adzuna__AppKey=ton-app-key
 FranceTravail__ClientId=ton-client-id
 FranceTravail__ClientSecret=ton-client-secret
 ```
 
-Sans clés configurées, l’API garde des résultats de démonstration pour les sources prévues à cet effet afin que l’app reste testable. France Travail nécessite un compte développeur et un couple client id/secret.
+Sans clés configurées, l’API garde des résultats de démonstration pour les sources prévues à cet effet afin que l’app reste testable. France Travail nécessite un compte développeur et un couple client id/secret. Les clés JWT et HMAC ne sont plus stockées dans `appsettings.Development.json`.
 
 La réinitialisation de mot de passe utilise des codes temporaires stockés uniquement sous forme de hash en base. En environnement `Development`, l’API renvoie aussi le code dans la réponse pour tester sans serveur e-mail. En production, il faudra envoyer ce code par e-mail et ne jamais l’afficher dans la réponse.
 
@@ -166,10 +212,9 @@ cd src/app && flutter test
 
 ## Points encore à traiter
 
-- générer le dossier iOS avec `flutter create --platforms=ios .` puis vérifier la signature Xcode ;
 - amélioration avancée de la recherche alternance : filtres plus fins, alertes et tri ;
 - fiche détail Web dynamique pour les offres publiques ;
-- revue sécurité production : rotation des clés, chiffrement éventuel des devoirs/annonces, rate limiting ;
+- revue production : serveur HTTPS, vrai SMTP, rotation des clés, sauvegardes et monitoring ;
 - captures d’écran finales et guide de démonstration.
 
 ## Organisation
@@ -184,4 +229,4 @@ src/
     └── StudyFlow.Infrastructure/ Persistance et services externes
 ```
 
-Les décisions fonctionnelles se trouvent dans [`CAHIER_DES_CHARGES.md`](./CAHIER_DES_CHARGES.md) et les documents détaillés dans [`docs`](./docs/), notamment [`docs/FRONTEND_FLUTTER.md`](./docs/FRONTEND_FLUTTER.md) pour comprendre l’application mobile et [`docs/SECURITE_CONFIDENTIALITE.md`](./docs/SECURITE_CONFIDENTIALITE.md) pour les choix de sécurité.
+Les décisions fonctionnelles se trouvent dans [`CAHIER_DES_CHARGES.md`](./CAHIER_DES_CHARGES.md) et les documents détaillés dans [`docs`](./docs/), notamment [`docs/FRONTEND_FLUTTER.md`](./docs/FRONTEND_FLUTTER.md) pour comprendre l’application mobile, [`docs/SECURITE_CONFIDENTIALITE.md`](./docs/SECURITE_CONFIDENTIALITE.md) pour les choix de sécurité et [`docs/PRESENTATION_PROJET_ANNUEL.md`](./docs/PRESENTATION_PROJET_ANNUEL.md) pour préparer l’oral.
