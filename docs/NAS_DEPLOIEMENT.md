@@ -38,6 +38,9 @@ Le projet contient maintenant :
 - `Dockerfile.api` : construit l'image Docker de l'API ASP.NET Core ;
 - `compose.nas.yaml` : lance PostgreSQL et l'API ;
 - `.env.nas.example` : modèle de variables et secrets ;
+- `scripts/nas_generate_env.sh` : génère un `.env.nas` local avec des secrets
+  aléatoires ;
+- `scripts/nas_deploy.sh` : construit et lance la stack NAS ;
 - `Database__ApplyMigrationsOnStartup=true` dans le compose NAS, pour appliquer
   les migrations Entity Framework au démarrage du conteneur API.
 
@@ -65,7 +68,22 @@ src/backend/
 
 ## 4. Créer `.env.nas`
 
-Depuis le dossier du projet sur le NAS :
+Depuis le dossier du projet sur le NAS, la méthode la plus simple est :
+
+```bash
+./scripts/nas_generate_env.sh
+```
+
+Le script crée un fichier `.env.nas` ignoré par Git, avec :
+
+- un mot de passe PostgreSQL aléatoire ;
+- une clé JWT aléatoire ;
+- une clé HMAC aléatoire.
+
+Ensuite, ouvre `.env.nas` et adapte au minimum `STUDYFLOW_CORS_ORIGIN` si tu
+passes par un domaine HTTPS.
+
+Méthode manuelle si tu préfères :
 
 ```bash
 cp .env.nas.example .env.nas
@@ -97,6 +115,14 @@ Ne réutilise pas les clés de démonstration de la doc en vrai.
 ## 5. Lancer l'API sur le NAS
 
 En SSH, depuis le dossier du projet :
+
+```bash
+./scripts/nas_deploy.sh
+```
+
+Ce script exécute le `docker compose` NAS avec le bon fichier `.env.nas`.
+
+Commande équivalente manuelle :
 
 ```bash
 docker compose --env-file .env.nas -f compose.nas.yaml up -d --build
