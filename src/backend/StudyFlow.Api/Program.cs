@@ -1,7 +1,9 @@
 using System.Threading.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using StudyFlow.Api.Contracts;
 using StudyFlow.Api;
 using StudyFlow.Infrastructure;
+using StudyFlow.Infrastructure.Persistence;
 
 LoadLocalEnvironmentFile();
 
@@ -30,7 +32,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("StudyFlowApp", policy =>
         policy
             .WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
-            .WithHeaders("Authorization", "Content-Type")
+            .WithHeaders("Accept", "Authorization", "Content-Type")
             .WithMethods("GET", "POST", "PUT", "DELETE"));
 });
 
@@ -46,7 +48,15 @@ app.Use(async (context, next) =>
     await next();
 });
 
-if (app.Environment.IsDevelopment() && builder.Configuration.GetValue<bool>("DevelopmentSeed:Enabled"))
+var usesDevelopmentSeed = app.Environment.IsDevelopment()
+    && builder.Configuration.GetValue<bool>("DevelopmentSeed:Enabled");
+
+if (builder.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup") && !usesDevelopmentSeed)
+{
+    await ApplyDatabaseMigrationsAsync(app.Services);
+}
+
+if (usesDevelopmentSeed)
 {
     await app.Services.SeedDevelopmentDataAsync();
 }
@@ -67,6 +77,13 @@ app.MapGet("/api/status", () => Results.Ok(new ApiStatusResponse(
     DateTimeOffset.UtcNow)));
 
 app.Run();
+
+static async Task ApplyDatabaseMigrationsAsync(IServiceProvider services)
+{
+    using var scope = services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<StudyFlowDbContext>();
+    await dbContext.Database.MigrateAsync();
+}
 
 static void LoadLocalEnvironmentFile()
 {
