@@ -18,6 +18,14 @@ fi
 docker compose --env-file .env.nas -f compose.nas.yaml up -d --build
 docker compose --env-file .env.nas -f compose.nas.yaml ps
 
+API_PORT="$(awk -F= '$1 == "STUDYFLOW_API_PORT" {print $2}' .env.nas | tail -n 1)"
+API_PORT="${API_PORT:-5028}"
+
 echo
 echo "API status check from this machine:"
-echo "  curl http://localhost:\${STUDYFLOW_API_PORT:-5028}/api/status"
+echo "  curl http://localhost:$API_PORT/api/status"
+
+if command -v curl >/dev/null 2>&1; then
+  curl -fsS "http://localhost:$API_PORT/api/status" || true
+  echo
+fi

@@ -18,7 +18,7 @@ random_secret() {
   if command -v openssl >/dev/null 2>&1; then
     openssl rand -base64 48 | tr -d '\n'
   else
-    LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 64
+    od -An -tx1 -N48 /dev/urandom | tr -d ' \n'
   fi
 }
 
