@@ -1480,6 +1480,8 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
       child: Row(
@@ -1505,13 +1507,20 @@ class _SectionTitle extends StatelessWidget {
             height: 22,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: const Color(0xFFE1EBF0),
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.12)
+                  : const Color(0xFFE1EBF0),
               borderRadius: BorderRadius.circular(8),
+              border: isDark
+                  ? Border.all(color: Colors.white.withValues(alpha: 0.14))
+                  : null,
             ),
             child: Text(
               '$count',
               style: TextStyle(
-                color: context.sfMuted,
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.82)
+                    : context.sfMuted,
                 fontSize: 9,
                 fontWeight: FontWeight.w900,
               ),
@@ -1783,6 +1792,11 @@ class _DateTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark && color.computeLuminance() > 0.72
+        ? AppColors.petrolDark
+        : context.sfText;
+
     return Container(
       width: 45,
       height: 51,
@@ -1796,9 +1810,7 @@ class _DateTile extends StatelessWidget {
           Text(
             '${date.day}'.padLeft(2, '0'),
             style: TextStyle(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.white
-                  : AppColors.petrolDark,
+              color: textColor,
               fontSize: 17,
               fontWeight: FontWeight.w900,
               height: 1,
@@ -1808,9 +1820,7 @@ class _DateTile extends StatelessWidget {
           Text(
             _monthLabel(date),
             style: TextStyle(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.white70
-                  : AppColors.petrolDark,
+              color: textColor.withValues(alpha: 0.78),
               fontSize: 8,
               fontWeight: FontWeight.w900,
             ),

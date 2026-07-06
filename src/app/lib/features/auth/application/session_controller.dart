@@ -208,4 +208,16 @@ class SessionController extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
   }
+
+  Future<void> deleteAccount() async {
+    final sessionToDelete = _session;
+    if (sessionToDelete == null) return;
+
+    await _authRepository.deleteAccount(sessionToDelete);
+    await _sessionStorage.clear();
+    _session = null;
+    _status = SessionStatus.signedOut;
+    _errorMessage = null;
+    notifyListeners();
+  }
 }

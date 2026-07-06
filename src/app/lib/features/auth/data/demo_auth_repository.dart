@@ -138,6 +138,11 @@ class DemoAuthRepository implements AuthRepository {
     await Future<void>.delayed(const Duration(milliseconds: 120));
   }
 
+  @override
+  Future<void> deleteAccount(AuthSession session) async {
+    await Future<void>.delayed(const Duration(milliseconds: 180));
+  }
+
   void _validateAccount({required String email, required String password}) {
     if (email.trim().isEmpty || !email.contains('@')) {
       throw const AuthException('Entre une adresse e-mail valide.');

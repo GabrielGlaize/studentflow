@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:studyflow_app/core/app_scope.dart';
 import 'package:studyflow_app/core/theme/app_colors.dart';
@@ -526,20 +527,26 @@ class _ApplicationDocumentsSection extends StatelessWidget {
     CompanyDocument document,
   ) async {
     final link = document.link?.trim();
-    if (link == null || link.isEmpty) {
+    final localPath = document.filePath?.trim();
+    final uri = localPath != null && localPath.isNotEmpty
+        ? Uri.file(localPath)
+        : link != null && link.isNotEmpty
+        ? Uri.tryParse(link)
+        : null;
+    if (uri == null) {
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
         ..showSnackBar(
           const SnackBar(
-            content: Text('Ajoute un lien pour ouvrir ce document.'),
+            content: Text(
+              'Ajoute un fichier ou un lien pour ouvrir ce document.',
+            ),
           ),
         );
       return;
     }
 
-    final uri = Uri.tryParse(link);
-    if (uri == null ||
-        !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
@@ -565,6 +572,7 @@ class _ApplicationDocumentLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final details = [
       document.kind,
+      if (document.fileName != null) document.fileName!,
       if (document.link != null) document.link!,
       if (document.note != null) document.note!,
     ].join(' · ');
@@ -642,6 +650,7 @@ class _AddApplicationDocumentSheetState
   final _linkController = TextEditingController();
   final _noteController = TextEditingController();
   String _kind = 'CV';
+  PlatformFile? _selectedFile;
 
   @override
   Widget build(BuildContext context) {
@@ -707,6 +716,17 @@ class _AddApplicationDocumentSheetState
               ),
               keyboardType: TextInputType.url,
             ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: _pickFile,
+              icon: const Icon(Icons.upload_file_outlined),
+              label: Text(
+                _selectedFile == null
+                    ? 'Importer un fichier'
+                    : 'Fichier : ${_selectedFile!.name}',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _noteController,
@@ -754,9 +774,31 @@ class _AddApplicationDocumentSheetState
       scope: 'apprenticeship',
       link: _linkController.text,
       note: _noteController.text,
+      fileName: _selectedFile?.name,
+      filePath: _selectedFile?.path,
+      fileSizeBytes: _selectedFile?.size,
     );
 
     Navigator.pop(context);
+  }
+
+  Future<void> _pickFile() async {
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: false,
+      withData: false,
+      type: FileType.custom,
+      allowedExtensions: const ['pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg'],
+    );
+    final files = result?.files;
+    final file = files == null || files.isEmpty ? null : files.first;
+    if (file == null || !mounted) return;
+    setState(() {
+      _selectedFile = file;
+      if (_titleController.text.trim().isEmpty ||
+          _titleController.text == _kind) {
+        _titleController.text = file.name;
+      }
+    });
   }
 
   @override

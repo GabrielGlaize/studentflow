@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:studyflow_app/core/app_scope.dart';
 import 'package:studyflow_app/core/theme/app_colors.dart';
@@ -356,22 +357,34 @@ class _CompanyMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final metricBackground = isDark
+        ? Colors.white.withValues(alpha: 0.10)
+        : color;
+    final metricText = isDark ? Colors.white : context.sfText;
+    final metricMuted = isDark
+        ? Colors.white.withValues(alpha: 0.74)
+        : context.sfMuted;
+
     final content = Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       decoration: BoxDecoration(
-        color: color,
+        color: metricBackground,
         borderRadius: BorderRadius.circular(15),
+        border: isDark
+            ? Border.all(color: Colors.white.withValues(alpha: 0.10))
+            : null,
       ),
       child: Column(
         children: [
-          Icon(icon, color: context.sfIcon, size: 18),
+          Icon(icon, color: metricText, size: 18),
           const SizedBox(height: 7),
           Text(
             value,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: context.sfText,
+              color: metricText,
               fontSize: 11,
               fontWeight: FontWeight.w900,
             ),
@@ -382,7 +395,7 @@ class _CompanyMetric extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: context.sfMuted,
+              color: metricMuted,
               fontSize: 8,
               fontWeight: FontWeight.w800,
             ),
@@ -472,22 +485,26 @@ class _DocumentsSection extends StatelessWidget {
     CompanyDocument document,
   ) async {
     final link = document.link?.trim();
-    if (link == null || link.isEmpty) {
+    final localPath = document.filePath?.trim();
+    final uri = localPath != null && localPath.isNotEmpty
+        ? Uri.file(localPath)
+        : link != null && link.isNotEmpty
+        ? Uri.tryParse(link)
+        : null;
+    if (uri == null) {
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
         ..showSnackBar(
           const SnackBar(
             content: Text(
-              'Ajoute un lien Drive, iCloud ou fichier pour ouvrir ce document.',
+              'Ajoute un fichier local, un lien Drive ou une note pour ouvrir ce document.',
             ),
           ),
         );
       return;
     }
 
-    final uri = Uri.tryParse(link);
-    if (uri == null ||
-        !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context)
         ..clearSnackBars()
@@ -513,6 +530,7 @@ class _DocumentTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final details = [
       document.kind,
+      if (document.fileName != null) document.fileName!,
       if (document.link != null) document.link!,
       if (document.note != null) document.note!,
     ].join(' · ');
@@ -573,6 +591,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
   final _kindController = TextEditingController(text: 'Contrat');
   final _linkController = TextEditingController();
   final _noteController = TextEditingController();
+  PlatformFile? _selectedFile;
 
   @override
   Widget build(BuildContext context) {
@@ -621,6 +640,17 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                 prefixIcon: Icon(Icons.link),
               ),
               keyboardType: TextInputType.url,
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: _pickFile,
+              icon: const Icon(Icons.upload_file_outlined),
+              label: Text(
+                _selectedFile == null
+                    ? 'Importer depuis fichiers'
+                    : 'Fichier : ${_selectedFile!.name}',
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
             const SizedBox(height: 12),
             TextFormField(
@@ -671,9 +701,28 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
       kind: _kindController.text,
       link: _linkController.text,
       note: _noteController.text,
+      fileName: _selectedFile?.name,
+      filePath: _selectedFile?.path,
+      fileSizeBytes: _selectedFile?.size,
     );
 
     Navigator.pop(context);
+  }
+
+  Future<void> _pickFile() async {
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: false,
+      withData: false,
+    );
+    final files = result?.files;
+    final file = files == null || files.isEmpty ? null : files.first;
+    if (file == null || !mounted) return;
+    setState(() {
+      _selectedFile = file;
+      if (_titleController.text.trim().isEmpty) {
+        _titleController.text = file.name;
+      }
+    });
   }
 
   @override

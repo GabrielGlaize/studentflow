@@ -139,4 +139,16 @@ class HttpAuthRepository implements AuthRepository {
       throw AuthException(error.message);
     }
   }
+
+  @override
+  Future<void> deleteAccount(AuthSession session) async {
+    try {
+      await _apiClient.deleteNoContent(
+        '/api/v1/auth/me',
+        accessToken: session.accessToken,
+      );
+    } on ApiException catch (error) {
+      throw AuthException(error.message);
+    }
+  }
 }

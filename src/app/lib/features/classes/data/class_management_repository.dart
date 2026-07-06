@@ -35,4 +35,6 @@ abstract interface class ClassManagementRepository {
   Future<void> removeMember({required String memberId, String? accessToken});
 
   Future<void> leaveDelegateRole({String? accessToken});
+
+  Future<AuthSession> leaveClass({String? accessToken});
 }

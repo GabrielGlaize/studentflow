@@ -96,6 +96,39 @@ public sealed class AuthController(
         return NoContent();
     }
 
+    [Authorize]
+    [HttpDelete("me")]
+    public async Task<IActionResult> DeleteAccount(CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByIdAsync(CurrentUserId().ToString());
+        if (user is null) return Unauthorized();
+
+        user.IsActive = false;
+        user.SchoolClassId = null;
+        user.UpdatedAt = DateTimeOffset.UtcNow;
+
+        var activeRefreshTokens = await dbContext.RefreshTokens
+            .Where(x => x.UserId == user.Id && x.RevokedAt == null && x.ExpiresAt > DateTimeOffset.UtcNow)
+            .ToListAsync(cancellationToken);
+        foreach (var refreshToken in activeRefreshTokens)
+        {
+            refreshToken.RevokedAt = DateTimeOffset.UtcNow;
+        }
+
+        var activeResetTokens = await dbContext.PasswordResetTokens
+            .Where(x => x.UserId == user.Id && x.UsedAt == null && x.RevokedAt == null)
+            .ToListAsync(cancellationToken);
+        foreach (var resetToken in activeResetTokens)
+        {
+            resetToken.RevokedAt = DateTimeOffset.UtcNow;
+        }
+
+        await userManager.UpdateSecurityStampAsync(user);
+        await userManager.UpdateAsync(user);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return NoContent();
+    }
+
     [EnableRateLimiting("auth-sensitive")]
     [HttpPost("forgot-password")]
     public async Task<ActionResult<ForgotPasswordResponse>> ForgotPassword(

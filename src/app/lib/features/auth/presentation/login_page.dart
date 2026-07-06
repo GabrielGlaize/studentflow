@@ -501,6 +501,9 @@ class _PasswordResetSheetState extends State<_PasswordResetSheet> {
     if (!RegExp('[A-Z]').hasMatch(password)) return 'Ajoute une majuscule.';
     if (!RegExp('[a-z]').hasMatch(password)) return 'Ajoute une minuscule.';
     if (!RegExp('[0-9]').hasMatch(password)) return 'Ajoute un chiffre.';
+    if (!RegExp(r'[^A-Za-z0-9]').hasMatch(password)) {
+      return 'Ajoute un caractère spécial.';
+    }
     return null;
   }
 

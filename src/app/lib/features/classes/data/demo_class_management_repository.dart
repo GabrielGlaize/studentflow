@@ -218,4 +218,26 @@ class DemoClassManagementRepository implements ClassManagementRepository {
       accessCodeUpdatedAt: _defaultClass.accessCodeUpdatedAt,
     );
   }
+
+  @override
+  Future<AuthSession> leaveClass({String? accessToken}) async {
+    await Future<void>.delayed(const Duration(milliseconds: 180));
+    final now = DateTime.now().toUtc();
+    return AuthSession(
+      tokens: AuthTokenPair(
+        accessToken: DemoSessionState.noClassToken,
+        accessTokenExpiresAt: now.add(const Duration(minutes: 15)),
+        refreshToken: 'demo-refresh-token-no-class',
+        refreshTokenExpiresAt: now.add(const Duration(days: 30)),
+      ),
+      user: const UserSummary(
+        id: 'demo-user-left-class',
+        email: 'demo@studyflow.dev',
+        firstName: 'Futur',
+        lastName: 'Élève',
+        schoolClassId: null,
+        roles: [],
+      ),
+    );
+  }
 }

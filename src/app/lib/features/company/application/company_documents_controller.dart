@@ -12,6 +12,9 @@ class CompanyDocument {
     this.scope = 'company',
     this.link,
     this.note,
+    this.fileName,
+    this.filePath,
+    this.fileSizeBytes,
   });
 
   final String id;
@@ -20,6 +23,11 @@ class CompanyDocument {
   final String scope;
   final String? link;
   final String? note;
+  final String? fileName;
+  final String? filePath;
+  final int? fileSizeBytes;
+
+  bool get hasLocalFile => filePath != null && filePath!.trim().isNotEmpty;
 
   factory CompanyDocument.fromJson(Map<String, Object?> json) {
     return CompanyDocument(
@@ -29,6 +37,9 @@ class CompanyDocument {
       scope: json['scope'] as String? ?? 'company',
       link: json['link'] as String?,
       note: json['note'] as String?,
+      fileName: json['fileName'] as String?,
+      filePath: json['filePath'] as String?,
+      fileSizeBytes: json['fileSizeBytes'] as int?,
     );
   }
 
@@ -40,6 +51,9 @@ class CompanyDocument {
       'scope': scope,
       'link': link,
       'note': note,
+      'fileName': fileName,
+      'filePath': filePath,
+      'fileSizeBytes': fileSizeBytes,
     };
   }
 }
@@ -68,6 +82,9 @@ class CompanyDocumentsController extends ChangeNotifier {
     String scope = 'company',
     String? link,
     String? note,
+    String? fileName,
+    String? filePath,
+    int? fileSizeBytes,
   }) {
     if (_documents.length >= maxDocuments) {
       _documents.removeLast();
@@ -80,6 +97,9 @@ class CompanyDocumentsController extends ChangeNotifier {
       scope: scope.trim().isEmpty ? 'company' : scope.trim(),
       link: _cleanOptional(link),
       note: _cleanOptional(note),
+      fileName: _cleanOptional(fileName),
+      filePath: _cleanOptional(filePath),
+      fileSizeBytes: fileSizeBytes,
     );
 
     _documents.insert(0, document);

@@ -18,6 +18,7 @@ public sealed class PasswordResetService(
     UserManager<ApplicationUser> userManager,
     IWebHostEnvironment environment,
     IOptions<SecurityOptions> securityOptions,
+    IPasswordResetEmailSender emailSender,
     ILogger<PasswordResetService> logger) : IPasswordResetService
 {
     private const int TokenBytes = 32;
@@ -62,6 +63,12 @@ public sealed class PasswordResetService(
             "Password reset token generated for {Email}. In development, token={ResetToken}",
             user.Email,
             environment.IsDevelopment() ? rawToken : "[hidden]");
+
+        await emailSender.SendPasswordResetAsync(
+            user.Email ?? email.Trim(),
+            rawToken,
+            token.ExpiresAt,
+            cancellationToken);
 
         return new PasswordResetRequestResult(
             IsAccepted: true,

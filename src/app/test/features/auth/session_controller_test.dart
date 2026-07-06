@@ -178,6 +178,9 @@ class _FakeAuthRepository implements AuthRepository {
 
   @override
   Future<void> logout(AuthSession session) async {}
+
+  @override
+  Future<void> deleteAccount(AuthSession session) async {}
 }
 
 class _FailingLogoutAuthRepository implements AuthRepository {
@@ -234,6 +237,9 @@ class _FailingLogoutAuthRepository implements AuthRepository {
   Future<void> logout(AuthSession session) async {
     throw const AuthException('Serveur indisponible.');
   }
+
+  @override
+  Future<void> deleteAccount(AuthSession session) async {}
 }
 
 class _RefreshingAuthRepository implements AuthRepository {
@@ -293,6 +299,9 @@ class _RefreshingAuthRepository implements AuthRepository {
 
   @override
   Future<void> logout(AuthSession session) async {}
+
+  @override
+  Future<void> deleteAccount(AuthSession session) async {}
 }
 
 class _FailingRefreshAuthRepository implements AuthRepository {
@@ -347,4 +356,7 @@ class _FailingRefreshAuthRepository implements AuthRepository {
 
   @override
   Future<void> logout(AuthSession session) async {}
+
+  @override
+  Future<void> deleteAccount(AuthSession session) async {}
 }

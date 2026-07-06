@@ -32,6 +32,8 @@ abstract interface class AuthRepository {
   });
 
   Future<void> logout(AuthSession session);
+
+  Future<void> deleteAccount(AuthSession session);
 }
 
 class AuthException implements Exception {

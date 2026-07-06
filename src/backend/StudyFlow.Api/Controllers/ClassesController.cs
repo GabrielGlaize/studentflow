@@ -306,6 +306,72 @@ public sealed class SchoolClassesController(
         return NoContent();
     }
 
+    [HttpPost("current/leave")]
+    public async Task<ActionResult<AuthResponse>> LeaveClass(CancellationToken cancellationToken)
+    {
+        var currentUser = await CurrentUserAsync();
+        if (currentUser?.SchoolClassId is null) return Forbid();
+
+        var classId = currentUser.SchoolClassId.Value;
+        var membersCount = await dbContext.Users
+            .CountAsync(x => x.SchoolClassId == classId && x.IsActive, cancellationToken);
+
+        if (await userManager.IsInRoleAsync(currentUser, nameof(UserRole.Delegue)) && membersCount > 1)
+        {
+            var delegateRoleId = await dbContext.Roles
+                .Where(role => role.Name == nameof(UserRole.Delegue))
+                .Select(role => role.Id)
+                .SingleAsync(cancellationToken);
+
+            var otherDelegateExists = await dbContext.UserRoles
+                .Join(
+                    dbContext.Users,
+                    userRole => userRole.UserId,
+                    user => user.Id,
+                    (userRole, user) => new { userRole, user })
+                .AnyAsync(
+                    x => x.userRole.RoleId == delegateRoleId
+                        && x.user.SchoolClassId == classId
+                        && x.user.Id != currentUser.Id
+                        && x.user.IsActive,
+                    cancellationToken);
+
+            if (!otherDelegateExists)
+            {
+                return ConflictProblem("Nommez un autre delegue avant de quitter la classe.");
+            }
+        }
+
+        currentUser.SchoolClassId = null;
+        currentUser.UpdatedAt = DateTimeOffset.UtcNow;
+
+        if (await userManager.IsInRoleAsync(currentUser, nameof(UserRole.Delegue)))
+        {
+            var delegateResult = await userManager.RemoveFromRoleAsync(currentUser, nameof(UserRole.Delegue));
+            if (!delegateResult.Succeeded) return IdentityValidationProblem(delegateResult);
+        }
+
+        if (await userManager.IsInRoleAsync(currentUser, nameof(UserRole.Eleve)))
+        {
+            var studentResult = await userManager.RemoveFromRoleAsync(currentUser, nameof(UserRole.Eleve));
+            if (!studentResult.Succeeded) return IdentityValidationProblem(studentResult);
+        }
+
+        await userManager.UpdateAsync(currentUser);
+        await userManager.UpdateSecurityStampAsync(currentUser);
+
+        var roles = await userManager.GetRolesAsync(currentUser);
+        return Ok(new AuthResponse(
+            await tokenService.IssueAsync(currentUser.Id, cancellationToken),
+            new UserSummary(
+                currentUser.Id,
+                currentUser.Email ?? string.Empty,
+                currentUser.FirstName,
+                currentUser.LastName,
+                currentUser.SchoolClassId,
+                roles.ToArray())));
+    }
+
     [HttpGet("current-request")]
     public async Task<ActionResult<MembershipRequestResponse>> CurrentRequest(CancellationToken cancellationToken)
     {

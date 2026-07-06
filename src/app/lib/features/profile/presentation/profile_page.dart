@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:studyflow_app/core/app_scope.dart';
@@ -200,6 +201,16 @@ class ProfilePage extends StatelessWidget {
                 icon: const Icon(Icons.logout),
                 label: const Text('Se déconnecter'),
               ),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFFB35C68),
+                  minimumSize: const Size.fromHeight(42),
+                ),
+                onPressed: () => _confirmDeleteAccount(context),
+                icon: const Icon(Icons.delete_forever_outlined),
+                label: const Text('Supprimer mon compte'),
+              ),
               const SizedBox(height: 12),
               Text(
                 'StudyFlow Pro · version étudiante',
@@ -223,6 +234,45 @@ class ProfilePage extends StatelessWidget {
       ),
       builder: (context) => const _StudentCardImportSheet(),
     );
+  }
+
+  Future<void> _confirmDeleteAccount(BuildContext context) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Supprimer le compte ?'),
+        content: const Text(
+          'Ton compte sera désactivé et tu seras déconnecté. Cette action est réservée aux tests pour l’instant.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFB35C68),
+            ),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+    if (shouldDelete != true || !context.mounted) return;
+
+    try {
+      await AppScope.of(context).sessionController.deleteAccount();
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(const SnackBar(content: Text('Compte supprimé.')));
+    } on Exception catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(content: Text(error.toString())));
+    }
   }
 }
 
@@ -652,6 +702,7 @@ class _StudentCardSection extends StatelessWidget {
                   hasCard
                       ? [
                           document!.kind,
+                          if (document!.fileName != null) document!.fileName!,
                           if (document!.link != null) document!.link!,
                           if (document!.note != null) document!.note!,
                         ].join(' · ')
@@ -701,6 +752,7 @@ class _StudentCardImportSheetState extends State<_StudentCardImportSheet> {
   final _titleController = TextEditingController(text: 'Carte étudiante');
   final _linkController = TextEditingController();
   final _noteController = TextEditingController();
+  PlatformFile? _selectedFile;
 
   @override
   Widget build(BuildContext context) {
@@ -738,6 +790,17 @@ class _StudentCardImportSheetState extends State<_StudentCardImportSheet> {
                 prefixIcon: Icon(Icons.link_outlined),
               ),
               keyboardType: TextInputType.url,
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: _pickStudentCard,
+              icon: const Icon(Icons.add_photo_alternate_outlined),
+              label: Text(
+                _selectedFile == null
+                    ? 'Importer photo ou fichier'
+                    : 'Fichier : ${_selectedFile!.name}',
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
             const SizedBox(height: 12),
             TextFormField(
@@ -792,9 +855,30 @@ class _StudentCardImportSheetState extends State<_StudentCardImportSheet> {
       scope: 'student-card',
       link: _linkController.text,
       note: _noteController.text,
+      fileName: _selectedFile?.name,
+      filePath: _selectedFile?.path,
+      fileSizeBytes: _selectedFile?.size,
     );
 
     Navigator.pop(context);
+  }
+
+  Future<void> _pickStudentCard() async {
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: false,
+      withData: false,
+      type: FileType.image,
+    );
+    final files = result?.files;
+    final file = files == null || files.isEmpty ? null : files.first;
+    if (file == null || !mounted) return;
+    setState(() {
+      _selectedFile = file;
+      if (_titleController.text.trim().isEmpty ||
+          _titleController.text == 'Carte étudiante') {
+        _titleController.text = 'Carte étudiante · ${file.name}';
+      }
+    });
   }
 
   @override
@@ -978,6 +1062,14 @@ class _ClassManagementSectionState extends State<_ClassManagementSection> {
                   compact: true,
                 ),
               ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: _leaveClass,
+                icon: const Icon(Icons.exit_to_app_outlined, size: 17),
+                label: const Text('Quitter la classe'),
+              ),
+            ),
             if (isDelegate)
               ProtoCard(
                 child: Column(
@@ -1196,6 +1288,45 @@ class _ClassManagementSectionState extends State<_ClassManagementSection> {
     if (!mounted) return;
     _showSnack('Rôle délégué retiré.');
     setState(() => _future = _load());
+  }
+
+  Future<void> _leaveClass() async {
+    final shouldConfirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Quitter la classe ?'),
+        content: const Text(
+          'Tu ne verras plus les cours, devoirs, membres et messages de cette classe. Tu pourras rejoindre une autre classe ensuite.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Quitter'),
+          ),
+        ],
+      ),
+    );
+    if (shouldConfirm != true || !mounted) return;
+
+    try {
+      final appScope = AppScope.of(context);
+      final accessToken = await appScope.sessionController.accessTokenForApi();
+      final session = await appScope.classManagementRepository.leaveClass(
+        accessToken: accessToken,
+      );
+      await appScope.sessionController.replaceSession(session);
+
+      if (!mounted) return;
+      _showSnack('Tu as quitté la classe.');
+      setState(() => _future = _load());
+    } on Exception catch (error) {
+      if (!mounted) return;
+      _showSnack(error.toString());
+    }
   }
 
   void _showSnack(String message) {
@@ -2627,8 +2758,19 @@ class _SwitchSettingLine extends StatelessWidget {
                 key: switchKey,
                 value: value,
                 onChanged: onChanged,
-                activeThumbColor: Colors.white,
-                activeTrackColor: AppColors.petrol,
+                activeThumbColor: isDark ? AppColors.petrolDark : Colors.white,
+                activeTrackColor: isDark ? AppColors.mint : AppColors.petrol,
+                inactiveThumbColor: isDark
+                    ? Colors.white.withValues(alpha: 0.70)
+                    : Colors.white,
+                inactiveTrackColor: isDark
+                    ? Colors.white.withValues(alpha: 0.18)
+                    : AppColors.line,
+                trackOutlineColor: WidgetStateProperty.resolveWith(
+                  (states) => isDark
+                      ? Colors.white.withValues(alpha: 0.18)
+                      : AppColors.line,
+                ),
               ),
             ],
           ),

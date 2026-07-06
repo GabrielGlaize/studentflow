@@ -66,6 +66,7 @@ public static class DependencyInjection
         services.Configure<LaBonneAlternanceOptions>(configuration.GetSection(LaBonneAlternanceOptions.SectionName));
         services.Configure<FranceTravailOptions>(configuration.GetSection(FranceTravailOptions.SectionName));
         services.Configure<NotificationWorkerOptions>(configuration.GetSection(NotificationWorkerOptions.SectionName));
+        services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
 
         var dataProtection = services.AddDataProtection().SetApplicationName("StudyFlow");
         if (!string.IsNullOrWhiteSpace(securityOptions.DataProtectionKeysPath))
@@ -129,6 +130,7 @@ public static class DependencyInjection
         services.AddScoped<IClassCodeService, ClassCodeService>();
         services.AddScoped<IAuthTokenService, AuthTokenService>();
         services.AddScoped<IPasswordResetService, PasswordResetService>();
+        services.AddScoped<IPasswordResetEmailSender, PasswordResetEmailSender>();
         services.AddScoped<INotificationReminderPlanner, NotificationReminderPlanner>();
         services.AddScoped<INotificationSender, LoggingNotificationSender>();
         services.AddHostedService<NotificationDispatchWorker>();

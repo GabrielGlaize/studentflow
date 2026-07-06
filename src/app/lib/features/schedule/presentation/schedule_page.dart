@@ -607,7 +607,21 @@ class _TimelineCourseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = course.isCancelled ? AppColors.rose : _accentColor;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = course.isCancelled
+        ? AppColors.rose
+        : isDark
+        ? _darkAccentColor
+        : _accentColor;
+    final cardBackground = course.isCancelled
+        ? isDark
+              ? const Color(0xFF4B3340)
+              : AppColors.roseSoft
+        : isDark
+        ? const Color(0xFF0F5365)
+        : paletteIndex == 0
+        ? const Color(0xFFF8FCFE)
+        : Colors.white;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -643,14 +657,12 @@ class _TimelineCourseCard extends StatelessWidget {
             child: ProtoCard(
               onTap: onEdit,
               padding: const EdgeInsets.fromLTRB(13, 13, 8, 13),
-              borderColor: course.isCancelled
+              borderColor: isDark
+                  ? Colors.white.withValues(alpha: 0.16)
+                  : course.isCancelled
                   ? const Color(0xFFD9BDC3)
                   : AppColors.line,
-              backgroundColor: course.isCancelled
-                  ? AppColors.roseSoft
-                  : paletteIndex == 0
-                  ? const Color(0xFFF8FCFE)
-                  : Colors.white,
+              backgroundColor: cardBackground,
               child: IntrinsicHeight(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -766,6 +778,11 @@ class _TimelineCourseCard extends StatelessWidget {
 
   Color get _accentColor {
     final colors = [AppColors.petrol, AppColors.green, const Color(0xFF4F7891)];
+    return colors[paletteIndex % colors.length];
+  }
+
+  Color get _darkAccentColor {
+    final colors = [AppColors.sky, AppColors.mint, const Color(0xFF9ED7E9)];
     return colors[paletteIndex % colors.length];
   }
 }

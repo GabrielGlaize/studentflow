@@ -140,4 +140,14 @@ class HttpClassManagementRepository implements ClassManagementRepository {
       accessToken: accessToken,
     );
   }
+
+  @override
+  Future<AuthSession> leaveClass({String? accessToken}) async {
+    final json = await _apiClient.postJson(
+      '/api/v1/classes/current/leave',
+      body: const {},
+      accessToken: accessToken,
+    );
+    return AuthSession.fromJson(json);
+  }
 }
