@@ -295,7 +295,7 @@ class _RegisterWithoutClassPageState extends State<RegisterWithoutClassPage> {
       );
 
     if (classCode.isEmpty) {
-      _closeOnboarding();
+      _closeOnboardingFlow();
       return;
     }
 
@@ -316,7 +316,7 @@ class _RegisterWithoutClassPageState extends State<RegisterWithoutClassPage> {
             ),
           ),
         );
-      _closeOnboarding();
+      _closeOnboardingFlow();
       return;
     }
 
@@ -328,15 +328,12 @@ class _RegisterWithoutClassPageState extends State<RegisterWithoutClassPage> {
           content: Text('Demande envoyée. Un délégué doit maintenant valider.'),
         ),
       );
-    _closeOnboarding();
+    _closeOnboardingFlow();
   }
 
-  void _closeOnboarding() {
+  void _closeOnboardingFlow() {
     if (!mounted) return;
-    final navigator = Navigator.of(context);
-    if (navigator.canPop()) {
-      navigator.pop();
-    }
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   @override
@@ -473,10 +470,7 @@ class _CreateClassPageState extends State<CreateClassPage> {
           content: Text('Compte créé. Ta classe est prête à partager.'),
         ),
       );
-    final navigator = Navigator.of(context);
-    if (navigator.canPop()) {
-      navigator.pop();
-    }
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   String? _required(String? value) {
