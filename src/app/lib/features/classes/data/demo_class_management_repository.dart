@@ -1,6 +1,7 @@
 import 'package:studyflow_app/core/demo/demo_session_state.dart';
 import 'package:studyflow_app/features/classes/data/class_management_repository.dart';
 import 'package:studyflow_app/features/classes/domain/class_models.dart';
+import 'package:studyflow_app/features/auth/domain/auth_models.dart';
 
 class DemoClassManagementRepository implements ClassManagementRepository {
   const DemoClassManagementRepository();
@@ -61,6 +62,32 @@ class DemoClassManagementRepository implements ClassManagementRepository {
     }
 
     return _defaultClass;
+  }
+
+  @override
+  Future<AuthSession> createClass({
+    required String schoolClassName,
+    required String schoolYear,
+    String? accessToken,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 260));
+    final now = DateTime.now().toUtc();
+    return AuthSession(
+      tokens: AuthTokenPair(
+        accessToken: DemoSessionState.createdClassToken,
+        accessTokenExpiresAt: now.add(const Duration(minutes: 15)),
+        refreshToken: 'demo-refresh-token-created-class',
+        refreshTokenExpiresAt: now.add(const Duration(days: 30)),
+      ),
+      user: const UserSummary(
+        id: 'demo-user-created-class',
+        email: 'demo@studyflow.dev',
+        firstName: 'Futur',
+        lastName: 'Délégué',
+        schoolClassId: 'demo-class-created',
+        roles: ['Eleve', 'Delegue'],
+      ),
+    );
   }
 
   @override

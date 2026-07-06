@@ -1,7 +1,14 @@
 import 'package:studyflow_app/features/classes/domain/class_models.dart';
+import 'package:studyflow_app/features/auth/domain/auth_models.dart';
 
 abstract interface class ClassManagementRepository {
   Future<CurrentClassInfo?> getCurrentClass({String? accessToken});
+
+  Future<AuthSession> createClass({
+    required String schoolClassName,
+    required String schoolYear,
+    String? accessToken,
+  });
 
   Future<void> requestToJoinClass({required String code, String? accessToken});
 

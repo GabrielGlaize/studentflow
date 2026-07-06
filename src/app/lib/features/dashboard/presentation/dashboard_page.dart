@@ -81,6 +81,12 @@ class _DashboardContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final user = AppScope.of(context).sessionController.session?.user;
+    final firstName = (user?.firstName.trim().isNotEmpty ?? false)
+        ? user!.firstName.trim()
+        : 'toi';
+    final initials = _initials(user?.firstName, user?.lastName);
+
     return SafeArea(
       child: RefreshIndicator(
         onRefresh: onRefresh,
@@ -97,7 +103,7 @@ class _DashboardContent extends StatelessWidget {
                       const _ClassPill(text: 'L2 DEV · 2026–2027'),
                       const SizedBox(height: 12),
                       Text(
-                        'Bonjour Gabriel',
+                        'Bonjour $firstName',
                         style: Theme.of(context).textTheme.headlineMedium
                             ?.copyWith(
                               fontWeight: FontWeight.w900,
@@ -113,7 +119,7 @@ class _DashboardContent extends StatelessWidget {
                     ],
                   ),
                 ),
-                const _AvatarBadge(initials: 'GD'),
+                _AvatarBadge(initials: initials),
               ],
             ),
             const SizedBox(height: 24),
@@ -179,6 +185,17 @@ class _DashboardContent extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _initials(String? firstName, String? lastName) {
+    final first = (firstName ?? '').trim();
+    final last = (lastName ?? '').trim();
+    final letters = [
+      if (first.isNotEmpty) first.characters.first,
+      if (last.isNotEmpty) last.characters.first,
+    ].join().toUpperCase();
+
+    return letters.isEmpty ? 'SF' : letters;
   }
 
   Future<void> _openAnnouncementFeed(BuildContext context) {

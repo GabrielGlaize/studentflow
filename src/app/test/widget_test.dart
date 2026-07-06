@@ -75,7 +75,7 @@ void main() {
 
     await tester.tap(find.text('Ajouter'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Tâche personnelle'));
+    await tester.tap(find.text('Tâche école'));
     await tester.pumpAndSettle();
 
     await tester.enterText(

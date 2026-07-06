@@ -119,20 +119,20 @@ class ProfilePage extends StatelessWidget {
                       _syncNotificationPreferences(context);
                     },
                   ),
-                  _SwitchSettingLine(
-                    icon: Icons.business_center_outlined,
-                    iconColor: AppColors.greenSoft,
-                    title: 'Notifications alternance',
-                    subtitle: 'Recevoir les rappels liés à ta recherche.',
-                    value:
-                        settingsController.apprenticeshipNotificationsEnabled,
-                    onChanged: (value) {
-                      settingsController.setApprenticeshipNotificationsEnabled(
-                        value,
-                      );
-                      _syncNotificationPreferences(context);
-                    },
-                  ),
+                  if (!settingsController.hasCompany)
+                    _SwitchSettingLine(
+                      icon: Icons.business_center_outlined,
+                      iconColor: AppColors.greenSoft,
+                      title: 'Notifications alternance',
+                      subtitle: 'Recevoir les rappels liés à ta recherche.',
+                      value:
+                          settingsController.apprenticeshipNotificationsEnabled,
+                      onChanged: (value) {
+                        settingsController
+                            .setApprenticeshipNotificationsEnabled(value);
+                        _syncNotificationPreferences(context);
+                      },
+                    ),
                   _SwitchSettingLine(
                     key: const ValueKey('has-company-switch-line'),
                     switchKey: const ValueKey('has-company-switch'),
@@ -860,103 +860,125 @@ class _ClassManagementSectionState extends State<_ClassManagementSection> {
                   icon: const Icon(Icons.key_outlined),
                   label: const Text('Rejoindre une classe'),
                 ),
+                const SizedBox(height: 8),
+                FilledButton.icon(
+                  onPressed: _openCreateClassSheet,
+                  icon: const Icon(Icons.add_home_work_outlined),
+                  label: const Text('Créer ma classe'),
+                ),
               ],
             ),
           );
         }
 
         final currentClass = state!.currentClass!;
-        if (!widget.isDelegate) return const SizedBox.shrink();
+        final isDelegate = widget.isDelegate || currentClass.isDelegate;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const _SettingsGroupTitle(title: 'Gestion de classe'),
-            ProtoGradientCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: ProtoOverline(
-                          'Code classe',
-                          color: Colors.white70,
-                        ),
-                      ),
-                      ProtoChip(
-                        label: 'DÉLÉGUÉ',
-                        backgroundColor: AppColors.mint,
-                        foregroundColor: AppColors.petrol,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  SelectableText(
-                    'Code classe : ${currentClass.accessCode ?? 'AUCUN'}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.7,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${currentClass.name} · ${currentClass.schoolYear}',
-                    style: const TextStyle(color: Colors.white70, fontSize: 10),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'À partager seulement aux élèves de la classe. Le délégué approuve ensuite les demandes.',
-                    style: TextStyle(
-                      color: Color(0xDFFFFFFF),
-                      fontSize: 11,
-                      height: 1.45,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          side: const BorderSide(color: Colors.white54),
-                        ),
-                        onPressed: currentClass.accessCode == null
-                            ? null
-                            : () => _copyAccessCode(currentClass.accessCode!),
-                        icon: const Icon(Icons.copy_outlined, size: 16),
-                        label: const Text('Copier'),
-                      ),
-                      OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          side: const BorderSide(color: Colors.white54),
-                        ),
-                        onPressed: () => _openClassEditSheet(currentClass),
-                        icon: const Icon(Icons.edit_outlined, size: 16),
-                        label: const Text('Modifier'),
-                      ),
-                      OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          side: const BorderSide(color: Colors.white54),
-                        ),
-                        onPressed: _regenerateAccessCode,
-                        icon: const Icon(Icons.refresh_outlined, size: 16),
-                        label: const Text('Nouveau code'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+            _SettingsGroupTitle(
+              title: isDelegate ? 'Gestion de classe' : 'Ma classe',
             ),
-            if (widget.isDelegate)
+            if (isDelegate)
+              ProtoGradientCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: ProtoOverline(
+                            'Code classe',
+                            color: Colors.white70,
+                          ),
+                        ),
+                        ProtoChip(
+                          label: 'DÉLÉGUÉ',
+                          backgroundColor: AppColors.mint,
+                          foregroundColor: AppColors.petrol,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SelectableText(
+                      'Code classe : ${currentClass.accessCode ?? 'AUCUN'}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.7,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${currentClass.name} · ${currentClass.schoolYear}',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 10,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'À partager seulement aux élèves de la classe. Le délégué approuve ensuite les demandes.',
+                      style: TextStyle(
+                        color: Color(0xDFFFFFFF),
+                        fontSize: 11,
+                        height: 1.45,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: const BorderSide(color: Colors.white54),
+                          ),
+                          onPressed: currentClass.accessCode == null
+                              ? null
+                              : () => _copyAccessCode(currentClass.accessCode!),
+                          icon: const Icon(Icons.copy_outlined, size: 16),
+                          label: const Text('Copier'),
+                        ),
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: const BorderSide(color: Colors.white54),
+                          ),
+                          onPressed: () => _openClassEditSheet(currentClass),
+                          icon: const Icon(Icons.edit_outlined, size: 16),
+                          label: const Text('Modifier'),
+                        ),
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: const BorderSide(color: Colors.white54),
+                          ),
+                          onPressed: _regenerateAccessCode,
+                          icon: const Icon(Icons.refresh_outlined, size: 16),
+                          label: const Text('Nouveau code'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              )
+            else
+              ProtoCard(
+                child: ProtoStateCard(
+                  icon: Icons.groups_outlined,
+                  title: currentClass.name,
+                  message:
+                      '${currentClass.schoolYear} · Tu peux consulter les membres de ta classe.',
+                  compact: true,
+                ),
+              ),
+            if (isDelegate)
               ProtoCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -979,17 +1001,17 @@ class _ClassManagementSectionState extends State<_ClassManagementSection> {
                   ],
                 ),
               ),
-            if (widget.isDelegate)
-              _ClassMembersCard(
-                members: state.members,
-                onMakeDelegate: _makeDelegate,
-                onRemoveMember: _removeMember,
-                onLeaveDelegateRole: _leaveDelegateRole,
-              ),
+            _ClassMembersCard(
+              members: state.members,
+              isDelegate: isDelegate,
+              onMakeDelegate: _makeDelegate,
+              onRemoveMember: _removeMember,
+              onLeaveDelegateRole: _leaveDelegateRole,
+            ),
             _ClassResourcesCard(
               subjects: state.subjects,
               teachers: state.teachers,
-              isDelegate: widget.isDelegate,
+              isDelegate: isDelegate,
               onAddSubject: _openSubjectSheet,
               onAddTeacher: _openTeacherSheet,
               onDeleteSubject: _deleteSubject,
@@ -1006,12 +1028,13 @@ class _ClassManagementSectionState extends State<_ClassManagementSection> {
     final accessToken = await appScope.sessionController.accessTokenForApi();
     final currentClass = await appScope.classManagementRepository
         .getCurrentClass(accessToken: accessToken);
-    final pendingRequestsFuture = widget.isDelegate
+    final isDelegate = widget.isDelegate || currentClass?.isDelegate == true;
+    final pendingRequestsFuture = isDelegate
         ? appScope.classManagementRepository.listPendingRequests(
             accessToken: accessToken,
           )
         : Future.value(<PendingMembershipRequest>[]);
-    final membersFuture = widget.isDelegate
+    final membersFuture = currentClass != null
         ? appScope.classManagementRepository.listMembers(
             accessToken: accessToken,
           )
@@ -1043,6 +1066,23 @@ class _ClassManagementSectionState extends State<_ClassManagementSection> {
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
       ..showSnackBar(const SnackBar(content: Text('Code classe copié.')));
+  }
+
+  Future<void> _openCreateClassSheet() async {
+    final created = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (context) => const _CreateClassForCurrentUserSheet(),
+    );
+
+    if (created == true && mounted) {
+      _showSnack('Classe créée. Tu es maintenant délégué.');
+      setState(() => _future = _load());
+    }
   }
 
   Future<void> _approve(PendingMembershipRequest request) async {
@@ -1353,6 +1393,144 @@ class _ClassManagementSectionState extends State<_ClassManagementSection> {
         ],
       ),
     );
+  }
+}
+
+class _CreateClassForCurrentUserSheet extends StatefulWidget {
+  const _CreateClassForCurrentUserSheet();
+
+  @override
+  State<_CreateClassForCurrentUserSheet> createState() =>
+      _CreateClassForCurrentUserSheetState();
+}
+
+class _CreateClassForCurrentUserSheetState
+    extends State<_CreateClassForCurrentUserSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _classNameController = TextEditingController(text: 'BTS SIO 1');
+  final _schoolYearController = TextEditingController(text: '2026-2027');
+  bool _isSaving = false;
+  String? _errorMessage;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 18,
+        right: 18,
+        top: 18,
+        bottom: MediaQuery.viewInsetsOf(context).bottom + 18,
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                ProtoIconBox(icon: Icons.add_home_work_outlined),
+                SizedBox(width: 12),
+                Expanded(
+                  child: ProtoSectionHeading(
+                    overline: 'Classe',
+                    title: 'Créer ma classe',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            const ProtoMutedText(
+              'À utiliser si tu as créé ton compte sans classe. Tu deviendras automatiquement délégué et un code sera généré.',
+            ),
+            const SizedBox(height: 14),
+            TextFormField(
+              controller: _classNameController,
+              decoration: const InputDecoration(
+                labelText: 'Nom de la classe',
+                prefixIcon: Icon(Icons.groups_outlined),
+              ),
+              validator: _required,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _schoolYearController,
+              decoration: const InputDecoration(
+                labelText: 'Année scolaire',
+                prefixIcon: Icon(Icons.calendar_today_outlined),
+              ),
+              validator: _required,
+            ),
+            if (_errorMessage != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                _errorMessage!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ],
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _isSaving ? null : () => Navigator.pop(context),
+                    child: const Text('Annuler'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: _isSaving ? null : _submit,
+                    child: Text(_isSaving ? 'Création...' : 'Créer'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String? _required(String? value) {
+    return (value ?? '').trim().isEmpty ? 'Champ obligatoire.' : null;
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isSaving = true;
+      _errorMessage = null;
+    });
+
+    final appScope = AppScope.of(context);
+    try {
+      final accessToken = await appScope.sessionController.accessTokenForApi();
+      final session = await appScope.classManagementRepository.createClass(
+        schoolClassName: _classNameController.text,
+        schoolYear: _schoolYearController.text,
+        accessToken: accessToken,
+      );
+      await appScope.sessionController.replaceSession(session);
+      if (mounted) Navigator.pop(context, true);
+    } on Exception catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = error.toString();
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _classNameController.dispose();
+    _schoolYearController.dispose();
+    super.dispose();
   }
 }
 
@@ -1713,12 +1891,14 @@ class _ClassResourcesCard extends StatelessWidget {
 class _ClassMembersCard extends StatelessWidget {
   const _ClassMembersCard({
     required this.members,
+    required this.isDelegate,
     required this.onMakeDelegate,
     required this.onRemoveMember,
     required this.onLeaveDelegateRole,
   });
 
   final List<ClassMember> members;
+  final bool isDelegate;
   final ValueChanged<ClassMember> onMakeDelegate;
   final ValueChanged<ClassMember> onRemoveMember;
   final VoidCallback onLeaveDelegateRole;
@@ -1730,17 +1910,21 @@ class _ClassMembersCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ProtoSectionHeading(
-            overline: 'Délégué',
+            overline: isDelegate ? 'Délégué' : 'Classe',
             title: 'Membres de la classe',
-            trailing: TextButton.icon(
-              onPressed: onLeaveDelegateRole,
-              icon: const Icon(Icons.remove_moderator_outlined, size: 16),
-              label: const Text('Quitter'),
-            ),
+            trailing: isDelegate
+                ? TextButton.icon(
+                    onPressed: onLeaveDelegateRole,
+                    icon: const Icon(Icons.remove_moderator_outlined, size: 16),
+                    label: const Text('Quitter'),
+                  )
+                : null,
           ),
           const SizedBox(height: 8),
-          const ProtoMutedText(
-            'Tu peux retirer un élève ou nommer un autre délégué. Tu ne retires jamais le rôle délégué d’un autre élève.',
+          ProtoMutedText(
+            isDelegate
+                ? 'Tu peux retirer un élève ou nommer un autre délégué. Tu ne retires jamais le rôle délégué d’un autre élève.'
+                : 'Liste des élèves approuvés dans ta classe.',
           ),
           const SizedBox(height: 10),
           if (members.isEmpty)
@@ -1754,6 +1938,7 @@ class _ClassMembersCard extends StatelessWidget {
             ...members.map(
               (member) => _ClassMemberRow(
                 member: member,
+                isDelegateMode: isDelegate,
                 onMakeDelegate: () => onMakeDelegate(member),
                 onRemoveMember: () => onRemoveMember(member),
               ),
@@ -1767,11 +1952,13 @@ class _ClassMembersCard extends StatelessWidget {
 class _ClassMemberRow extends StatelessWidget {
   const _ClassMemberRow({
     required this.member,
+    required this.isDelegateMode,
     required this.onMakeDelegate,
     required this.onRemoveMember,
   });
 
   final ClassMember member;
+  final bool isDelegateMode;
   final VoidCallback onMakeDelegate;
   final VoidCallback onRemoveMember;
 
@@ -1820,31 +2007,36 @@ class _ClassMemberRow extends StatelessWidget {
                   member.email,
                   style: TextStyle(color: context.sfMuted, fontSize: 8),
                 ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    if (!member.isDelegate)
+                if (isDelegateMode) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      if (!member.isDelegate)
+                        OutlinedButton.icon(
+                          onPressed: onMakeDelegate,
+                          icon: const Icon(
+                            Icons.add_moderator_outlined,
+                            size: 16,
+                          ),
+                          label: const Text('Nommer délégué'),
+                        ),
                       OutlinedButton.icon(
-                        onPressed: onMakeDelegate,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF8D5C66),
+                          side: const BorderSide(color: Color(0xFFD9BDC3)),
+                        ),
+                        onPressed: onRemoveMember,
                         icon: const Icon(
-                          Icons.add_moderator_outlined,
+                          Icons.person_remove_outlined,
                           size: 16,
                         ),
-                        label: const Text('Nommer délégué'),
+                        label: const Text('Retirer'),
                       ),
-                    OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF8D5C66),
-                        side: const BorderSide(color: Color(0xFFD9BDC3)),
-                      ),
-                      onPressed: onRemoveMember,
-                      icon: const Icon(Icons.person_remove_outlined, size: 16),
-                      label: const Text('Retirer'),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),

@@ -60,8 +60,8 @@ class _AgendaPageState extends State<AgendaPage> {
                 : 'Sépare le scolaire et ta recherche d’alternance.',
             trailing: ProtoActionButton(
               icon: Icons.add,
-              tooltip: 'Nouvelle tâche',
-              onPressed: _openCreateTaskSheet,
+              tooltip: 'Ajouter',
+              onPressed: _openCreateMenu,
             ),
           ),
           Padding(
@@ -267,7 +267,10 @@ class _AgendaPageState extends State<AgendaPage> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      builder: (context) => const _CreateAgendaMenu(),
+      builder: (context) => _CreateAgendaMenu(
+        category: _category,
+        hasCompany: AppScope.of(context).settingsController.hasCompany,
+      ),
     );
 
     if (!mounted || action == null) return;
@@ -460,10 +463,20 @@ class _AgendaPageState extends State<AgendaPage> {
 enum _AgendaCreateAction { homework, task, event }
 
 class _CreateAgendaMenu extends StatelessWidget {
-  const _CreateAgendaMenu();
+  const _CreateAgendaMenu({required this.category, required this.hasCompany});
+
+  final String category;
+  final bool hasCompany;
 
   @override
   Widget build(BuildContext context) {
+    final isSchool = category == 'school';
+    final workspaceName = switch (category) {
+      'company' => 'entreprise',
+      'apprenticeship' => 'alternance',
+      _ => 'école',
+    };
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
       child: SingleChildScrollView(
@@ -476,24 +489,35 @@ class _CreateAgendaMenu extends StatelessWidget {
               title: 'Que veux-tu ajouter ?',
             ),
             const SizedBox(height: 14),
-            _CreateMenuTile(
-              icon: Icons.checklist_outlined,
-              title: 'Tâche personnelle',
-              subtitle: 'Visible uniquement dans ton agenda courant.',
-              onTap: () => Navigator.pop(context, _AgendaCreateAction.task),
-            ),
+            if (isSchool)
+              _CreateMenuTile(
+                icon: Icons.assignment_outlined,
+                title: 'Devoir de classe',
+                subtitle: 'Visible par tous les élèves approuvés.',
+                onTap: () =>
+                    Navigator.pop(context, _AgendaCreateAction.homework),
+              ),
             _CreateMenuTile(
               icon: Icons.event_available_outlined,
-              title: 'Événement personnel',
+              title: 'Événement $workspaceName',
               subtitle: 'Entretien, relance, rendez-vous ou moment important.',
               onTap: () => Navigator.pop(context, _AgendaCreateAction.event),
             ),
             _CreateMenuTile(
-              icon: Icons.assignment_outlined,
-              title: 'Devoir de classe',
-              subtitle: 'Visible par tous les élèves approuvés.',
-              onTap: () => Navigator.pop(context, _AgendaCreateAction.homework),
+              icon: Icons.checklist_outlined,
+              title: 'Tâche $workspaceName',
+              subtitle: 'Visible uniquement dans cet espace.',
+              onTap: () => Navigator.pop(context, _AgendaCreateAction.task),
             ),
+            if (!isSchool)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: ProtoMutedText(
+                  hasCompany
+                      ? 'Les devoirs de classe restent dans l’espace École.'
+                      : 'Les devoirs de classe restent dans l’espace École.',
+                ),
+              ),
           ],
         ),
       ),

@@ -294,7 +294,10 @@ class _RegisterWithoutClassPageState extends State<RegisterWithoutClassPage> {
         ),
       );
 
-    if (classCode.isEmpty) return;
+    if (classCode.isEmpty) {
+      _closeOnboarding();
+      return;
+    }
 
     try {
       final accessToken = await appScope.sessionController.accessTokenForApi();
@@ -313,6 +316,7 @@ class _RegisterWithoutClassPageState extends State<RegisterWithoutClassPage> {
             ),
           ),
         );
+      _closeOnboarding();
       return;
     }
 
@@ -324,6 +328,15 @@ class _RegisterWithoutClassPageState extends State<RegisterWithoutClassPage> {
           content: Text('Demande envoyée. Un délégué doit maintenant valider.'),
         ),
       );
+    _closeOnboarding();
+  }
+
+  void _closeOnboarding() {
+    if (!mounted) return;
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+    }
   }
 
   @override
@@ -460,6 +473,10 @@ class _CreateClassPageState extends State<CreateClassPage> {
           content: Text('Compte créé. Ta classe est prête à partager.'),
         ),
       );
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+    }
   }
 
   String? _required(String? value) {

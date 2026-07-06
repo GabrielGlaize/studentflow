@@ -182,6 +182,14 @@ class SessionController extends ChangeNotifier {
     );
   }
 
+  Future<void> replaceSession(AuthSession session) async {
+    _session = session;
+    await _sessionStorage.save(session);
+    _status = SessionStatus.signedIn;
+    _errorMessage = null;
+    notifyListeners();
+  }
+
   Future<void> logout() async {
     final sessionToRevoke = _session;
     try {

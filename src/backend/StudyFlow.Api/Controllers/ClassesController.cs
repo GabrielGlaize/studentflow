@@ -18,7 +18,8 @@ namespace StudyFlow.Api.Controllers;
 public sealed class SchoolClassesController(
     UserManager<ApplicationUser> userManager,
     StudyFlowDbContext dbContext,
-    IClassCodeService classCodeService) : ControllerBase
+    IClassCodeService classCodeService,
+    IAuthTokenService tokenService) : ControllerBase
 {
     [HttpGet("current")]
     public async Task<ActionResult<CurrentClassResponse>> Current(CancellationToken cancellationToken)
@@ -60,6 +61,73 @@ public sealed class SchoolClassesController(
 
         return CreatedAtAction(nameof(CurrentRequest), new MembershipRequestResponse(
             membership.Id, membership.Status.ToString(), membership.RequestedAt));
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<AuthResponse>> Create(
+        CreateClassRequest request,
+        CancellationToken cancellationToken)
+    {
+        var user = await CurrentUserAsync();
+        if (user is null) return Unauthorized();
+        if (user.SchoolClassId is not null) return ConflictProblem("Vous appartenez deja a une classe.");
+
+        var name = request.SchoolClassName.Trim();
+        var schoolYear = request.SchoolYear.Trim();
+        if (string.IsNullOrWhiteSpace(name)) return BadRequestProblem("Le nom de la classe est obligatoire.");
+        if (string.IsNullOrWhiteSpace(schoolYear)) return BadRequestProblem("L'annee scolaire est obligatoire.");
+
+        var nameAlreadyUsed = await dbContext.SchoolClasses.AnyAsync(
+            x => x.Name == name,
+            cancellationToken);
+        if (nameAlreadyUsed) return ConflictProblem("Ce nom de classe est deja utilise.");
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        var code = classCodeService.Generate();
+        var schoolClass = new SchoolClass
+        {
+            Name = name,
+            SchoolYear = schoolYear,
+            AccessCodeHash = code.Hash,
+            EncryptedAccessCode = code.Ciphertext,
+            AccessCodeUpdatedAt = DateTimeOffset.UtcNow,
+            CreatedById = user.Id
+        };
+
+        dbContext.SchoolClasses.Add(schoolClass);
+        user.SchoolClassId = schoolClass.Id;
+        user.UpdatedAt = DateTimeOffset.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        if (!await userManager.IsInRoleAsync(user, nameof(UserRole.Eleve)))
+        {
+            var studentRoleResult = await userManager.AddToRoleAsync(user, nameof(UserRole.Eleve));
+            if (!studentRoleResult.Succeeded) return IdentityValidationProblem(studentRoleResult);
+        }
+
+        if (!await userManager.IsInRoleAsync(user, nameof(UserRole.Delegue)))
+        {
+            var delegateRoleResult = await userManager.AddToRoleAsync(user, nameof(UserRole.Delegue));
+            if (!delegateRoleResult.Succeeded) return IdentityValidationProblem(delegateRoleResult);
+        }
+
+        await userManager.UpdateSecurityStampAsync(user);
+
+        await transaction.CommitAsync(cancellationToken);
+
+        var roles = await userManager.GetRolesAsync(user);
+        var response = new AuthResponse(
+            await tokenService.IssueAsync(user.Id, cancellationToken),
+            new UserSummary(
+                user.Id,
+                user.Email ?? string.Empty,
+                user.FirstName,
+                user.LastName,
+                user.SchoolClassId,
+                roles.ToArray()),
+            code.Plaintext);
+
+        return Ok(response);
     }
 
     [Authorize(Roles = nameof(UserRole.Delegue))]
@@ -123,7 +191,6 @@ public sealed class SchoolClassesController(
         return Ok(new ClassAccessCodeResponse(code.Plaintext, schoolClass.AccessCodeUpdatedAt));
     }
 
-    [Authorize(Roles = nameof(UserRole.Delegue))]
     [HttpGet("current/members")]
     public async Task<ActionResult<IReadOnlyCollection<ClassMemberResponse>>> Members(CancellationToken cancellationToken)
     {

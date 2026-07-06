@@ -1,6 +1,7 @@
 import 'package:studyflow_app/core/network/api_client.dart';
 import 'package:studyflow_app/features/classes/data/class_management_repository.dart';
 import 'package:studyflow_app/features/classes/domain/class_models.dart';
+import 'package:studyflow_app/features/auth/domain/auth_models.dart';
 
 class HttpClassManagementRepository implements ClassManagementRepository {
   const HttpClassManagementRepository({required ApiClient apiClient})
@@ -20,6 +21,24 @@ class HttpClassManagementRepository implements ClassManagementRepository {
       if (error.statusCode == 404) return null;
       rethrow;
     }
+  }
+
+  @override
+  Future<AuthSession> createClass({
+    required String schoolClassName,
+    required String schoolYear,
+    String? accessToken,
+  }) async {
+    final json = await _apiClient.postJson(
+      '/api/v1/classes',
+      body: {
+        'schoolClassName': schoolClassName.trim(),
+        'schoolYear': schoolYear.trim(),
+      },
+      accessToken: accessToken,
+    );
+
+    return AuthSession.fromJson(json);
   }
 
   @override

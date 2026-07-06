@@ -39,6 +39,9 @@ class _SchedulePageState extends State<SchedulePage> {
   @override
   Widget build(BuildContext context) {
     final isSelectedToday = _sameDate(_selectedDay, DateTime.now());
+    final hasClass =
+        AppScope.of(context).sessionController.session?.user.schoolClassId !=
+        null;
 
     return SafeArea(
       child: Stack(
@@ -56,6 +59,8 @@ class _SchedulePageState extends State<SchedulePage> {
                         : Colors.transparent,
                     foregroundColor: isSelectedToday
                         ? Colors.white
+                        : Theme.of(context).brightness == Brightness.dark
+                        ? Colors.white.withValues(alpha: 0.88)
                         : AppColors.petrol,
                     side: BorderSide(
                       color: isSelectedToday
@@ -89,12 +94,18 @@ class _SchedulePageState extends State<SchedulePage> {
                     }
 
                     if (snapshot.hasError) {
-                      return _ScheduleError(onRetry: _refresh);
+                      return _ScheduleError(
+                        hasClass: hasClass,
+                        onRetry: _refresh,
+                      );
                     }
 
                     final courses = snapshot.requireData;
                     if (courses.isEmpty) {
-                      return _EmptySchedule(onRefresh: _refresh);
+                      return _EmptySchedule(
+                        hasClass: hasClass,
+                        onRefresh: _refresh,
+                      );
                     }
 
                     final visibleCourses = _showWholeWeek
@@ -149,19 +160,21 @@ class _SchedulePageState extends State<SchedulePage> {
             right: 0,
             bottom: 16,
             child: Center(
-              child: FloatingActionButton.extended(
-                key: const ValueKey('add-course-button'),
-                heroTag: 'add-course',
-                backgroundColor: AppColors.petrol,
-                foregroundColor: Colors.white,
-                elevation: 8,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                onPressed: () => _openCourseForm(),
-                icon: const _AddCourseIcon(),
-                label: const Text('Ajouter un cours'),
-              ),
+              child: hasClass
+                  ? FloatingActionButton.extended(
+                      key: const ValueKey('add-course-button'),
+                      heroTag: 'add-course',
+                      backgroundColor: AppColors.petrol,
+                      foregroundColor: Colors.white,
+                      elevation: 8,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      onPressed: () => _openCourseForm(),
+                      icon: const _AddCourseIcon(),
+                      label: const Text('Ajouter un cours'),
+                    )
+                  : const SizedBox.shrink(),
             ),
           ),
         ],
@@ -171,6 +184,10 @@ class _SchedulePageState extends State<SchedulePage> {
 
   Future<List<CourseItem>> _loadCourses() async {
     final appScope = AppScope.of(context);
+    if (appScope.sessionController.session?.user.schoolClassId == null) {
+      return const [];
+    }
+
     final accessToken = await appScope.sessionController.accessTokenForApi();
     final weekEnd = _weekStart.add(const Duration(days: 6));
 
@@ -403,6 +420,12 @@ class _DayPill extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final names = ['LUN', 'MAR', 'MER', 'JEU', 'VEN'];
     final label = names[(day.weekday - 1).clamp(0, 4)];
+    final inactiveText = isDark
+        ? Colors.white.withValues(alpha: 0.88)
+        : context.sfText;
+    final inactiveMuted = isDark
+        ? Colors.white.withValues(alpha: 0.68)
+        : context.sfMuted;
 
     return InkWell(
       borderRadius: BorderRadius.circular(16),
@@ -433,7 +456,7 @@ class _DayPill extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                color: isActive ? Colors.white70 : context.sfMuted,
+                color: isActive ? Colors.white70 : inactiveMuted,
                 fontSize: 8,
                 fontWeight: FontWeight.w900,
               ),
@@ -442,7 +465,7 @@ class _DayPill extends StatelessWidget {
             Text(
               '${day.day}',
               style: TextStyle(
-                color: isActive ? Colors.white : context.sfText,
+                color: isActive ? Colors.white : inactiveText,
                 fontSize: 15,
                 fontWeight: FontWeight.w900,
               ),
@@ -452,7 +475,7 @@ class _DayPill extends StatelessWidget {
               width: 4,
               height: 4,
               decoration: BoxDecoration(
-                color: isActive ? Colors.white : context.sfText,
+                color: isActive ? Colors.white : inactiveText,
                 shape: BoxShape.circle,
               ),
             ),
@@ -1313,8 +1336,9 @@ class _CourseResourceChoices {
 }
 
 class _EmptySchedule extends StatelessWidget {
-  const _EmptySchedule({required this.onRefresh});
+  const _EmptySchedule({required this.hasClass, required this.onRefresh});
 
+  final bool hasClass;
   final Future<void> Function() onRefresh;
 
   @override
@@ -1323,12 +1347,13 @@ class _EmptySchedule extends StatelessWidget {
       onRefresh: onRefresh,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(24, 90, 24, 140),
-        children: const [
+        children: [
           ProtoStateCard(
             icon: Icons.calendar_month_outlined,
-            title: 'Semaine vide',
-            message:
-                'Aucun cours prévu sur cette semaine. Tu peux en ajouter un si la classe ne l’a pas encore fait.',
+            title: hasClass ? 'Semaine vide' : 'Pas encore de classe',
+            message: hasClass
+                ? 'Aucun cours prévu sur cette semaine. Tu peux en ajouter un si la classe ne l’a pas encore fait.'
+                : 'Rejoins une classe ou crée la tienne depuis le profil pour afficher un planning partagé.',
           ),
         ],
       ),
@@ -1337,16 +1362,19 @@ class _EmptySchedule extends StatelessWidget {
 }
 
 class _ScheduleError extends StatelessWidget {
-  const _ScheduleError({required this.onRetry});
+  const _ScheduleError({required this.hasClass, required this.onRetry});
 
+  final bool hasClass;
   final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
     return ProtoStateCard(
       icon: Icons.cloud_off_outlined,
-      title: 'Emploi du temps indisponible',
-      message: 'Impossible de charger les cours de cette semaine.',
+      title: hasClass ? 'Emploi du temps indisponible' : 'Pas encore de classe',
+      message: hasClass
+          ? 'Impossible de charger les cours de cette semaine.'
+          : 'Rejoins une classe ou crée la tienne depuis le profil pour accéder aux cours partagés.',
       actionLabel: 'Réessayer',
       onAction: onRetry,
     );

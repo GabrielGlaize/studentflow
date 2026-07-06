@@ -14,8 +14,8 @@ class HttpAgendaRepository implements AgendaRepository {
     bool includeDone = false,
     String? accessToken,
   }) async {
-    final homeworkJson = await _apiClient.getJsonList(
-      '/api/v1/homework?includeDone=$includeDone',
+    final homeworkJson = await _loadHomeworkSafely(
+      includeDone: includeDone,
       accessToken: accessToken,
     );
     final tasksJson = await _apiClient.getJsonList(
@@ -34,6 +34,23 @@ class HttpAgendaRepository implements AgendaRepository {
           .map(PersonalEventItem.fromJson)
           .toList(growable: false),
     );
+  }
+
+  Future<List<Map<String, Object?>>> _loadHomeworkSafely({
+    required bool includeDone,
+    String? accessToken,
+  }) async {
+    try {
+      return await _apiClient.getJsonList(
+        '/api/v1/homework?includeDone=$includeDone',
+        accessToken: accessToken,
+      );
+    } on ApiException catch (error) {
+      if (error.statusCode == 403 || error.statusCode == 404) {
+        return const [];
+      }
+      rethrow;
+    }
   }
 
   @override
