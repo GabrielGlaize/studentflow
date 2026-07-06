@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f1f6f9" />
+    <title>Rejoindre une classe — StudyFlow</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="phone-shell join-shell">
+      <header class="form-header join-header"><a href="onboarding.html" aria-label="Retour">‹</a><div><span class="overline purple">Étape facultative</span><h1>Rejoindre une classe</h1></div><button disabled></button></header>
+      <main class="join-main">
+        <section class="join-illustration"><div><span>CM</span><i>+</i><span class="class-mini-logo">L2</span></div><h2>Entre le code transmis par ton délégué</h2><p>Il permet de vérifier que tu rejoins la bonne classe. Tu ne peux appartenir qu’à une classe active à la fois.</p></section>
+
+        <form class="join-form">
+          <label for="class-code">Code de la classe</label>
+          <input id="class-code" type="text" value="L2DEV7K4P" maxlength="10" autocomplete="off" spellcheck="false" required />
+          <small>Les espaces et tirets sont ajoutés automatiquement.</small>
+        </form>
+
+        <section class="class-preview" aria-live="polite">
+          <span class="class-logo">L2</span>
+          <div><span class="overline green-text">Classe trouvée</span><h2>L2 Développement</h2><p>Année 2026–2027 · 24 élèves</p></div>
+          <span class="valid-code">✓</span>
+        </section>
+
+        <section class="join-details"><div><span>▦</span><p><strong>Emploi du temps</strong><small>Cours et salles partagés</small></p></div><div><span>✓</span><p><strong>Agenda</strong><small>Devoirs et projets collectifs</small></p></div><div><span>◆</span><p><strong>Informations</strong><small>Annonces de tes délégués</small></p></div></section>
+
+        <button class="auth-primary join-button" type="button" data-submit-target="dashboard.html?notice=joined">Rejoindre L2 Développement</button>
+        <a class="skip-class" href="../alternances-web/index.html">Je le ferai plus tard</a>
+      </main>
+    </div>
+    <script src="prototype.js"></script>
+  </body>
+</html>

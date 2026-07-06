@@ -1,0 +1,28 @@
+# .NET
+.dotnet-home/
+.dotnet-sdk/
+**/bin/
+**/obj/
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.flutter-plugins-dependencies *
+.packages
+build/
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+
+# Local environment and secrets
+.env
+.env.*
+.data-protection-keys/
+
+# Accidental macOS duplicate copies of generated Flutter/iOS files.
+src/app/ios/Podfile *.lock
+src/app/ios/Flutter/* 2.*
+src/app/ios/Flutter/* 3.*

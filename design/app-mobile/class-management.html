@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f1f6f9" />
+    <title>Gestion de la classe — StudyFlow</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="phone-shell management-shell">
+      <header class="form-header management-header">
+        <a href="profile.html" aria-label="Retour">‹</a>
+        <div><span class="overline purple">Espace délégué</span><h1>Gestion de la classe</h1></div>
+        <button type="button" disabled></button>
+      </header>
+
+      <main class="management-main">
+        <section class="class-identity">
+          <div class="class-logo">L2</div>
+          <div><span class="overline">Classe active</span><h2>L2 Développement</h2><p>Année 2026–2027 · 24 membres</p></div>
+          <button type="button" aria-label="Modifier la classe" data-demo-message="Les informations de la classe pourront être modifiées ici.">•••</button>
+        </section>
+
+        <section class="code-card">
+          <div class="code-heading"><div><span class="overline">Code pour rejoindre la classe</span><h2>L2DEV–7K4P</h2></div><span class="code-status">Actif</span></div>
+          <p>Partage ce code uniquement avec les élèves de la classe.</p>
+          <div class="code-actions"><button class="copy-code" type="button">Copier le code</button><button type="button" data-action="renew-code">Renouveler</button></div>
+          <small>Renouvelé le 12 juin par Léa</small>
+        </section>
+
+        <section class="management-section" aria-labelledby="members-title">
+          <div class="management-section-heading"><div><h2 id="members-title">Membres</h2><p>24 élèves · 2 délégués</p></div><a href="#members" data-demo-message="La liste complète permettra de retirer un membre ou modifier son rôle.">Tout gérer</a></div>
+          <div class="member-stack">
+            <span class="member-avatar mint-avatar">LM<i>D</i></span><span class="member-avatar sky-avatar">NB<i>D</i></span><span class="member-avatar gray-avatar">CM</span><span class="member-avatar rose-avatar">YS</span><span class="more-members">+20</span>
+          </div>
+          <div class="management-row" role="button" tabindex="0" data-demo-message="La gestion détaillée des élèves sera reliée à l’API."><span class="row-icon people-icon">♙</span><div><strong>Gérer les élèves</strong><small>Retirer un membre ou nommer un délégué</small></div><i>›</i></div>
+        </section>
+
+        <section class="management-grid">
+          <a class="management-tile" href="#subjects" data-demo-message="8 matières sont disponibles dans la maquette."><span class="tile-icon sky-tile">▤</span><div><strong>Matières</strong><small>8 actives</small></div><i>›</i></a>
+          <a class="management-tile" href="#teachers" data-demo-message="11 professeurs sont disponibles dans la maquette."><span class="tile-icon mint-tile">♙</span><div><strong>Professeurs</strong><small>11 disponibles</small></div><i>›</i></a>
+        </section>
+
+        <section class="management-section" aria-labelledby="delegates-title">
+          <div class="management-section-heading"><div><h2 id="delegates-title">Délégués</h2><p>La classe doit toujours en conserver au moins un.</p></div></div>
+          <div class="delegate-row"><span class="member-avatar mint-avatar">LM</span><div><strong>Léa Martin</strong><small>Toi · depuis le 3 septembre</small></div><span class="role-chip">Déléguée</span></div>
+          <div class="delegate-row"><span class="member-avatar sky-avatar">NB</span><div><strong>Noé Bernard</strong><small>Depuis le 12 septembre</small></div><button type="button" data-demo-message="Une confirmation sera demandée avant de retirer ce rôle.">Retirer</button></div>
+          <button class="outline-wide" type="button" data-demo-message="Sélectionne ensuite un élève de la classe.">+ Nommer un autre délégué</button>
+        </section>
+
+        <section class="danger-zone">
+          <div><strong>Quitter le rôle de délégué</strong><p>Possible uniquement si un autre délégué reste actif.</p></div><button type="button" data-demo-message="Noé resterait délégué : cette action est autorisée.">Quitter</button>
+        </section>
+      </main>
+    </div>
+    <script src="prototype.js"></script>
+  </body>
+</html>

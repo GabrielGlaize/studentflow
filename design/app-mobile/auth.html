@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f1f6f9" />
+    <title>Bienvenue — StudyFlow</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="phone-shell auth-shell">
+      <header class="auth-brand"><span class="auth-logo">S</span><strong>StudyFlow</strong></header>
+      <main class="auth-main">
+        <section class="auth-intro"><span class="overline purple">Ton année, au même endroit</span><h1>Bienvenue sur StudyFlow</h1><p>Organise tes cours et trouve ton alternance, même avant de rejoindre une classe.</p></section>
+
+        <div class="auth-tabs" role="tablist" aria-label="Connexion ou inscription">
+          <button class="active" role="tab" aria-selected="true" aria-controls="login-panel" data-target="login-panel">Se connecter</button>
+          <button role="tab" aria-selected="false" aria-controls="register-panel" data-target="register-panel">Créer un compte</button>
+        </div>
+
+        <section id="login-panel" class="auth-panel active" role="tabpanel">
+          <label class="form-field"><span>Adresse e-mail</span><input type="email" autocomplete="email" placeholder="prenom.nom@example.fr" value="camille.martin@example.fr" required /></label>
+          <label class="form-field"><span>Mot de passe <a href="#forgot" data-demo-message="Un lien de réinitialisation sera envoyé par e-mail.">Mot de passe oublié ?</a></span><input type="password" autocomplete="current-password" value="motdepasse" required /></label>
+          <button class="auth-primary" type="button" data-submit-target="onboarding.html">Se connecter</button>
+          <div class="auth-separator"><span>ou</span></div>
+          <a class="auth-secondary" href="../alternances-web/index.html">Continuer sans compte vers les alternances</a>
+        </section>
+
+        <section id="register-panel" class="auth-panel" role="tabpanel" hidden>
+          <div class="form-grid"><label class="form-field"><span>Prénom</span><input type="text" autocomplete="given-name" value="Camille" required /></label><label class="form-field"><span>Nom</span><input type="text" autocomplete="family-name" value="Martin" required /></label></div>
+          <label class="form-field"><span>Adresse e-mail</span><input type="email" autocomplete="email" placeholder="prenom.nom@example.fr" value="camille.martin@example.fr" required /></label>
+          <label class="form-field"><span>Mot de passe</span><input type="password" autocomplete="new-password" placeholder="8 caractères minimum" value="motdepasse" required /></label>
+          <label class="consent-row"><input type="checkbox" required /><span>J’accepte les conditions d’utilisation et la politique de confidentialité.</span></label>
+          <button class="auth-primary" type="button" data-submit-target="onboarding.html">Créer mon compte</button>
+          <p class="register-note">Aucun code de classe n’est nécessaire. Tu pourras rejoindre ta classe plus tard.</p>
+        </section>
+      </main>
+      <footer class="auth-footer"><a href="#privacy" data-demo-message="Aucune donnée réelle n’est collectée dans cette maquette.">Confidentialité</a><span>·</span><a href="#help" data-demo-message="Le centre d’aide sera disponible dans l’application finale.">Besoin d’aide ?</a></footer>
+    </div>
+    <script>
+      const authTabs = document.querySelectorAll('.auth-tabs [role="tab"]');
+      const authPanels = document.querySelectorAll('.auth-panel');
+      authTabs.forEach((tab) => tab.addEventListener('click', () => {
+        authTabs.forEach((item) => {
+          const active = item === tab;
+          item.classList.toggle('active', active);
+          item.setAttribute('aria-selected', String(active));
+        });
+        authPanels.forEach((panel) => {
+          const active = panel.id === tab.dataset.target;
+          panel.classList.toggle('active', active);
+          panel.hidden = !active;
+        });
+      }));
+    </script>
+    <script src="prototype.js"></script>
+  </body>
+</html>

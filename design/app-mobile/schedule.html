@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f1f6f9" />
+    <title>Emploi du temps — StudyFlow</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="phone-shell schedule-shell">
+      <header class="screen-header">
+        <div><span class="class-pill">L2 DEV</span><h1>Emploi du temps</h1><p>Semaine du 22 au 28 juin</p></div>
+        <button class="today-button" type="button" data-demo-message="Tu consultes déjà la journée d’aujourd’hui.">Aujourd’hui</button>
+      </header>
+
+      <main class="schedule-main">
+        <section class="week-picker" aria-label="Choisir un jour">
+          <button aria-label="Semaine précédente">‹</button>
+          <div class="days">
+            <button><span>LUN.</span><strong>22</strong></button>
+            <button class="active" aria-current="date"><span>MAR.</span><strong>23</strong><i></i></button>
+            <button><span>MER.</span><strong>24</strong><i></i></button>
+            <button><span>JEU.</span><strong>25</strong></button>
+            <button><span>VEN.</span><strong>26</strong><i></i></button>
+          </div>
+          <button aria-label="Semaine suivante">›</button>
+        </section>
+
+        <section class="day-summary">
+          <div><span class="overline purple">Mardi 23 juin</span><h2>4 cours aujourd’hui</h2></div>
+          <span class="day-duration">7 h de cours</span>
+        </section>
+
+        <section class="timeline" aria-label="Cours du mardi 23 juin">
+          <div class="timeline-item past">
+            <div class="timeline-time"><strong>08:00</strong><span>10:00</span></div>
+            <article class="lesson-card lesson-gray">
+              <div class="lesson-top"><span class="subject-dot"></span><span>Base de données</span><button aria-label="Options du cours">•••</button></div>
+              <h3>Modélisation relationnelle</h3>
+              <p><span>▣ A102</span><span>♙ M. Bernard</span></p>
+              <small>Terminé</small>
+            </article>
+          </div>
+
+          <div class="now-line"><span>Maintenant · 09:33</span></div>
+
+          <div class="timeline-item current">
+            <div class="timeline-time"><strong>10:15</strong><span>12:15</span></div>
+            <article class="lesson-card lesson-primary">
+              <div class="lesson-top"><span class="subject-dot"></span><span>Développement mobile</span><button aria-label="Options du cours">•••</button></div>
+              <h3>Flutter — navigation et état</h3>
+              <p><span>▣ B204</span><span>♙ Mme Dupont</span></p>
+              <small>Dans 42 min</small>
+            </article>
+          </div>
+
+          <div class="timeline-item">
+            <div class="timeline-time"><strong>13:30</strong><span>15:00</span></div>
+            <article class="lesson-card lesson-green">
+              <div class="lesson-top"><span class="subject-dot"></span><span>Communication</span><button aria-label="Options du cours">•••</button></div>
+              <h3>Préparation de la soutenance</h3>
+              <p><span>▣ C105</span><span>♙ Mme Morel</span></p>
+              <small class="edited">Modifié par Noé il y a 12 min</small>
+            </article>
+          </div>
+
+          <div class="timeline-item">
+            <div class="timeline-time"><strong>15:30</strong><span>17:30</span></div>
+            <article class="lesson-card lesson-sand">
+              <div class="lesson-top"><span class="subject-dot"></span><span>Projet tutoré</span><button aria-label="Options du cours">•••</button></div>
+              <h3>Travail en autonomie</h3>
+              <p><span>▣ Lab 3</span><span>♙ Sans professeur</span></p>
+            </article>
+          </div>
+
+          <div class="timeline-item cancelled">
+            <div class="timeline-time"><strong>17:30</strong><span>18:30</span></div>
+            <article class="lesson-card">
+              <div class="lesson-top"><span class="subject-dot"></span><span>Anglais</span></div>
+              <h3>Conversation workshop</h3>
+              <small>Annulé par Camille hier</small>
+            </article>
+          </div>
+        </section>
+      </main>
+
+      <button class="schedule-fab" type="button" aria-label="Ajouter un cours" data-href="course-form.html"><span>+</span> Ajouter un cours</button>
+
+      <nav class="bottom-nav" aria-label="Navigation de l’application">
+        <a href="dashboard.html"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="m3 11 9-8 9 8v10h-6v-6H9v6H3V11Z"/></svg></span><span>Accueil</span></a>
+        <a class="active" href="schedule.html"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4m8-4v4M3 10h18"/></svg></span><span>Emploi</span></a>
+        <a href="agenda.html"><span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M9 11h9M9 16h9M5 11h.01M5 16h.01M5 6h14"/></svg></span><span>Agenda</span></a>
+        <a href="../alternances-web/index.html"><span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V4h8v3m-4 5v3m-9-3h18"/></svg></span><span>Alternances</span></a>
+        <a href="profile.html"><span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-5 4-7 8-7s7 2 8 7"/></svg></span><span>Profil</span></a>
+      </nav>
+    </div>
+    <script src="prototype.js"></script>
+  </body>
+</html>

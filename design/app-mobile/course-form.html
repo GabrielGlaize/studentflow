@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f1f6f9" />
+    <title>Ajouter un cours — StudyFlow</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="phone-shell form-shell">
+      <header class="form-header">
+        <a href="schedule.html" aria-label="Fermer">×</a>
+        <div><span class="overline purple">Emploi du temps collaboratif</span><h1>Ajouter un cours</h1></div>
+        <button type="button" disabled>Ajouter</button>
+      </header>
+
+      <main class="form-main">
+        <section class="shared-note">
+          <span aria-hidden="true">◎</span>
+          <div><strong>Visible par toute la classe</strong><p>Chaque élève pourra corriger ou supprimer ce cours. Ton nom restera dans l’historique.</p></div>
+        </section>
+
+        <label class="form-field">
+          <span>Matière <i>obligatoire</i></span>
+          <select required><option value="">Choisir une matière</option><option selected>Développement mobile</option><option>Base de données</option><option>Communication</option><option>Projet tutoré</option></select>
+        </label>
+
+        <label class="form-field">
+          <span>Intitulé du cours <i>facultatif</i></span>
+          <input type="text" value="Flutter — navigation et état" />
+        </label>
+
+        <div class="form-grid">
+          <label class="form-field"><span>Salle</span><input type="text" value="B204" /></label>
+          <label class="form-field"><span>Professeur</span><select><option>Sans professeur</option><option selected>Mme Dupont</option><option>M. Bernard</option><option>Mme Morel</option></select></label>
+        </div>
+
+        <label class="form-field">
+          <span>Date</span>
+          <input type="date" value="2026-06-30" />
+        </label>
+
+        <div class="form-grid">
+          <label class="form-field"><span>Début</span><input type="time" value="10:15" /></label>
+          <label class="form-field"><span>Fin</span><input type="time" value="12:15" /></label>
+        </div>
+
+        <section class="setting-row recurrence-row">
+          <div><strong>Répéter chaque semaine</strong><p>Crée les prochaines occurrences en une seule fois.</p></div>
+          <label class="switch"><input id="recurrence-toggle" type="checkbox" checked aria-label="Répéter chaque semaine" /><span></span></label>
+        </section>
+
+        <div class="recurrence-options" id="recurrence-options">
+          <label class="form-field"><span>Répéter jusqu’au</span><input type="date" value="2026-12-15" /></label>
+          <p>24 occurrences seront créées. Elles pourront être corrigées individuellement.</p>
+        </div>
+
+        <section class="conflict-check">
+          <span aria-hidden="true">✓</span>
+          <div><strong>Aucun conflit détecté</strong><p>La classe et la salle sont libres sur cet horaire.</p></div>
+        </section>
+      </main>
+
+      <footer class="form-actions">
+        <a class="secondary-action" href="schedule.html">Annuler</a>
+        <button class="primary-action" type="button" data-submit-target="schedule.html?notice=course">Ajouter à la classe</button>
+      </footer>
+    </div>
+    <script>
+      const recurrenceToggle = document.querySelector('#recurrence-toggle');
+      const recurrenceOptions = document.querySelector('#recurrence-options');
+      recurrenceToggle.addEventListener('change', () => {
+        recurrenceOptions.hidden = !recurrenceToggle.checked;
+      });
+    </script>
+    <script src="prototype.js"></script>
+  </body>
+</html>

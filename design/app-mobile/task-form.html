@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f1f6f9" />
+    <title>Nouvelle tâche — StudyFlow</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="phone-shell form-shell">
+      <header class="form-header">
+        <a href="agenda.html" aria-label="Fermer">×</a>
+        <div><span class="overline purple">Organisation personnelle</span><h1>Nouvelle tâche</h1></div>
+        <button type="button" disabled>Créer</button>
+      </header>
+
+      <main class="form-main">
+        <section class="privacy-note">
+          <span aria-hidden="true">●</span>
+          <div><strong>Visible uniquement par toi</strong><p>Cette tâche ne sera jamais ajoutée aux devoirs de la classe.</p></div>
+        </section>
+
+        <div class="form-segment" role="radiogroup" aria-label="Espace de la tâche">
+          <label><input type="radio" name="workspace" value="school" checked /><span>École</span></label>
+          <label><input type="radio" name="workspace" value="company" /><span>Entreprise</span></label>
+        </div>
+
+        <label class="form-field">
+          <span>Titre <i>obligatoire</i></span>
+          <input type="text" value="Préparer les questions pour le professeur" required />
+        </label>
+
+        <label class="form-field">
+          <span>Description <i>facultatif</i></span>
+          <textarea rows="4" placeholder="Ajoute des détails, liens ou notes utiles…"></textarea>
+        </label>
+
+        <div class="form-grid">
+          <label class="form-field"><span>Date</span><input type="date" value="2026-06-24" /></label>
+          <label class="form-field"><span>Heure</span><input type="time" value="18:00" /></label>
+        </div>
+
+        <label class="form-field school-only">
+          <span>Cours associé <i>facultatif</i></span>
+          <select><option>Aucun cours</option><option selected>Développement mobile</option><option>Base de données</option><option>Communication</option></select>
+        </label>
+
+        <fieldset class="priority-field">
+          <legend>Priorité</legend>
+          <div class="priority-options">
+            <label><input type="radio" name="priority" value="low" /><span><i class="priority-dot low-dot"></i>Basse</span></label>
+            <label><input type="radio" name="priority" value="normal" checked /><span><i class="priority-dot normal-dot"></i>Normale</span></label>
+            <label><input type="radio" name="priority" value="high" /><span><i class="priority-dot high-dot"></i>Haute</span></label>
+          </div>
+        </fieldset>
+
+        <section class="setting-row">
+          <div><strong>Me rappeler cette tâche</strong><p>Une notification sera envoyée avant l’échéance.</p></div>
+          <label class="switch"><input type="checkbox" checked aria-label="Activer le rappel" /><span></span></label>
+        </section>
+
+        <label class="form-field reminder-field">
+          <span>Délai du rappel</span>
+          <select><option>À l’heure de l’échéance</option><option selected>1 heure avant</option><option>La veille</option><option>2 jours avant</option></select>
+        </label>
+      </main>
+
+      <footer class="form-actions">
+        <a class="secondary-action" href="agenda.html">Annuler</a>
+        <button class="primary-action" type="button" data-submit-target="agenda.html?notice=task">Créer la tâche</button>
+      </footer>
+    </div>
+    <script>
+      const workspaceInputs = document.querySelectorAll('input[name="workspace"]');
+      const schoolOnly = document.querySelector('.school-only');
+      workspaceInputs.forEach((input) => input.addEventListener('change', () => {
+        schoolOnly.hidden = document.querySelector('input[name="workspace"]:checked').value === 'company';
+      }));
+    </script>
+    <script src="prototype.js"></script>
+  </body>
+</html>
