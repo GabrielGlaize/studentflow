@@ -189,7 +189,7 @@ class _RegisterWithoutClassPageState extends State<RegisterWithoutClassPage> {
   final _formKey = GlobalKey<FormState>();
   static const _prefillDevelopmentCredentials = bool.fromEnvironment(
     'STUDYFLOW_PREFILL_DEV_CREDENTIALS',
-    defaultValue: true,
+    defaultValue: false,
   );
 
   late final _firstNameController = TextEditingController(
@@ -358,7 +358,7 @@ class _CreateClassPageState extends State<CreateClassPage> {
   final _formKey = GlobalKey<FormState>();
   static const _prefillDevelopmentCredentials = bool.fromEnvironment(
     'STUDYFLOW_PREFILL_DEV_CREDENTIALS',
-    defaultValue: true,
+    defaultValue: false,
   );
 
   late final _firstNameController = TextEditingController(

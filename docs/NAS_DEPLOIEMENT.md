@@ -3,6 +3,12 @@
 Ce guide explique comment faire tourner l'API StudyFlow sur un NAS avec Docker,
 pour que l'app iPhone puisse fonctionner même quand le Mac est éteint.
 
+Un retour d’expérience complet du déploiement réellement effectué est disponible
+dans [`RETEX_DEPLOIEMENT_NAS.md`](./RETEX_DEPLOIEMENT_NAS.md). Il détaille les
+problèmes rencontrés : dossier NAS déjà existant, permissions Docker, ancien
+conteneur PostgreSQL, DuckDNS, reverse proxy, certificat HTTPS et tests avec
+`curl`.
+
 L'architecture cible est :
 
 ```text

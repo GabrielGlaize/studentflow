@@ -29,6 +29,17 @@ cd /Users/gab/Documents/studentflow
 
 Le script copie le projet dans `/Users/gab/Developer/studentflow`, nettoie les attributs macOS qui peuvent casser le codesign iOS, trouve l’IP locale du Mac et lance Flutter avec la bonne URL backend.
 
+Pour lancer l’app sur n’importe quelle cible Flutter, utilise le script
+universel :
+
+```bash
+./scripts/run_app.sh --list
+./scripts/run_app.sh --device=emulator-5554
+./scripts/run_app.sh --device=chrome
+./scripts/run_app.sh --device=macos
+./scripts/run_app.sh --device=TON_ID_IPHONE --nas --release --sync --clean
+```
+
 Pour installer une version autonome sur iPhone pendant la durée du provisioning gratuit Apple, utilise le mode release :
 
 ```bash

@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#073b4c" />
+    <title>Alternance - StudyFlow</title>
+    <link rel="icon" href="/assets/studyflow-icon.png" />
+    <link rel="stylesheet" href="/assets/site.css" />
+  </head>
+  <body data-page="alternance">
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="Accueil StudyFlow">
+        <img src="/assets/studyflow-icon.png" alt="" />
+        <span>StudyFlow</span>
+      </a>
+      <nav class="header-actions" aria-label="Navigation principale">
+        <a href="/">Projet</a>
+        <a class="button button-ghost" href="#results">Résultats</a>
+        <button class="theme-toggle" type="button" aria-label="Changer le thème" aria-pressed="false">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span class="toggle-label">Clair</span>
+        </button>
+      </nav>
+    </header>
+
+    <main>
+      <section class="search-hero">
+        <div class="hero-copy narrow">
+          <p class="eyebrow">Alternance</p>
+          <h1>Trouve une offre sans installer l'application.</h1>
+          <p>
+            La recherche publique interroge l'API StudyFlow et reste présentable
+            avec des résultats de démonstration si les sources externes ne sont pas prêtes.
+          </p>
+        </div>
+
+        <form class="search-panel" action="#results">
+          <label class="field field-grow">
+            <span>Métier ou domaine</span>
+            <span class="input-shell">
+              <input value="Développeur web" name="keywords" autocomplete="off" />
+            </span>
+          </label>
+          <label class="field location-field">
+            <span>Ville</span>
+            <span class="input-shell">
+              <input value="Paris" name="location" autocomplete="off" />
+            </span>
+          </label>
+          <button class="button button-primary search-button" type="submit">Rechercher</button>
+        </form>
+
+        <div class="quick-searches" aria-label="Recherches rapides">
+          <button type="button">Marketing</button>
+          <button type="button">Cybersécurité</button>
+          <button type="button">Ressources humaines</button>
+          <button type="button">Data</button>
+        </div>
+      </section>
+
+      <section class="results-section" id="results" aria-labelledby="results-title">
+        <div class="results-heading">
+          <div>
+            <p class="eyebrow results-kicker">Résultats pour “Développeur web”</p>
+            <h2 id="results-title">Opportunités autour de Paris</h2>
+          </div>
+          <button class="button button-secondary filter-mobile" type="button">Filtres</button>
+        </div>
+
+        <div class="results-layout">
+          <aside class="filters" aria-label="Filtres">
+            <div class="filter-header">
+              <h3>Affiner</h3>
+              <button type="button" data-reset-filters>Réinitialiser</button>
+            </div>
+            <fieldset>
+              <legend>Distance</legend>
+              <label><input type="radio" name="distance" value="10" /> 10 km</label>
+              <label><input type="radio" name="distance" value="30" checked /> 30 km</label>
+              <label><input type="radio" name="distance" value="60" /> 60 km</label>
+              <label><input type="radio" name="distance" value="100" /> 100 km</label>
+            </fieldset>
+            <fieldset>
+              <legend>Type</legend>
+              <label><input type="checkbox" name="job" checked /> Offres publiées</label>
+              <label><input type="checkbox" name="spontaneous" checked /> Candidatures spontanées</label>
+            </fieldset>
+          </aside>
+
+          <div class="result-content">
+            <div class="active-filters">
+              <span>30 km</span>
+              <span>Toutes les opportunités</span>
+            </div>
+            <div class="result-list" aria-live="polite"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>StudyFlow</span>
+      <a href="/">Présentation</a>
+      <a href="/api/status">Statut API</a>
+    </footer>
+    <script src="/assets/site.js"></script>
+  </body>
+</html>

@@ -13,6 +13,7 @@ import 'package:studyflow_app/features/notifications/application/reminder_planne
 import 'package:studyflow_app/features/notifications/domain/notification_models.dart';
 import 'package:studyflow_app/features/profile/domain/app_preferences.dart';
 import 'package:studyflow_app/features/profile/domain/notification_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -60,6 +61,9 @@ class ProfilePage extends StatelessWidget {
                 document: studentCard,
                 isDelegate: user?.isDelegate == true,
                 onImport: () => _openStudentCardSheet(context),
+                onOpen: studentCard == null
+                    ? null
+                    : () => _openStudentCard(context, studentCard!),
                 onDelete: studentCardId == null
                     ? null
                     : () => documentsController.deleteDocument(studentCardId),
@@ -234,6 +238,41 @@ class ProfilePage extends StatelessWidget {
       ),
       builder: (context) => const _StudentCardImportSheet(),
     );
+  }
+
+  Future<void> _openStudentCard(
+    BuildContext context,
+    CompanyDocument document,
+  ) async {
+    final localPath = document.filePath?.trim();
+    final link = document.link?.trim();
+    final uri = localPath != null && localPath.isNotEmpty
+        ? Uri.file(localPath)
+        : link != null && link.isNotEmpty
+        ? Uri.tryParse(link)
+        : null;
+
+    if (uri == null) {
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Carte enregistrée, mais aucun fichier ou lien ne peut être ouvert.',
+            ),
+          ),
+        );
+      return;
+    }
+
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && context.mounted) {
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          const SnackBar(content: Text('Impossible d’ouvrir la carte.')),
+        );
+    }
   }
 
   Future<void> _confirmDeleteAccount(BuildContext context) async {
@@ -658,12 +697,14 @@ class _StudentCardSection extends StatelessWidget {
     required this.document,
     required this.isDelegate,
     required this.onImport,
+    required this.onOpen,
     required this.onDelete,
   });
 
   final CompanyDocument? document;
   final bool isDelegate;
   final VoidCallback onImport;
+  final VoidCallback? onOpen;
   final VoidCallback? onDelete;
 
   @override
@@ -690,7 +731,9 @@ class _StudentCardSection extends StatelessWidget {
                 ProtoOverline(isDelegate ? 'Accès rapide' : 'Carte étudiante'),
                 const SizedBox(height: 3),
                 Text(
-                  hasCard ? document!.title : 'Importer ma carte étudiante',
+                  hasCard
+                      ? 'Carte étudiante enregistrée'
+                      : 'Importer ma carte étudiante',
                   style: TextStyle(
                     color: context.sfText,
                     fontSize: 14,
@@ -701,11 +744,10 @@ class _StudentCardSection extends StatelessWidget {
                 ProtoMutedText(
                   hasCard
                       ? [
-                          document!.kind,
                           if (document!.fileName != null) document!.fileName!,
                           if (document!.link != null) document!.link!,
                           if (document!.note != null) document!.note!,
-                        ].join(' · ')
+                        ].where((value) => value.trim().isNotEmpty).join(' · ')
                       : 'Ajoute une photo, un lien Drive ou une note pour la retrouver vite.',
                   maxLines: 2,
                 ),
@@ -714,6 +756,12 @@ class _StudentCardSection extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 6,
                   children: [
+                    if (hasCard)
+                      FilledButton.icon(
+                        onPressed: onOpen,
+                        icon: const Icon(Icons.visibility_outlined, size: 16),
+                        label: const Text('Voir'),
+                      ),
                     OutlinedButton.icon(
                       onPressed: onImport,
                       icon: Icon(
@@ -749,7 +797,6 @@ class _StudentCardImportSheet extends StatefulWidget {
 
 class _StudentCardImportSheetState extends State<_StudentCardImportSheet> {
   final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController(text: 'Carte étudiante');
   final _linkController = TextEditingController();
   final _noteController = TextEditingController();
   PlatformFile? _selectedFile;
@@ -774,15 +821,6 @@ class _StudentCardImportSheetState extends State<_StudentCardImportSheet> {
               title: 'Carte étudiante',
             ),
             const SizedBox(height: 14),
-            TextFormField(
-              controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: 'Nom affiché',
-                prefixIcon: Icon(Icons.badge_outlined),
-              ),
-              validator: _required,
-            ),
-            const SizedBox(height: 12),
             TextFormField(
               controller: _linkController,
               decoration: const InputDecoration(
@@ -836,10 +874,6 @@ class _StudentCardImportSheetState extends State<_StudentCardImportSheet> {
     );
   }
 
-  String? _required(String? value) {
-    return (value ?? '').trim().isEmpty ? 'Champ obligatoire.' : null;
-  }
-
   void _save() {
     if (!_formKey.currentState!.validate()) return;
 
@@ -850,7 +884,7 @@ class _StudentCardImportSheetState extends State<_StudentCardImportSheet> {
       }
     }
     controller.addDocument(
-      title: _titleController.text,
+      title: 'Carte étudiante',
       kind: 'Carte étudiante',
       scope: 'student-card',
       link: _linkController.text,
@@ -874,16 +908,11 @@ class _StudentCardImportSheetState extends State<_StudentCardImportSheet> {
     if (file == null || !mounted) return;
     setState(() {
       _selectedFile = file;
-      if (_titleController.text.trim().isEmpty ||
-          _titleController.text == 'Carte étudiante') {
-        _titleController.text = 'Carte étudiante · ${file.name}';
-      }
     });
   }
 
   @override
   void dispose() {
-    _titleController.dispose();
     _linkController.dispose();
     _noteController.dispose();
     super.dispose();

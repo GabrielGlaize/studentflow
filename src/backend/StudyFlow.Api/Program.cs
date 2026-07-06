@@ -43,7 +43,9 @@ app.Use(async (context, next) =>
     context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
     context.Response.Headers.Append("X-Frame-Options", "DENY");
     context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
-    context.Response.Headers.Append("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'");
+    context.Response.Headers.Append(
+        "Content-Security-Policy",
+        "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data:; script-src 'self'; style-src 'self'; connect-src 'self' http://127.0.0.1:5198 http://localhost:5198");
 
     await next();
 });
@@ -64,6 +66,8 @@ if (usesDevelopmentSeed)
 app.UseExceptionHandler();
 app.UseCors("StudyFlowApp");
 app.UseRateLimiter();
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -75,6 +79,15 @@ app.MapGet("/api/status", () => Results.Ok(new ApiStatusResponse(
     "ok",
     typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown",
     DateTimeOffset.UtcNow)));
+app.MapGet("/alternance", async (HttpContext context) =>
+{
+    await context.Response.SendFileAsync(Path.Combine(
+        app.Environment.WebRootPath,
+        "alternance",
+        "index.html"));
+});
+app.MapGet("/alternnace", () => Results.Redirect("/alternance"));
+app.MapGet("/alternnace/", () => Results.Redirect("/alternance"));
 
 app.Run();
 

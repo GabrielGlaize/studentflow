@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#073b4c" />
+    <title>StudyFlow - projet scolaire et alternance</title>
+    <link rel="icon" href="/assets/studyflow-icon.png" />
+    <link rel="stylesheet" href="/assets/site.css" />
+  </head>
+  <body data-page="home">
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="Accueil StudyFlow">
+        <img src="/assets/studyflow-icon.png" alt="" />
+        <span>StudyFlow</span>
+      </a>
+      <nav class="header-actions" aria-label="Navigation principale">
+        <a href="#projet">Projet</a>
+        <a href="#modules">Modules</a>
+        <a class="button button-ghost" href="/alternance">Alternance</a>
+        <button class="theme-toggle" type="button" aria-label="Changer le thème" aria-pressed="false">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          <span class="toggle-label">Clair</span>
+        </button>
+      </nav>
+    </header>
+
+    <main>
+      <section class="home-hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Projet annuel</p>
+          <h1>StudyFlow</h1>
+          <p>
+            Une application pensée pour aider une classe à suivre ses cours,
+            ses devoirs, ses annonces et sa recherche d'alternance au même endroit.
+          </p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="/alternance">Rechercher une alternance</a>
+            <a class="button button-secondary" href="#modules">Voir le projet</a>
+          </div>
+        </div>
+
+        <div class="product-preview" aria-label="Aperçu de StudyFlow">
+          <div class="phone-frame">
+            <div class="phone-status"></div>
+            <div class="phone-screen">
+              <div class="screen-top">
+                <span class="mini-logo">SF</span>
+                <div>
+                  <strong>Bonjour Alex</strong>
+                  <span>Planning du jour</span>
+                </div>
+              </div>
+              <div class="today-card">
+                <span>10:00</span>
+                <strong>Développement web</strong>
+                <small>Salle B204 - devoir API à rendre</small>
+              </div>
+              <div class="metric-grid">
+                <div><strong>4</strong><span>devoirs</span></div>
+                <div><strong>12</strong><span>offres</span></div>
+              </div>
+              <div class="feed-line rose"></div>
+              <div class="feed-line mint"></div>
+              <div class="feed-line sky"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-band" id="projet">
+        <div class="section-heading">
+          <p class="eyebrow">Vue d'ensemble</p>
+          <h2>Un outil simple pour la vie de classe et la période d'alternance.</h2>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card">
+            <span class="feature-icon mint-icon">01</span>
+            <h3>Organisation scolaire</h3>
+            <p>Planning, devoirs, matières et échéances regroupés dans une interface lisible.</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-icon sky-icon">02</span>
+            <h3>Vie de classe</h3>
+            <p>Annonces officielles, ressources et gestion des membres par les délégués.</p>
+          </article>
+          <article class="feature-card">
+            <span class="feature-icon rose-icon">03</span>
+            <h3>Alternance</h3>
+            <p>Recherche publique d'offres, favoris et suivi personnel pour les futurs élèves.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="split-section" id="modules">
+        <div>
+          <p class="eyebrow">Modules</p>
+          <h2>Le projet garde le côté scolaire et le côté entreprise dans le même flux.</h2>
+          <p>
+            StudyFlow peut servir pendant les cours, puis accompagner les relances,
+            entretiens, contacts entreprise et offres d'alternance sans créer un outil séparé.
+          </p>
+        </div>
+        <div class="module-list">
+          <a href="/alternance">
+            <strong>Recherche alternance</strong>
+            <span>Accessible publiquement sans compte.</span>
+          </a>
+          <a href="#projet">
+            <strong>Agenda et devoirs</strong>
+            <span>Conçu pour suivre la classe au quotidien.</span>
+          </a>
+          <a href="#projet">
+            <strong>Ressources et annonces</strong>
+            <span>Une base claire pour les informations importantes.</span>
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <span>StudyFlow</span>
+      <a href="/api/status">Statut API</a>
+      <a href="/alternance">Alternance</a>
+    </footer>
+    <script src="/assets/site.js"></script>
+  </body>
+</html>

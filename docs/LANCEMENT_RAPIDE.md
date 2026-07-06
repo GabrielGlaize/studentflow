@@ -84,6 +84,54 @@ http://10.0.2.2:5028
 
 C’est l’adresse spéciale qui permet à l’émulateur Android de joindre le backend lancé sur le Mac.
 
+## 3 bis. Script universel Flutter
+
+Le script [`scripts/run_app.sh`](../scripts/run_app.sh) permet de lancer
+StudyFlow sur presque n’importe quelle cible Flutter : Android emulator, iPhone,
+Chrome ou macOS.
+
+Lister les appareils disponibles :
+
+```bash
+cd /Users/gab/Documents/studentflow
+./scripts/run_app.sh --list
+```
+
+Android emulator :
+
+```bash
+./scripts/run_app.sh --device=emulator-5554
+```
+
+Chrome :
+
+```bash
+./scripts/run_app.sh --device=chrome
+```
+
+macOS :
+
+```bash
+./scripts/run_app.sh --device=macos
+```
+
+iPhone avec le backend NAS public :
+
+```bash
+./scripts/run_app.sh --device=TON_ID_IPHONE --nas --release --sync --clean
+```
+
+iPhone avec une URL précise :
+
+```bash
+./scripts/run_app.sh --device=TON_ID_IPHONE --release --sync --clean \
+  --api-url=https://studyflow-dev.duckdns.org
+```
+
+Le flag `--sync` copie le projet dans `/Users/gab/Developer/studentflow` avant
+le lancement. C’est utile pour iOS, car cela évite les erreurs de codesign
+causées par les attributs macOS dans le dossier `Documents`.
+
 ## 4. Lancer l’app sur iPhone physique
 
 Le backend tourne sur le Mac. L’iPhone doit donc appeler l’adresse IP locale du Mac, pas `localhost`.
@@ -244,3 +292,7 @@ Donc :
 Pour que l'iPhone continue à utiliser les données quand le Mac est éteint, il
 faut remplacer l'IP du Mac par une API disponible ailleurs, par exemple sur un
 NAS. Voir [`NAS_DEPLOIEMENT.md`](./NAS_DEPLOIEMENT.md).
+
+Le déploiement NAS réellement effectué, avec les erreurs rencontrées et leurs
+solutions, est documenté dans
+[`RETEX_DEPLOIEMENT_NAS.md`](./RETEX_DEPLOIEMENT_NAS.md).

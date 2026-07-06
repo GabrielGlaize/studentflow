@@ -17,7 +17,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _isPasswordVisible = false;
   static const _prefillDevelopmentCredentials = bool.fromEnvironment(
     'STUDYFLOW_PREFILL_DEV_CREDENTIALS',
-    defaultValue: true,
+    defaultValue: false,
   );
 
   late final _emailController = TextEditingController(
