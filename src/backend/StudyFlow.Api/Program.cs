@@ -81,6 +81,7 @@ app.MapGet("/api/status", () => Results.Ok(new ApiStatusResponse(
     DateTimeOffset.UtcNow)));
 app.MapGet("/alternance", async (HttpContext context) =>
 {
+    context.Response.ContentType = "text/html; charset=utf-8";
     await context.Response.SendFileAsync(Path.Combine(
         app.Environment.WebRootPath,
         "alternance",

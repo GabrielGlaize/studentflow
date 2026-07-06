@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#073b4c" />
-    <title>StudyFlow - projet scolaire et alternance</title>
+    <title>StudyFlow - organisation scolaire et alternance</title>
     <link rel="icon" href="/assets/studyflow-icon.png" />
     <link rel="stylesheet" href="/assets/site.css" />
   </head>
@@ -15,8 +15,10 @@
         <span>StudyFlow</span>
       </a>
       <nav class="header-actions" aria-label="Navigation principale">
-        <a href="#projet">Projet</a>
-        <a href="#modules">Modules</a>
+        <a href="#produit">Produit</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#preuves">Preuves</a>
+        <a href="#ressources">Ressources</a>
         <a class="button button-ghost" href="/alternance">Alternance</a>
         <button class="theme-toggle" type="button" aria-label="Changer le thème" aria-pressed="false">
           <span class="toggle-track"><span class="toggle-thumb"></span></span>
@@ -28,100 +30,151 @@
     <main>
       <section class="home-hero">
         <div class="hero-copy">
-          <p class="eyebrow">Projet annuel</p>
+          <p class="eyebrow">Projet annuel - application + API + NAS</p>
           <h1>StudyFlow</h1>
           <p>
-            Une application pensée pour aider une classe à suivre ses cours,
-            ses devoirs, ses annonces et sa recherche d'alternance au même endroit.
+            Une plateforme de classe pour suivre les cours, les devoirs, les annonces
+            et la recherche d'alternance, avec une API ASP.NET Core déployable sur NAS.
           </p>
           <div class="hero-actions">
-            <a class="button button-primary" href="/alternance">Rechercher une alternance</a>
-            <a class="button button-secondary" href="#modules">Voir le projet</a>
+            <a class="button button-primary" href="/alternance">Ouvrir la recherche alternance</a>
+            <a class="button button-secondary" href="#architecture">Voir l'architecture</a>
           </div>
         </div>
 
-        <div class="product-preview" aria-label="Aperçu de StudyFlow">
-          <div class="phone-frame">
-            <div class="phone-status"></div>
-            <div class="phone-screen">
-              <div class="screen-top">
-                <span class="mini-logo">SF</span>
-                <div>
-                  <strong>Bonjour Alex</strong>
-                  <span>Planning du jour</span>
-                </div>
-              </div>
-              <div class="today-card">
-                <span>10:00</span>
-                <strong>Développement web</strong>
-                <small>Salle B204 - devoir API à rendre</small>
-              </div>
-              <div class="metric-grid">
-                <div><strong>4</strong><span>devoirs</span></div>
-                <div><strong>12</strong><span>offres</span></div>
-              </div>
-              <div class="feed-line rose"></div>
-              <div class="feed-line mint"></div>
-              <div class="feed-line sky"></div>
-            </div>
+        <aside class="system-panel" aria-label="Vue système StudyFlow">
+          <div class="panel-topline">
+            <span class="status-dot"></span>
+            <span>studyflow.api / ready</span>
           </div>
-        </div>
+          <div class="system-map">
+            <div class="system-node strong">Flutter app</div>
+            <div class="system-line"></div>
+            <div class="system-node">ASP.NET Core API</div>
+            <div class="system-line"></div>
+            <div class="system-node">PostgreSQL</div>
+          </div>
+          <div class="terminal-card">
+            <span>GET /api/status</span>
+            <strong>200 OK</strong>
+            <small>NAS + DuckDNS + reverse proxy</small>
+          </div>
+        </aside>
       </section>
 
-      <section class="section-band" id="projet">
+      <section class="section-band" id="produit">
         <div class="section-heading">
-          <p class="eyebrow">Vue d'ensemble</p>
-          <h2>Un outil simple pour la vie de classe et la période d'alternance.</h2>
+          <p class="eyebrow">Produit</p>
+          <h2>Une application pensée pour la routine réelle d'une classe.</h2>
+          <p>
+            L'objectif n'est pas de remplacer tous les outils, mais de regrouper
+            les informations scolaires importantes dans un espace clair et fiable.
+          </p>
         </div>
         <div class="feature-grid">
           <article class="feature-card">
             <span class="feature-icon mint-icon">01</span>
-            <h3>Organisation scolaire</h3>
-            <p>Planning, devoirs, matières et échéances regroupés dans une interface lisible.</p>
+            <h3>Planning et devoirs</h3>
+            <p>Cours, tâches, échéances et progression personnelle dans un parcours mobile.</p>
           </article>
           <article class="feature-card">
             <span class="feature-icon sky-icon">02</span>
             <h3>Vie de classe</h3>
-            <p>Annonces officielles, ressources et gestion des membres par les délégués.</p>
+            <p>Annonces, ressources, code de classe et validation par les délégués.</p>
           </article>
           <article class="feature-card">
             <span class="feature-icon rose-icon">03</span>
             <h3>Alternance</h3>
-            <p>Recherche publique d'offres, favoris et suivi personnel pour les futurs élèves.</p>
+            <p>Recherche publique d'offres, favoris et entraide alternance côté classe.</p>
           </article>
         </div>
       </section>
 
-      <section class="split-section" id="modules">
+      <section class="architecture-section" id="architecture">
+        <div class="section-heading">
+          <p class="eyebrow">Architecture</p>
+          <h2>Une base simple à expliquer, tester et déployer.</h2>
+        </div>
+        <div class="architecture-grid">
+          <article>
+            <h3>Client</h3>
+            <p>Flutter pour iPhone, Android, web et desktop. Le mode release peut pointer vers l'URL DuckDNS.</p>
+          </article>
+          <article>
+            <h3>API</h3>
+            <p>ASP.NET Core, JWT, contrôleurs REST, endpoint public alternance et fichiers statiques du site.</p>
+          </article>
+          <article>
+            <h3>Données</h3>
+            <p>PostgreSQL avec migrations Entity Framework et données de démonstration en développement.</p>
+          </article>
+          <article>
+            <h3>Déploiement</h3>
+            <p>Docker Compose sur NAS, reverse proxy HTTPS, DuckDNS et tests avec <code>/api/status</code>.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="split-section" id="preuves">
         <div>
-          <p class="eyebrow">Modules</p>
-          <h2>Le projet garde le côté scolaire et le côté entreprise dans le même flux.</h2>
+          <p class="eyebrow">Ce qui existe</p>
+          <h2>Le projet est utilisable en local, en démo et depuis le NAS.</h2>
           <p>
-            StudyFlow peut servir pendant les cours, puis accompagner les relances,
-            entretiens, contacts entreprise et offres d'alternance sans créer un outil séparé.
+            StudyFlow garde plusieurs chemins de lancement : démo sans backend,
+            backend local pour développer, et API NAS pour tester sur iPhone sans garder le Mac allumé.
           </p>
         </div>
         <div class="module-list">
           <a href="/alternance">
-            <strong>Recherche alternance</strong>
-            <span>Accessible publiquement sans compte.</span>
+            <strong>Recherche alternance publique</strong>
+            <span>Accessible sans compte depuis le navigateur.</span>
           </a>
-          <a href="#projet">
-            <strong>Agenda et devoirs</strong>
-            <span>Conçu pour suivre la classe au quotidien.</span>
+          <a href="/api/status">
+            <strong>Statut API</strong>
+            <span>Contrôle rapide du backend exposé par le NAS.</span>
           </a>
-          <a href="#projet">
-            <strong>Ressources et annonces</strong>
-            <span>Une base claire pour les informations importantes.</span>
+          <a href="#ressources">
+            <strong>Documentation de déploiement</strong>
+            <span>Commandes NAS, Docker, reverse proxy et tests.</span>
           </a>
+        </div>
+      </section>
+
+      <section class="section-band resources-section" id="ressources">
+        <div class="section-heading">
+          <p class="eyebrow">Ressources</p>
+          <h2>Liens utiles du projet.</h2>
+        </div>
+        <div class="resource-grid">
+          <a href="https://github.com/GabrielGlaize/studentflow/tree/codex/nas-ready" target="_blank" rel="noreferrer">
+            <span>GitHub</span>
+            <strong>Code source StudyFlow</strong>
+            <small>Branche codex/nas-ready</small>
+          </a>
+          <a href="https://github.com/GabrielGlaize/studentflow/blob/codex/nas-ready/docs/NAS_DEPLOIEMENT.md" target="_blank" rel="noreferrer">
+            <span>Guide</span>
+            <strong>Déploiement NAS</strong>
+            <small>Docker, DuckDNS et reverse proxy</small>
+          </a>
+          <a href="https://github.com/GabrielGlaize/studentflow/blob/codex/nas-ready/docs/RETEX_DEPLOIEMENT_NAS.md" target="_blank" rel="noreferrer">
+            <span>Retour d'expérience</span>
+            <strong>Déploiement réel</strong>
+            <small>Problèmes rencontrés et corrections</small>
+          </a>
+          <div class="resource-card pending-link">
+            <span>Autre projet</span>
+            <strong>Projet GTB</strong>
+            <small>Lien prêt à ajouter dès que l'URL exacte est confirmée</small>
+          </div>
         </div>
       </section>
     </main>
 
     <footer class="site-footer">
       <span>StudyFlow</span>
-      <a href="/api/status">Statut API</a>
       <a href="/alternance">Alternance</a>
+      <a href="/api/status">Statut API</a>
+      <a href="https://github.com/GabrielGlaize/studentflow/tree/codex/nas-ready" target="_blank" rel="noreferrer">GitHub</a>
     </footer>
     <script src="/assets/site.js"></script>
   </body>
