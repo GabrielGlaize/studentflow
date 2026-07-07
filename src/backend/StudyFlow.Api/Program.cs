@@ -38,6 +38,12 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+if (args.Contains("--seed-development-data", StringComparer.OrdinalIgnoreCase))
+{
+    await app.Services.SeedDevelopmentDataAsync();
+    return;
+}
+
 app.Use(async (context, next) =>
 {
     context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
