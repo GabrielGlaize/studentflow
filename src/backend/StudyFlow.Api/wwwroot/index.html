@@ -4,177 +4,212 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#073b4c" />
-    <title>StudyFlow - organisation scolaire et alternance</title>
+    <title>StudyFlow - application de classe et alternance</title>
     <link rel="icon" href="/assets/studyflow-icon.png" />
     <link rel="stylesheet" href="/assets/site.css" />
   </head>
   <body data-page="home">
     <header class="site-header">
-      <a class="brand" href="/" aria-label="Accueil StudyFlow">
-        <img src="/assets/studyflow-icon.png" alt="" />
-        <span>StudyFlow</span>
-      </a>
-      <nav class="header-actions" aria-label="Navigation principale">
-        <a href="#produit">Produit</a>
-        <a href="#architecture">Architecture</a>
-        <a href="#preuves">Preuves</a>
-        <a href="#ressources">Ressources</a>
-        <a class="button button-ghost" href="/alternance">Alternance</a>
-        <button class="theme-toggle" type="button" aria-label="Changer le thème" aria-pressed="false">
-          <span class="toggle-track"><span class="toggle-thumb"></span></span>
-          <span class="toggle-label">Clair</span>
-        </button>
-      </nav>
+      <div class="header-shell">
+        <a class="brand" href="/" aria-label="Accueil StudyFlow">
+          <img src="/assets/studyflow-icon.png" alt="" />
+          <span>StudyFlow</span>
+        </a>
+        <nav class="header-actions" aria-label="Navigation principale">
+          <a href="#produit">Produit</a>
+          <a href="#experience">Experience</a>
+          <a href="#architecture">Architecture</a>
+          <a href="#demo">Demo</a>
+          <a class="button button-ghost" href="/alternance">Alternance</a>
+          <button class="theme-toggle" type="button" aria-label="Changer le theme" aria-pressed="false">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            <span class="toggle-label">Clair</span>
+          </button>
+        </nav>
+      </div>
     </header>
 
     <main>
       <section class="home-hero">
-        <div class="hero-copy">
-          <p class="eyebrow">Projet annuel - application + API + NAS</p>
-          <h1>StudyFlow</h1>
+        <div class="hero-copy reveal">
+          <p class="eyebrow">Projet annuel - mobile, API et web</p>
+          <h1>La vie de classe, sans dispersion.</h1>
           <p>
-            Une plateforme de classe pour suivre les cours, les devoirs, les annonces
-            et la recherche d'alternance, avec une API ASP.NET Core déployable sur NAS.
+            StudyFlow regroupe planning, devoirs, annonces, ressources et recherche
+            d'alternance dans une experience claire, connectee a une API ASP.NET Core.
           </p>
           <div class="hero-actions">
-            <a class="button button-primary" href="/alternance">Ouvrir la recherche alternance</a>
-            <a class="button button-secondary" href="#architecture">Voir l'architecture</a>
+            <a class="button button-primary" href="/alternance">Tester la recherche alternance</a>
+            <a class="button button-secondary" href="#demo">Voir ce qui est pret</a>
+          </div>
+          <div class="hero-proof" aria-label="Points forts StudyFlow">
+            <span>Flutter</span>
+            <span>ASP.NET Core</span>
+            <span>PostgreSQL</span>
+            <span>HTTPS</span>
           </div>
         </div>
 
-        <aside class="system-panel" aria-label="Vue système StudyFlow">
-          <div class="panel-topline">
-            <span class="status-dot"></span>
-            <span>studyflow.api / ready</span>
-          </div>
-          <div class="system-map">
-            <div class="system-node strong">Flutter app</div>
-            <div class="system-line"></div>
-            <div class="system-node">ASP.NET Core API</div>
-            <div class="system-line"></div>
-            <div class="system-node">PostgreSQL</div>
-          </div>
-          <div class="terminal-card">
-            <span>GET /api/status</span>
-            <strong>200 OK</strong>
-            <small>NAS + DuckDNS + reverse proxy</small>
+        <aside class="product-visual reveal" aria-label="Apercu StudyFlow">
+          <div class="visual-frame">
+            <div class="visual-toolbar">
+              <span></span>
+              <span></span>
+              <span></span>
+              <strong>studyflow.app</strong>
+            </div>
+            <div class="phone-preview">
+              <div class="phone-status">
+                <span>BTS SIO 1</span>
+                <strong>09:42</strong>
+              </div>
+              <div class="today-card">
+                <small>Aujourd'hui</small>
+                <strong>3 cours, 2 devoirs</strong>
+                <span>Prochaine echeance dans 4 h</span>
+              </div>
+              <div class="mini-list">
+                <span class="mini-row mint-row">Maths - controle reseaux</span>
+                <span class="mini-row sky-row">Annonce delegue</span>
+                <span class="mini-row rose-row">Alternance - 6 offres</span>
+              </div>
+            </div>
+            <div class="api-card">
+              <span class="status-dot"></span>
+              <div>
+                <small>API publique</small>
+                <strong>/api/status - 200 OK</strong>
+              </div>
+            </div>
           </div>
         </aside>
       </section>
 
       <section class="section-band" id="produit">
-        <div class="section-heading">
+        <div class="section-heading reveal">
           <p class="eyebrow">Produit</p>
-          <h2>Une application pensée pour la routine réelle d'une classe.</h2>
+          <h2>Un tableau de bord pour les jours normaux, pas seulement pour la demo.</h2>
           <p>
-            L'objectif n'est pas de remplacer tous les outils, mais de regrouper
-            les informations scolaires importantes dans un espace clair et fiable.
+            Les ecrans sont construits autour des gestes repetes : verifier son planning,
+            suivre ses devoirs, retrouver une ressource et ne pas rater une information de classe.
           </p>
         </div>
         <div class="feature-grid">
-          <article class="feature-card">
+          <article class="feature-card reveal">
             <span class="feature-icon mint-icon">01</span>
-            <h3>Planning et devoirs</h3>
-            <p>Cours, tâches, échéances et progression personnelle dans un parcours mobile.</p>
+            <h3>Organisation personnelle</h3>
+            <p>Cours, taches, evenements et progression dans une interface mobile lisible.</p>
           </article>
-          <article class="feature-card">
+          <article class="feature-card reveal">
             <span class="feature-icon sky-icon">02</span>
             <h3>Vie de classe</h3>
-            <p>Annonces, ressources, code de classe et validation par les délégués.</p>
+            <p>Annonces, ressources, code de classe et validation des demandes par les delegues.</p>
           </article>
-          <article class="feature-card">
+          <article class="feature-card reveal">
             <span class="feature-icon rose-icon">03</span>
             <h3>Alternance</h3>
-            <p>Recherche publique d'offres, favoris et entraide alternance côté classe.</p>
+            <p>Recherche publique, favoris et pistes d'entreprises accessibles sans installer l'app.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="experience-section" id="experience">
+        <div class="section-heading reveal">
+          <p class="eyebrow">Experience</p>
+          <h2>Une interface calme, mais reactive.</h2>
+          <p>
+            StudyFlow garde une direction visuelle futuriste et sobre : contraste net,
+            surfaces lisibles, effets au survol et feedback immediat pendant les actions.
+          </p>
+        </div>
+        <div class="experience-grid">
+          <article class="experience-card reveal">
+            <strong>01</strong>
+            <h3>Clair / sombre</h3>
+            <p>Le site reprend le switch de l'application et conserve les memes couleurs.</p>
+          </article>
+          <article class="experience-card reveal">
+            <strong>02</strong>
+            <h3>Recherche instantanee</h3>
+            <p>La page alternance interroge l'API et affiche une demo si une source externe manque.</p>
+          </article>
+          <article class="experience-card reveal">
+            <strong>03</strong>
+            <h3>Demo stable</h3>
+            <p>Les comptes seedes permettent de presenter le parcours sans improviser.</p>
           </article>
         </div>
       </section>
 
       <section class="architecture-section" id="architecture">
-        <div class="section-heading">
+        <div class="section-heading reveal">
           <p class="eyebrow">Architecture</p>
-          <h2>Une base simple à expliquer, tester et déployer.</h2>
+          <h2>Une architecture courte a comprendre et facile a verifier.</h2>
         </div>
-        <div class="architecture-grid">
+        <div class="architecture-flow reveal" aria-label="Architecture StudyFlow">
           <article>
-            <h3>Client</h3>
-            <p>Flutter pour iPhone, Android, web et desktop. Le mode release peut pointer vers l'URL DuckDNS.</p>
+            <span>Client</span>
+            <h3>Flutter</h3>
+            <p>Application mobile, web et desktop avec mode demo et mode API.</p>
           </article>
           <article>
-            <h3>API</h3>
-            <p>ASP.NET Core, JWT, contrôleurs REST, endpoint public alternance et fichiers statiques du site.</p>
+            <span>Backend</span>
+            <h3>ASP.NET Core</h3>
+            <p>Authentification, controleurs REST, recherche alternance et fichiers publics.</p>
           </article>
           <article>
-            <h3>Données</h3>
-            <p>PostgreSQL avec migrations Entity Framework et données de démonstration en développement.</p>
+            <span>Donnees</span>
+            <h3>PostgreSQL</h3>
+            <p>Migrations Entity Framework, comptes de demo et donnees de classe.</p>
           </article>
           <article>
-            <h3>Déploiement</h3>
-            <p>Docker Compose sur NAS, reverse proxy HTTPS, DuckDNS et tests avec <code>/api/status</code>.</p>
+            <span>Acces</span>
+            <h3>HTTPS</h3>
+            <p>Endpoint public, statut API et parcours iPhone connecte a l'URL de production.</p>
           </article>
         </div>
       </section>
 
-      <section class="split-section" id="preuves">
-        <div>
-          <p class="eyebrow">Ce qui existe</p>
-          <h2>Le projet est utilisable en local, en démo et depuis le NAS.</h2>
+      <section class="demo-section" id="demo">
+        <div class="demo-copy reveal">
+          <p class="eyebrow">Demo</p>
+          <h2>Deux entrees qui fonctionnent vraiment.</h2>
           <p>
-            StudyFlow garde plusieurs chemins de lancement : démo sans backend,
-            backend local pour développer, et API NAS pour tester sur iPhone sans garder le Mac allumé.
+            Le site public ne renvoie pas vers les depots prives ou des documents internes.
+            Il propose uniquement ce qui est utile a un visiteur : tester l'alternance ou verifier l'API.
           </p>
         </div>
-        <div class="module-list">
-          <a href="/alternance">
-            <strong>Recherche alternance publique</strong>
-            <span>Accessible sans compte depuis le navigateur.</span>
+        <div class="demo-actions">
+          <a class="demo-card reveal" href="/alternance">
+            <span>01</span>
+            <strong>Recherche alternance</strong>
+            <small>Interface publique avec resultats API ou demo.</small>
           </a>
-          <a href="/api/status">
+          <a class="demo-card reveal" href="/api/status">
+            <span>02</span>
             <strong>Statut API</strong>
-            <span>Contrôle rapide du backend exposé par le NAS.</span>
+            <small>Controle rapide de la disponibilite du backend.</small>
           </a>
-          <a href="#ressources">
-            <strong>Documentation de déploiement</strong>
-            <span>Commandes NAS, Docker, reverse proxy et tests.</span>
-          </a>
-        </div>
-      </section>
-
-      <section class="section-band resources-section" id="ressources">
-        <div class="section-heading">
-          <p class="eyebrow">Ressources</p>
-          <h2>Liens utiles du projet.</h2>
-        </div>
-        <div class="resource-grid">
-          <a href="https://github.com/GabrielGlaize/studentflow/tree/codex/nas-ready" target="_blank" rel="noreferrer">
-            <span>GitHub</span>
-            <strong>Code source StudyFlow</strong>
-            <small>Branche codex/nas-ready</small>
-          </a>
-          <a href="https://github.com/GabrielGlaize/studentflow/blob/codex/nas-ready/docs/NAS_DEPLOIEMENT.md" target="_blank" rel="noreferrer">
-            <span>Guide</span>
-            <strong>Déploiement NAS</strong>
-            <small>Docker, DuckDNS et reverse proxy</small>
-          </a>
-          <a href="https://github.com/GabrielGlaize/studentflow/blob/codex/nas-ready/docs/RETEX_DEPLOIEMENT_NAS.md" target="_blank" rel="noreferrer">
-            <span>Retour d'expérience</span>
-            <strong>Déploiement réel</strong>
-            <small>Problèmes rencontrés et corrections</small>
-          </a>
-          <div class="resource-card pending-link">
-            <span>Autre projet</span>
-            <strong>Projet GTB</strong>
-            <small>Lien prêt à ajouter dès que l'URL exacte est confirmée</small>
-          </div>
         </div>
       </section>
     </main>
 
     <footer class="site-footer">
-      <span>StudyFlow</span>
-      <a href="/alternance">Alternance</a>
-      <a href="/api/status">Statut API</a>
-      <a href="https://github.com/GabrielGlaize/studentflow/tree/codex/nas-ready" target="_blank" rel="noreferrer">GitHub</a>
+      <div class="footer-shell">
+        <div>
+          <a class="brand footer-brand" href="/" aria-label="Accueil StudyFlow">
+            <img src="/assets/studyflow-icon.png" alt="" />
+            <span>StudyFlow</span>
+          </a>
+          <p>Application de classe, API et recherche alternance.</p>
+        </div>
+        <nav aria-label="Navigation pied de page">
+          <a href="#produit">Produit</a>
+          <a href="#architecture">Architecture</a>
+          <a href="/alternance">Alternance</a>
+          <a href="/api/status">Statut API</a>
+        </nav>
+      </div>
     </footer>
     <script src="/assets/site.js"></script>
   </body>
