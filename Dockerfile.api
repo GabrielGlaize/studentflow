@@ -18,6 +18,9 @@ RUN dotnet publish src/backend/StudyFlow.Api/StudyFlow.Api.csproj \
 FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS runtime
 WORKDIR /app
 
+# Fuseaux horaires : l'API calcule les cours et rappels en heure de Paris.
+RUN apk add --no-cache tzdata
+
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
 

@@ -4,29 +4,44 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using FirebaseAdmin;
+using FirebaseAdmin.Messaging;
+using Google.Apis.Auth.OAuth2;
+using StudyFlow.Application.Accounts;
 using StudyFlow.Application.Apprenticeships;
 using StudyFlow.Application.Notifications;
 using StudyFlow.Application.Security;
+using StudyFlow.Application.Time;
 using StudyFlow.Infrastructure.Apprenticeships;
 using StudyFlow.Infrastructure.Identity;
 using StudyFlow.Infrastructure.Notifications;
 using StudyFlow.Infrastructure.Persistence;
 using StudyFlow.Infrastructure.Security;
+using StudyFlow.Infrastructure.Time;
 
 namespace StudyFlow.Infrastructure;
 
 public static class DependencyInjection
 {
+    private static readonly TimeSpan ApprenticeshipProviderTimeout = TimeSpan.FromSeconds(8);
+
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment environment)
     {
-        var connectionString = configuration.GetConnectionString("PostgreSql")
-            ?? throw new InvalidOperationException("La chaîne ConnectionStrings:PostgreSql est absente.");
+        // appsettings.json contient une valeur vide : sans ce contrôle, l'API démarre puis échoue à la première requête.
+        var connectionString = configuration.GetConnectionString("PostgreSql");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException("La chaîne ConnectionStrings:PostgreSql est absente.");
+        }
 
         services.AddDbContext<StudyFlowDbContext>(options =>
             options.UseNpgsql(connectionString, npgsql =>
@@ -41,6 +56,12 @@ public static class DependencyInjection
                 options.Password.RequireLowercase = true;
                 options.Password.RequireUppercase = true;
                 options.Password.RequireNonAlphanumeric = true;
+
+                // Protection par compte contre la recherche de mot de passe : la limite par IP seule
+                // pénaliserait toute une classe derrière le même Wi-Fi.
+                options.Lockout.AllowedForNewUsers = true;
+                options.Lockout.MaxFailedAccessAttempts = 5;
+                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
             })
             .AddRoles<IdentityRole<Guid>>()
             .AddEntityFrameworkStores<StudyFlowDbContext>()
@@ -67,11 +88,20 @@ public static class DependencyInjection
         services.Configure<FranceTravailOptions>(configuration.GetSection(FranceTravailOptions.SectionName));
         services.Configure<NotificationWorkerOptions>(configuration.GetSection(NotificationWorkerOptions.SectionName));
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
+        services.Configure<SchoolTimeOptions>(configuration.GetSection(SchoolTimeOptions.SectionName));
 
         var dataProtection = services.AddDataProtection().SetApplicationName("StudyFlow");
         if (!string.IsNullOrWhiteSpace(securityOptions.DataProtectionKeysPath))
         {
             dataProtection.PersistKeysToFileSystem(new DirectoryInfo(securityOptions.DataProtectionKeysPath));
+        }
+        else if (!environment.IsDevelopment())
+        {
+            // Sans dossier persistant, les clés vivent dans le conteneur : le recréer rendrait
+            // définitivement illisibles les cours, professeurs, messages et codes de classe chiffrés.
+            throw new InvalidOperationException(
+                "Security:DataProtectionKeysPath est obligatoire hors développement. "
+                + "Indique un dossier monté sur un volume persistant (et sauvegardé avec la base).");
         }
 
         services
@@ -126,19 +156,55 @@ public static class DependencyInjection
             });
         services.AddAuthorization();
 
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton<ISchoolClock, SchoolClock>();
         services.AddScoped<ISensitiveDataProtector, SensitiveDataProtector>();
         services.AddScoped<IClassCodeService, ClassCodeService>();
         services.AddScoped<IAuthTokenService, AuthTokenService>();
         services.AddScoped<IPasswordResetService, PasswordResetService>();
         services.AddScoped<IPasswordResetEmailSender, PasswordResetEmailSender>();
+        services.AddScoped<IAccountDeletionService, AccountDeletionService>();
         services.AddScoped<INotificationReminderPlanner, NotificationReminderPlanner>();
-        services.AddScoped<INotificationSender, LoggingNotificationSender>();
+        AddPushNotifications(services, configuration);
         services.AddHostedService<NotificationDispatchWorker>();
-        services.AddHttpClient<LaBonneAlternanceOpportunityProvider>();
-        services.AddHttpClient<AdzunaOpportunityProvider>();
-        services.AddHttpClient<FranceTravailOpportunityProvider>();
-        services.AddScoped<IApprenticeshipOpportunityProvider, CompositeApprenticeshipOpportunityProvider>();
+
+        // Délai court : une source lente ne doit pas bloquer la recherche publique (100 s par défaut).
+        services.AddHttpClient<LaBonneAlternanceOpportunityProvider>(client => client.Timeout = ApprenticeshipProviderTimeout);
+        services.AddHttpClient<AdzunaOpportunityProvider>(client => client.Timeout = ApprenticeshipProviderTimeout);
+        services.AddHttpClient<FranceTravailOpportunityProvider>(client => client.Timeout = ApprenticeshipProviderTimeout);
+        services.AddSingleton<FranceTravailTokenCache>();
+        services.AddSingleton<ApprenticeshipSearchCache>();
+        services.AddScoped<CompositeApprenticeshipOpportunityProvider>();
+        services.AddScoped<IApprenticeshipOpportunityProvider, CachedApprenticeshipOpportunityProvider>();
 
         return services;
+    }
+
+    private static void AddPushNotifications(IServiceCollection services, IConfiguration configuration)
+    {
+        var firebaseOptions = configuration.GetSection(FirebaseOptions.SectionName).Get<FirebaseOptions>() ?? new FirebaseOptions();
+        if (!firebaseOptions.IsConfigured)
+        {
+            services.AddScoped<IPushNotificationSender, LoggingPushNotificationSender>();
+            return;
+        }
+
+        // Erreur claire au démarrage plutôt qu'au premier rappel envoyé.
+        if (!File.Exists(firebaseOptions.CredentialsPath))
+        {
+            throw new InvalidOperationException(
+                $"Firebase:CredentialsPath pointe vers un fichier introuvable : {firebaseOptions.CredentialsPath}");
+        }
+
+        services.AddSingleton(_ => FirebaseApp.Create(
+            new AppOptions
+            {
+                Credential = CredentialFactory
+                    .FromFile<ServiceAccountCredential>(firebaseOptions.CredentialsPath!)
+                    .ToGoogleCredential()
+            },
+            "studyflow"));
+        services.AddSingleton(provider => FirebaseMessaging.GetMessaging(provider.GetRequiredService<FirebaseApp>()));
+        services.AddScoped<IPushNotificationSender, FcmPushNotificationSender>();
     }
 }

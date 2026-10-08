@@ -35,6 +35,13 @@ public sealed class StudyFlowDbContext(
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
 
+    /// <summary>Membres actifs d'une classe qui ont le rôle Délégué, en une seule requête SQL.</summary>
+    public IQueryable<ApplicationUser> ActiveDelegatesOfClass(Guid schoolClassId) =>
+        Users.Where(user => user.SchoolClassId == schoolClassId
+            && user.IsActive
+            && UserRoles.Any(userRole => userRole.UserId == user.Id
+                && Roles.Any(role => role.Id == userRole.RoleId && role.Name == nameof(UserRole.Delegue))));
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

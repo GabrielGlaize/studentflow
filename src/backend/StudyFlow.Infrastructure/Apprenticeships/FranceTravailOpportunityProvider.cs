@@ -8,11 +8,10 @@ namespace StudyFlow.Infrastructure.Apprenticeships;
 
 public sealed class FranceTravailOpportunityProvider(
     HttpClient httpClient,
-    IOptions<FranceTravailOptions> options) : IApprenticeshipOpportunityProvider
+    IOptions<FranceTravailOptions> options,
+    FranceTravailTokenCache tokenCache) : IApprenticeshipOpportunityProvider
 {
     private readonly FranceTravailOptions _options = options.Value;
-    private string? _accessToken;
-    private DateTimeOffset _accessTokenExpiresAt;
 
     public async Task<IReadOnlyCollection<ApprenticeshipOpportunity>> SearchAsync(
         ApprenticeshipOpportunitySearchQuery query,
@@ -23,7 +22,7 @@ public sealed class FranceTravailOpportunityProvider(
             return _options.UseDemoWhenNotConfigured ? DemoResults(query) : [];
         }
 
-        var token = await GetAccessTokenAsync(cancellationToken);
+        var token = await tokenCache.GetOrRequestAsync(RequestAccessTokenAsync, cancellationToken);
         using var request = new HttpRequestMessage(HttpMethod.Get, BuildSearchUri(query));
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
@@ -41,14 +40,8 @@ public sealed class FranceTravailOpportunityProvider(
         && !string.IsNullOrWhiteSpace(_options.ClientId)
         && !string.IsNullOrWhiteSpace(_options.ClientSecret);
 
-    private async Task<string> GetAccessTokenAsync(CancellationToken cancellationToken)
+    private async Task<FranceTravailAccessToken> RequestAccessTokenAsync(CancellationToken cancellationToken)
     {
-        if (!string.IsNullOrWhiteSpace(_accessToken)
-            && _accessTokenExpiresAt > DateTimeOffset.UtcNow.AddMinutes(1))
-        {
-            return _accessToken;
-        }
-
         var tokenUrl = new UriBuilder(_options.TokenUrl!);
         var tokenQuery = new List<string>();
         if (!string.IsNullOrWhiteSpace(_options.Realm))
@@ -72,12 +65,11 @@ public sealed class FranceTravailOpportunityProvider(
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
 
-        _accessToken = ReadString(document.RootElement, "access_token")
+        var accessToken = ReadString(document.RootElement, "access_token")
             ?? throw new InvalidOperationException("France Travail n'a pas renvoyé de jeton d'accès.");
 
         var expiresIn = ReadInt(document.RootElement, "expires_in") ?? 300;
-        _accessTokenExpiresAt = DateTimeOffset.UtcNow.AddSeconds(Math.Max(60, expiresIn));
-        return _accessToken;
+        return new FranceTravailAccessToken(accessToken, DateTimeOffset.UtcNow.AddSeconds(Math.Max(60, expiresIn)));
     }
 
     private Uri BuildSearchUri(ApprenticeshipOpportunitySearchQuery query)

@@ -197,10 +197,15 @@ class _CompanyNameSheet extends StatefulWidget {
 
 class _CompanyNameSheetState extends State<_CompanyNameSheet> {
   final _nameController = TextEditingController();
+  bool _initialized = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // Appelé aussi quand le clavier s'ouvre (MediaQuery) : ne remplir qu'une fois,
+    // sinon la saisie en cours serait effacée.
+    if (_initialized) return;
+    _initialized = true;
     _nameController.text =
         AppScope.of(context).settingsController.companyName ?? '';
   }

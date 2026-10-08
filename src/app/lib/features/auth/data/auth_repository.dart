@@ -37,9 +37,16 @@ abstract interface class AuthRepository {
 }
 
 class AuthException implements Exception {
-  const AuthException(this.message);
+  const AuthException(this.message, {this.statusCode = 0});
 
   final String message;
+
+  /// Code HTTP renvoyé par l'API, ou 0 si le serveur n'a pas pu être joint.
+  final int statusCode;
+
+  /// Le serveur a explicitement refusé la session (jeton invalide, révoqué ou
+  /// expiré). Les autres erreurs (réseau, 429, 5xx) sont temporaires.
+  bool get isSessionRejected => statusCode == 400 || statusCode == 401;
 
   @override
   String toString() => message;

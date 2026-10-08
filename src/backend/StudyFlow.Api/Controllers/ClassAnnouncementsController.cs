@@ -1,9 +1,9 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StudyFlow.Api.Contracts;
+using StudyFlow.Application.Notifications;
 using StudyFlow.Domain.School;
 using StudyFlow.Domain.Users;
 using StudyFlow.Infrastructure.Identity;
@@ -16,8 +16,12 @@ namespace StudyFlow.Api.Controllers;
 [Route("api/v1/class-announcements")]
 public sealed class ClassAnnouncementsController(
     UserManager<ApplicationUser> userManager,
-    StudyFlowDbContext dbContext) : ControllerBase
+    StudyFlowDbContext dbContext,
+    IPushNotificationSender pushSender,
+    ILogger<ClassAnnouncementsController> logger) : StudyFlowControllerBase(userManager)
 {
+    private const int NotificationBodyMaxLength = 140;
+
     [HttpGet]
     public async Task<ActionResult<IReadOnlyCollection<ClassAnnouncementResponse>>> List(
         [FromQuery] bool pinnedOnly = false,
@@ -66,6 +70,8 @@ public sealed class ClassAnnouncementsController(
 
         dbContext.ClassAnnouncements.Add(announcement);
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        await NotifyClassAsync(announcement, cancellationToken);
 
         return CreatedAtAction(nameof(List), (await ToResponsesAsync([announcement], cancellationToken)).Single());
     }
@@ -136,15 +142,38 @@ public sealed class ClassAnnouncementsController(
             x.UpdatedAt)).ToArray();
     }
 
-    private async Task<ApplicationUser?> CurrentUserAsync() =>
-        await userManager.FindByIdAsync(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    private async Task NotifyClassAsync(ClassAnnouncement announcement, CancellationToken cancellationToken)
+    {
+        var recipients = await dbContext.Users
+            .Where(x => x.SchoolClassId == announcement.SchoolClassId && x.IsActive && x.Id != announcement.AuthorId)
+            .Select(x => x.Id)
+            .ToListAsync(cancellationToken);
+
+        var body = announcement.Content.Length <= NotificationBodyMaxLength
+            ? announcement.Content
+            : $"{announcement.Content[..(NotificationBodyMaxLength - 1)]}…";
+
+        try
+        {
+            await pushSender.SendAsync(
+                recipients,
+                new PushNotification(
+                    "announcement",
+                    announcement.Id,
+                    announcement.IsPinned ? "Annonce épinglée" : "Nouvelle annonce de la classe",
+                    body),
+                cancellationToken);
+        }
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            // L'annonce est publiée même si Firebase est momentanément indisponible.
+            logger.LogWarning(exception, "Announcement {AnnouncementId} was saved but push delivery failed.", announcement.Id);
+        }
+    }
 
     private static string? CleanContent(string content)
     {
         var clean = content.Trim();
         return string.IsNullOrWhiteSpace(clean) ? null : clean;
     }
-
-    private ObjectResult BadRequestProblem(string title) =>
-        BadRequest(new ProblemDetails { Title = title, Status = StatusCodes.Status400BadRequest });
 }

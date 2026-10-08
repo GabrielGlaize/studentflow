@@ -1,18 +1,20 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace StudyFlow.Api.Contracts;
 
 public sealed record PersonalTaskRequest(
-    string Title,
-    string? Description,
+    [StringLength(160, ErrorMessage = "Titre : 160 caractères maximum.")] string Title,
+    [StringLength(4000, ErrorMessage = "Description : 4000 caractères maximum.")] string? Description,
     DateTimeOffset? Deadline,
-    string Category,
+    [StringLength(20, ErrorMessage = "Catégorie : 20 caractères maximum.")] string Category,
     bool NotificationsEnabled = false,
     Guid? CourseId = null);
 
 public sealed record PersonalTaskUpdateRequest(
-    string Title,
-    string? Description,
+    [StringLength(160, ErrorMessage = "Titre : 160 caractères maximum.")] string Title,
+    [StringLength(4000, ErrorMessage = "Description : 4000 caractères maximum.")] string? Description,
     DateTimeOffset? Deadline,
-    string Category,
+    [StringLength(20, ErrorMessage = "Catégorie : 20 caractères maximum.")] string Category,
     bool IsDone,
     bool NotificationsEnabled = false,
     Guid? CourseId = null);
@@ -30,23 +32,23 @@ public sealed record PersonalTaskResponse(
     DateTimeOffset UpdatedAt);
 
 public sealed record PersonalEventRequest(
-    string Title,
+    [StringLength(160, ErrorMessage = "Titre : 160 caractères maximum.")] string Title,
     DateOnly Day,
     TimeOnly StartsAt,
     TimeOnly EndsAt,
-    string Category,
-    string? Location = null,
-    string? Notes = null,
+    [StringLength(20, ErrorMessage = "Catégorie : 20 caractères maximum.")] string Category,
+    [StringLength(200, ErrorMessage = "Lieu : 200 caractères maximum.")] string? Location = null,
+    [StringLength(2000, ErrorMessage = "Notes : 2000 caractères maximum.")] string? Notes = null,
     bool NotificationsEnabled = false);
 
 public sealed record PersonalEventUpdateRequest(
-    string Title,
+    [StringLength(160, ErrorMessage = "Titre : 160 caractères maximum.")] string Title,
     DateOnly Day,
     TimeOnly StartsAt,
     TimeOnly EndsAt,
-    string Category,
-    string? Location = null,
-    string? Notes = null,
+    [StringLength(20, ErrorMessage = "Catégorie : 20 caractères maximum.")] string Category,
+    [StringLength(200, ErrorMessage = "Lieu : 200 caractères maximum.")] string? Location = null,
+    [StringLength(2000, ErrorMessage = "Notes : 2000 caractères maximum.")] string? Notes = null,
     bool NotificationsEnabled = false);
 
 public sealed record PersonalEventResponse(

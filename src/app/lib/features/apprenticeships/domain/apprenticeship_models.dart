@@ -14,6 +14,7 @@ class ApprenticeshipOpportunity {
     this.targetDiploma,
     this.remoteMode,
     this.summary,
+    this.isDemo = false,
   });
 
   final String source;
@@ -30,6 +31,9 @@ class ApprenticeshipOpportunity {
   final String? remoteMode;
   final String? summary;
   final String applicationUrl;
+
+  /// Offre fictive renvoyée tant qu'aucune source réelle n'est configurée.
+  final bool isDemo;
 
   factory ApprenticeshipOpportunity.fromJson(Map<String, Object?> json) {
     return ApprenticeshipOpportunity(
@@ -53,6 +57,7 @@ class ApprenticeshipOpportunity {
       remoteMode: json['remoteMode'] as String?,
       summary: json['summary'] as String?,
       applicationUrl: json['applicationUrl'] as String,
+      isDemo: json['isDemo'] as bool? ?? false,
     );
   }
 }

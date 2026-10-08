@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace StudyFlow.Api.Contracts;
 
 public sealed record CourseRequest(
@@ -6,7 +8,7 @@ public sealed record CourseRequest(
     DateOnly Day,
     TimeOnly StartsAt,
     TimeOnly EndsAt,
-    string Room,
+    [StringLength(60, ErrorMessage = "Salle : 60 caractères maximum.")] string Room,
     bool IsCancelled = false,
     Guid? SeriesId = null);
 
@@ -16,7 +18,7 @@ public sealed record CourseUpdateRequest(
     DateOnly Day,
     TimeOnly StartsAt,
     TimeOnly EndsAt,
-    string Room,
+    [StringLength(60, ErrorMessage = "Salle : 60 caractères maximum.")] string Room,
     bool IsCancelled,
     long Version,
     Guid? SeriesId = null);

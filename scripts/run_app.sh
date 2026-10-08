@@ -231,6 +231,11 @@ if [ -n "$DEVICE_ID" ]; then
   COMMAND+=(-d "$DEVICE_ID")
 fi
 
+# Identifiants Firebase (notifications push), fichier local ignoré par Git.
+if [ -f "firebase_config.json" ]; then
+  COMMAND+=(--dart-define-from-file=firebase_config.json)
+fi
+
 if [ -n "$API_URL" ]; then
   COMMAND+=(--dart-define=STUDYFLOW_API_URL="$API_URL")
 fi

@@ -28,3 +28,10 @@ build/
 src/app/ios/Podfile *.lock
 src/app/ios/Flutter/* 2.*
 src/app/ios/Flutter/* 3.*
+
+# Firebase : identifiants du projet et compte de service, jamais dans le dépôt public.
+src/app/firebase_config.json
+**/google-services.json
+**/GoogleService-Info.plist
+**/*firebase-adminsdk*.json
+/secrets/

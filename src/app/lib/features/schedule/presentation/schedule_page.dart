@@ -891,7 +891,7 @@ class _CourseHistorySheetState extends State<_CourseHistorySheet> {
                       onPressed: _isRestoring ? null : _restoreLatest,
                       icon: const Icon(Icons.restore_outlined, size: 18),
                       label: Text(
-                        _isRestoring ? 'Restauration...' : 'Restaurer',
+                        _isRestoring ? 'Restauration...' : 'Version précédente',
                       ),
                     ),
                   ),
@@ -916,14 +916,21 @@ class _CourseHistorySheetState extends State<_CourseHistorySheet> {
   Future<void> _restoreLatest() async {
     setState(() => _isRestoring = true);
     final appScope = AppScope.of(context);
-    final accessToken = await appScope.sessionController.accessTokenForApi();
 
     try {
+      final accessToken = await appScope.sessionController.accessTokenForApi();
       await appScope.courseRepository.restoreLatestCourse(
         courseId: widget.course.id,
         accessToken: accessToken,
       );
       await widget.onRestored();
+    } on Exception catch (error) {
+      // Par exemple : rien à annuler, ou l'ancien créneau est déjà occupé.
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+      }
     } finally {
       if (mounted) setState(() => _isRestoring = false);
     }

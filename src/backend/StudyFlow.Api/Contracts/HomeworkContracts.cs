@@ -1,14 +1,16 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace StudyFlow.Api.Contracts;
 
 public sealed record HomeworkRequest(
-    string Title,
-    string? Description,
+    [StringLength(160, ErrorMessage = "Titre : 160 caractères maximum.")] string Title,
+    [StringLength(4000, ErrorMessage = "Description : 4000 caractères maximum.")] string? Description,
     DateTimeOffset Deadline,
     Guid? CourseId = null);
 
 public sealed record HomeworkUpdateRequest(
-    string Title,
-    string? Description,
+    [StringLength(160, ErrorMessage = "Titre : 160 caractères maximum.")] string Title,
+    [StringLength(4000, ErrorMessage = "Description : 4000 caractères maximum.")] string? Description,
     DateTimeOffset Deadline,
     Guid? CourseId = null);
 

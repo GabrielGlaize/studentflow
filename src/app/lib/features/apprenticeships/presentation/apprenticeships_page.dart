@@ -8,15 +8,25 @@ import 'package:studyflow_app/features/company/application/company_documents_con
 import 'package:url_launcher/url_launcher.dart';
 
 class ApprenticeshipsPage extends StatefulWidget {
-  const ApprenticeshipsPage({this.onBackToCompany, super.key});
+  const ApprenticeshipsPage({
+    this.onBackToCompany,
+    this.onExitPublicSearch,
+    super.key,
+  });
 
   final VoidCallback? onBackToCompany;
+
+  /// Renseigné pour un visiteur sans compte : seule la recherche publique est
+  /// affichée, les favoris et l'entraide demandent une connexion.
+  final VoidCallback? onExitPublicSearch;
 
   @override
   State<ApprenticeshipsPage> createState() => _ApprenticeshipsPageState();
 }
 
 class _ApprenticeshipsPageState extends State<ApprenticeshipsPage> {
+  bool get _isPublicVisitor => widget.onExitPublicSearch != null;
+
   final _keywordsController = TextEditingController(text: 'développeur');
   final _locationController = TextEditingController(text: 'Paris');
   Future<List<ApprenticeshipOpportunity>>? _resultsFuture;
@@ -28,6 +38,8 @@ class _ApprenticeshipsPageState extends State<ApprenticeshipsPage> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _resultsFuture ??= _search();
+    if (_isPublicVisitor) return;
+
     _messagesFuture ??= _loadMessages();
     _savedSearchesFuture ??= _loadSavedSearches();
     _favoriteOffersFuture ??= _loadFavoriteOffers();
@@ -48,6 +60,18 @@ class _ApprenticeshipsPageState extends State<ApprenticeshipsPage> {
           return ListView(
             padding: const EdgeInsets.only(bottom: 112),
             children: [
+              if (widget.onExitPublicSearch != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: widget.onExitPublicSearch,
+                      icon: const Icon(Icons.arrow_back),
+                      label: const Text('Se connecter ou créer un compte'),
+                    ),
+                  ),
+                ),
               if (widget.onBackToCompany != null)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
@@ -62,7 +86,9 @@ class _ApprenticeshipsPageState extends State<ApprenticeshipsPage> {
                 ),
               ProtoScreenTitle(
                 title: 'Alternances',
-                subtitle: 'Recherche officielle et entraide de classe.',
+                subtitle: _isPublicVisitor
+                    ? 'Recherche ouverte à tous, sans compte.'
+                    : 'Recherche officielle et entraide de classe.',
                 trailing: const ProtoIconBox(
                   icon: Icons.work_outline,
                   backgroundColor: AppColors.greenSoft,
@@ -117,57 +143,67 @@ class _ApprenticeshipsPageState extends State<ApprenticeshipsPage> {
                             ],
                           ),
                           const SizedBox(height: 10),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: OutlinedButton.icon(
-                              onPressed: _saveCurrentSearch,
-                              icon: const Icon(Icons.bookmark_add_outlined),
-                              label: const Text('Sauvegarder la recherche'),
+                          if (_isPublicVisitor)
+                            const ProtoMutedText(
+                              'Crée un compte pour sauvegarder tes recherches et tes offres favorites.',
+                            )
+                          else
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: OutlinedButton.icon(
+                                onPressed: _saveCurrentSearch,
+                                icon: const Icon(Icons.bookmark_add_outlined),
+                                label: const Text('Sauvegarder la recherche'),
+                              ),
                             ),
-                          ),
                         ],
                       ),
                     ),
-                    _ApplicationDocumentsSection(
-                      documents: applicationDocuments,
-                      onAddDocument: _openAddApplicationDocumentSheet,
-                      onDeleteDocument: documentsController.deleteDocument,
-                    ),
-                    FutureBuilder<List<ApprenticeshipSavedSearch>>(
-                      future: _savedSearchesFuture,
-                      builder: (context, snapshot) {
-                        return _SavedSearchesSection(
-                          searches: snapshot.data ?? const [],
-                          isLoading:
-                              snapshot.connectionState != ConnectionState.done,
-                          onSelect: _runSavedSearch,
-                          onDelete: _deleteSavedSearch,
-                        );
-                      },
-                    ),
-                    FutureBuilder<List<FavoriteApprenticeshipOffer>>(
-                      future: _favoriteOffersFuture,
-                      builder: (context, snapshot) {
-                        return _FavoriteOffersSection(
-                          offers: snapshot.data ?? const [],
-                          isLoading:
-                              snapshot.connectionState != ConnectionState.done,
-                          onDelete: _deleteFavoriteOffer,
-                        );
-                      },
-                    ),
-                    FutureBuilder<List<ApprenticeshipMessage>>(
-                      future: _messagesFuture,
-                      builder: (context, snapshot) {
-                        return _CommunitySection(
-                          messages: snapshot.data ?? const [],
-                          isLoading:
-                              snapshot.connectionState != ConnectionState.done,
-                          onShare: _openShareSheet,
-                          onRetry: _refreshMessages,
-                        );
-                      },
-                    ),
+                    if (!_isPublicVisitor) ...[
+                      _ApplicationDocumentsSection(
+                        documents: applicationDocuments,
+                        onAddDocument: _openAddApplicationDocumentSheet,
+                        onDeleteDocument: documentsController.deleteDocument,
+                      ),
+                      FutureBuilder<List<ApprenticeshipSavedSearch>>(
+                        future: _savedSearchesFuture,
+                        builder: (context, snapshot) {
+                          return _SavedSearchesSection(
+                            searches: snapshot.data ?? const [],
+                            isLoading:
+                                snapshot.connectionState !=
+                                ConnectionState.done,
+                            onSelect: _runSavedSearch,
+                            onDelete: _deleteSavedSearch,
+                          );
+                        },
+                      ),
+                      FutureBuilder<List<FavoriteApprenticeshipOffer>>(
+                        future: _favoriteOffersFuture,
+                        builder: (context, snapshot) {
+                          return _FavoriteOffersSection(
+                            offers: snapshot.data ?? const [],
+                            isLoading:
+                                snapshot.connectionState !=
+                                ConnectionState.done,
+                            onDelete: _deleteFavoriteOffer,
+                          );
+                        },
+                      ),
+                      FutureBuilder<List<ApprenticeshipMessage>>(
+                        future: _messagesFuture,
+                        builder: (context, snapshot) {
+                          return _CommunitySection(
+                            messages: snapshot.data ?? const [],
+                            isLoading:
+                                snapshot.connectionState !=
+                                ConnectionState.done,
+                            onShare: _openShareSheet,
+                            onRetry: _refreshMessages,
+                          );
+                        },
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -178,7 +214,7 @@ class _ApprenticeshipsPageState extends State<ApprenticeshipsPage> {
                     future: _resultsFuture,
                     favorites: snapshot.data ?? const [],
                     onRetry: _submitSearch,
-                    onToggleFavorite: _toggleFavorite,
+                    onToggleFavorite: _toggleFavoriteOrAskToSignIn,
                   );
                 },
               ),
@@ -330,6 +366,18 @@ class _ApprenticeshipsPageState extends State<ApprenticeshipsPage> {
       if (!mounted) return;
       _showSnackBar(error.toString());
     }
+  }
+
+  Future<void> _toggleFavoriteOrAskToSignIn(
+    ApprenticeshipOpportunity opportunity,
+    FavoriteApprenticeshipOffer? favorite,
+  ) async {
+    if (_isPublicVisitor) {
+      _showSnackBar('Connecte-toi pour enregistrer des offres favorites.');
+      return;
+    }
+
+    await _toggleFavorite(opportunity, favorite);
   }
 
   Future<void> _toggleFavorite(
@@ -1327,6 +1375,12 @@ class _OpportunityCard extends StatelessWidget {
             spacing: 6,
             runSpacing: 6,
             children: [
+              if (opportunity.isDemo)
+                const ProtoChip(
+                  label: 'Offre de démonstration',
+                  backgroundColor: Color(0xFFFFF1D6),
+                  foregroundColor: Color(0xFF8A5A12),
+                ),
               ...opportunity.contractTypes.map(
                 (contract) => ProtoChip(
                   label: contract,

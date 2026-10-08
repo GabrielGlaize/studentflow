@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -16,7 +15,7 @@ namespace StudyFlow.Api.Controllers;
 [Route("api/v1/profile")]
 public sealed class ProfileController(
     UserManager<ApplicationUser> userManager,
-    StudyFlowDbContext dbContext) : ControllerBase
+    StudyFlowDbContext dbContext) : StudyFlowControllerBase(userManager)
 {
     private static readonly int[] AllowedCourseReminderMinutes = [0, 5, 10, 15, 30, 60];
 
@@ -104,7 +103,7 @@ public sealed class ProfileController(
     {
         var appSettings = await GetOrCreateAppSettingsAsync(user.Id, cancellationToken);
         var notificationSettings = await GetOrCreateNotificationSettingsAsync(user.Id, cancellationToken);
-        var roles = await userManager.GetRolesAsync(user);
+        var roles = await UserManager.GetRolesAsync(user);
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -141,9 +140,6 @@ public sealed class ProfileController(
         return settings;
     }
 
-    private async Task<ApplicationUser?> CurrentUserAsync() =>
-        await userManager.FindByIdAsync(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
     private static ThemePreference? ParseTheme(string value) =>
         value.Trim().ToLowerInvariant() switch
         {
@@ -175,7 +171,4 @@ public sealed class ProfileController(
 
     private static string? CleanOptional(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-
-    private ObjectResult BadRequestProblem(string title) =>
-        BadRequest(new ProblemDetails { Title = title, Status = StatusCodes.Status400BadRequest });
 }

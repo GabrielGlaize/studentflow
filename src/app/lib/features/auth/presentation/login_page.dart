@@ -3,6 +3,7 @@ import 'package:studyflow_app/core/app_scope.dart';
 import 'package:studyflow_app/core/theme/app_colors.dart';
 import 'package:studyflow_app/core/theme/prototype_widgets.dart';
 import 'package:studyflow_app/features/auth/application/session_controller.dart';
+import 'package:studyflow_app/features/apprenticeships/presentation/apprenticeships_page.dart';
 import 'package:studyflow_app/features/auth/presentation/onboarding_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -226,6 +227,12 @@ class _LoginPageState extends State<LoginPage> {
                 icon: const Icon(Icons.auto_awesome_outlined),
                 label: const Text('Créer un compte ou une classe'),
               ),
+              const SizedBox(height: 6),
+              TextButton.icon(
+                onPressed: _openPublicSearch,
+                icon: const Icon(Icons.work_outline),
+                label: const Text('Chercher une alternance sans compte'),
+              ),
             ],
           ),
         ),
@@ -246,6 +253,19 @@ class _LoginPageState extends State<LoginPage> {
     Navigator.push(
       context,
       MaterialPageRoute<void>(builder: (_) => const OnboardingPage()),
+    );
+  }
+
+  void _openPublicSearch() {
+    Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (routeContext) => Scaffold(
+          body: ApprenticeshipsPage(
+            onExitPublicSearch: () => Navigator.pop(routeContext),
+          ),
+        ),
+      ),
     );
   }
 

@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using StudyFlow.Application.Notifications;
 using StudyFlow.Application.Security;
+using StudyFlow.Application.Time;
 using StudyFlow.Domain.Notifications;
 using StudyFlow.Domain.School;
 using StudyFlow.Infrastructure.Persistence;
@@ -10,7 +11,8 @@ namespace StudyFlow.Infrastructure.Notifications;
 
 public sealed class NotificationReminderPlanner(
     StudyFlowDbContext dbContext,
-    ISensitiveDataProtector protector) : INotificationReminderPlanner
+    ISensitiveDataProtector protector,
+    ISchoolClock clock) : INotificationReminderPlanner
 {
     private const string CourseDataPurpose = "course-data";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
@@ -80,8 +82,8 @@ public sealed class NotificationReminderPlanner(
         DateTimeOffset windowEnd,
         CancellationToken cancellationToken)
     {
-        var firstDay = DateOnly.FromDateTime(windowStart.LocalDateTime).AddDays(-1);
-        var lastDay = DateOnly.FromDateTime(windowEnd.LocalDateTime).AddDays(1);
+        var firstDay = clock.ToSchoolDay(windowStart).AddDays(-1);
+        var lastDay = clock.ToSchoolDay(windowEnd).AddDays(1);
 
         var courses = await dbContext.Courses
             .AsNoTracking()
@@ -106,8 +108,10 @@ public sealed class NotificationReminderPlanner(
                     protector.Unprotect(course.EncryptedData, CourseDataPurpose),
                     JsonOptions)!;
 
-                var courseStart = ToDateTimeOffset(course.Day, data.StartsAt, windowStart.Offset);
-                var scheduledAt = courseStart.AddMinutes(-preference.CourseReminderMinutes);
+                // Les horaires sont saisis en heure de l'établissement, quel que soit le fuseau du serveur.
+                var courseStart = clock.ToSchoolTime(course.Day, data.StartsAt);
+                // PostgreSQL (timestamptz via Npgsql) n'accepte que des instants en UTC.
+                var scheduledAt = courseStart.AddMinutes(-preference.CourseReminderMinutes).ToUniversalTime();
                 if (!IsInsideWindow(scheduledAt, windowStart, windowEnd)) continue;
 
                 var title = preference.CourseReminderMinutes == 0
@@ -172,7 +176,7 @@ public sealed class NotificationReminderPlanner(
                 var progress = progressByUserAndHomework.GetValueOrDefault((userId, homework.Id));
                 if (progress?.IsDone == true || progress?.NotificationsEnabled == false) continue;
 
-                var scheduledAt = homework.Deadline.AddDays(-1);
+                var scheduledAt = homework.Deadline.AddDays(-1).ToUniversalTime();
                 if (!IsInsideWindow(scheduledAt, windowStart, windowEnd)) continue;
 
                 candidates.Add(new NotificationReminderCandidate(
@@ -194,12 +198,6 @@ public sealed class NotificationReminderPlanner(
         Guid userId)
     {
         return preferences.GetValueOrDefault(userId) ?? new NotificationPreference { UserId = userId };
-    }
-
-    private static DateTimeOffset ToDateTimeOffset(DateOnly day, TimeOnly time, TimeSpan offset)
-    {
-        var dateTime = day.ToDateTime(time);
-        return new DateTimeOffset(dateTime, offset);
     }
 
     private static bool IsInsideWindow(DateTimeOffset value, DateTimeOffset start, DateTimeOffset end) =>

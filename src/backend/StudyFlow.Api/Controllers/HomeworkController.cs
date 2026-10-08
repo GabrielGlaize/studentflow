@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -19,7 +18,7 @@ namespace StudyFlow.Api.Controllers;
 public sealed class HomeworkController(
     UserManager<ApplicationUser> userManager,
     StudyFlowDbContext dbContext,
-    ISensitiveDataProtector protector) : ControllerBase
+    ISensitiveDataProtector protector) : StudyFlowControllerBase(userManager)
 {
     private const string RevisionPurpose = "revision-contribution";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
@@ -80,7 +79,7 @@ public sealed class HomeworkController(
             CourseId = request.CourseId,
             Title = request.Title.Trim(),
             Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
-            Deadline = request.Deadline,
+            Deadline = request.Deadline.ToUniversalTime(),
             CreatedById = user.Id
         };
 
@@ -112,7 +111,7 @@ public sealed class HomeworkController(
         homework.CourseId = request.CourseId;
         homework.Title = request.Title.Trim();
         homework.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
-        homework.Deadline = request.Deadline;
+        homework.Deadline = request.Deadline.ToUniversalTime();
         homework.UpdatedAt = DateTimeOffset.UtcNow;
         homework.UpdatedById = user.Id;
 
@@ -263,10 +262,4 @@ public sealed class HomeworkController(
 
         await dbContext.SaveChangesAsync(cancellationToken);
     }
-
-    private async Task<ApplicationUser?> CurrentUserAsync() =>
-        await userManager.FindByIdAsync(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-    private ObjectResult BadRequestProblem(string title) =>
-        BadRequest(new ProblemDetails { Title = title, Status = StatusCodes.Status400BadRequest });
 }

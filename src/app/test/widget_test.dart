@@ -40,6 +40,12 @@ void main() {
 
     expect(find.text('Bienvenue sur StudyFlow'), findsOneWidget);
 
+    // Le formulaire n'est plus prérempli par défaut : il faut saisir les identifiants.
+    await tester.enterText(
+      find.byType(TextFormField).at(0),
+      'gabriel@studyflow.dev',
+    );
+    await tester.enterText(find.byType(TextFormField).at(1), 'Password1234!');
     await tester.tap(find.text('Se connecter'));
     await tester.pumpAndSettle();
 
@@ -244,5 +250,30 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Profil et réglages'), findsOneWidget);
+  });
+
+  testWidgets('un visiteur cherche une alternance sans compte', (tester) async {
+    FlutterSecureStorage.setMockInitialValues({});
+
+    await tester.pumpWidget(
+      const StudyFlowApp(
+        environment: AppEnvironment.dev(useDemoRepositories: true),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(ListView), const Offset(0, -400));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Chercher une alternance sans compte'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Recherche ouverte à tous, sans compte.'), findsOneWidget);
+    expect(find.text('Offres partagées par la classe'), findsNothing);
+    expect(find.text('Sauvegarder la recherche'), findsNothing);
+
+    await tester.tap(find.text('Se connecter ou créer un compte'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Bienvenue sur StudyFlow'), findsOneWidget);
   });
 }

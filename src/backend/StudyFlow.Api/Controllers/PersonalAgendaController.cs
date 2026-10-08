@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -6,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StudyFlow.Api.Contracts;
 using StudyFlow.Application.Security;
+using StudyFlow.Application.Time;
 using StudyFlow.Domain.School;
 using StudyFlow.Infrastructure.Identity;
 using StudyFlow.Infrastructure.Persistence;
@@ -18,7 +18,8 @@ namespace StudyFlow.Api.Controllers;
 public sealed class PersonalAgendaController(
     UserManager<ApplicationUser> userManager,
     StudyFlowDbContext dbContext,
-    ISensitiveDataProtector protector) : ControllerBase
+    ISensitiveDataProtector protector,
+    ISchoolClock clock) : StudyFlowControllerBase(userManager)
 {
     private const string PersonalEventDataPurpose = "personal-event-data";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
@@ -77,7 +78,7 @@ public sealed class PersonalAgendaController(
             CourseId = request.CourseId,
             Title = request.Title.Trim(),
             Description = CleanOptional(request.Description),
-            Deadline = request.Deadline,
+            Deadline = request.Deadline?.ToUniversalTime(),
             Category = category.Value,
             NotificationsEnabled = request.NotificationsEnabled
         };
@@ -123,7 +124,7 @@ public sealed class PersonalAgendaController(
         task.CourseId = request.CourseId;
         task.Title = request.Title.Trim();
         task.Description = CleanOptional(request.Description);
-        task.Deadline = request.Deadline;
+        task.Deadline = request.Deadline?.ToUniversalTime();
         task.Category = category.Value;
         task.NotificationsEnabled = request.NotificationsEnabled;
         task.IsDone = request.IsDone;
@@ -159,8 +160,8 @@ public sealed class PersonalAgendaController(
         var user = await CurrentUserAsync();
         if (user is null) return Unauthorized();
 
-        var start = from ?? DateOnly.FromDateTime(DateTime.Today.AddDays(-7));
-        var end = to ?? DateOnly.FromDateTime(DateTime.Today.AddDays(21));
+        var start = from ?? clock.Today.AddDays(-7);
+        var end = to ?? clock.Today.AddDays(21);
         if (end < start) return BadRequestProblem("La date de fin doit etre apres la date de debut.");
 
         var query = dbContext.PersonalEvents
@@ -401,14 +402,8 @@ public sealed class PersonalAgendaController(
             _ => "personal"
         };
 
-    private async Task<ApplicationUser?> CurrentUserAsync() =>
-        await userManager.FindByIdAsync(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
     private static string? CleanOptional(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-
-    private ObjectResult BadRequestProblem(string title) =>
-        BadRequest(new ProblemDetails { Title = title, Status = StatusCodes.Status400BadRequest });
 
     private sealed record PersonalEventProtectedData(
         string Title,

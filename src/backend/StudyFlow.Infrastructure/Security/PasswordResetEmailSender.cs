@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Mail;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using StudyFlow.Application.Security;
@@ -8,6 +9,7 @@ namespace StudyFlow.Infrastructure.Security;
 
 public sealed class PasswordResetEmailSender(
     IOptions<EmailOptions> options,
+    IHostEnvironment environment,
     ILogger<PasswordResetEmailSender> logger) : IPasswordResetEmailSender
 {
     private readonly EmailOptions _options = options.Value;
@@ -20,10 +22,20 @@ public sealed class PasswordResetEmailSender(
     {
         if (!_options.IsSmtpConfigured)
         {
-            logger.LogInformation(
-                "SMTP is not configured. Password reset code for {Email}: {ResetToken}",
-                email,
-                resetToken);
+            // Hors développement, un code écrit dans les journaux permettrait à quiconque
+            // y a accès de prendre le contrôle du compte.
+            if (environment.IsDevelopment())
+            {
+                logger.LogInformation(
+                    "SMTP is not configured. Password reset code for {Email}: {ResetToken}",
+                    email,
+                    resetToken);
+            }
+            else
+            {
+                logger.LogWarning("SMTP is not configured: the password reset e-mail was not sent.");
+            }
+
             return;
         }
 

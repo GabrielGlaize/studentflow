@@ -296,3 +296,30 @@ avec :
 ```bash
 docker volume ls
 ```
+
+## Notifications push (Firebase)
+
+L'API envoie les rappels de cours, de devoirs et les annonces via Firebase
+Cloud Messaging.
+
+1. Dans la console Firebase : Paramètres du projet > Comptes de service >
+   Générer une nouvelle clé privée.
+2. Copier le fichier sur le NAS, **hors Git**, sous ce nom exact :
+
+   ```text
+   /volume1/docker/studyflow/secrets/firebase-adminsdk.json
+   ```
+
+   puis le protéger : `chmod 600 secrets/firebase-adminsdk.json`.
+3. Vérifier dans `.env.nas` :
+
+   ```env
+   STUDYFLOW_FIREBASE_CREDENTIALS_PATH=/run/secrets/studyflow/firebase-adminsdk.json
+   STUDYFLOW_NOTIFICATIONS_ENABLED=true
+   ```
+
+4. Redéployer avec `./scripts/nas_deploy.sh`. Si le chemin est faux, l'API
+   refuse de démarrer et le dit dans `docker compose ... logs api`.
+
+Côté app Android, `src/app/firebase_config.json` (ignoré par Git) est pris en
+compte automatiquement par `scripts/run_app.sh`.

@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -6,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StudyFlow.Api.Contracts;
 using StudyFlow.Application.Security;
+using StudyFlow.Application.Time;
 using StudyFlow.Domain.Contributions;
 using StudyFlow.Domain.School;
 using StudyFlow.Infrastructure.Identity;
@@ -19,7 +19,8 @@ namespace StudyFlow.Api.Controllers;
 public sealed class CoursesController(
     UserManager<ApplicationUser> userManager,
     StudyFlowDbContext dbContext,
-    ISensitiveDataProtector protector) : ControllerBase
+    ISensitiveDataProtector protector,
+    ISchoolClock clock) : StudyFlowControllerBase(userManager)
 {
     private const string CourseDataPurpose = "course-data";
     private const string ProfessorDisplayPurpose = "teacher-display-name";
@@ -36,8 +37,8 @@ public sealed class CoursesController(
         var user = await CurrentUserAsync();
         if (user?.SchoolClassId is null) return Forbid();
 
-        var start = from ?? DateOnly.FromDateTime(DateTime.Today.AddDays(-7));
-        var end = to ?? DateOnly.FromDateTime(DateTime.Today.AddDays(21));
+        var start = from ?? clock.Today.AddDays(-7);
+        var end = to ?? clock.Today.AddDays(21);
         if (end < start) return BadRequestProblem("La date de fin doit etre apres la date de debut.");
 
         var course = await dbContext.Courses
@@ -132,12 +133,9 @@ public sealed class CoursesController(
         // La version evite d'ecraser sans le savoir une modification faite par un autre eleve.
         if (course.Version != request.Version)
         {
-            return Conflict(new ProblemDetails
-            {
-                Title = "Le cours a deja ete modifie par quelqu'un d'autre.",
-                Detail = "Rechargez le cours avant de le modifier.",
-                Status = StatusCodes.Status409Conflict
-            });
+            return ConflictProblem(
+                "Le cours a deja ete modifie par quelqu'un d'autre.",
+                "Rechargez le cours avant de le modifier.");
         }
 
         var validationProblem = await ValidateCourseRequestAsync(
@@ -228,6 +226,10 @@ public sealed class CoursesController(
         }).ToArray());
     }
 
+    /// <summary>
+    /// Annule la dernière modification du cours. Chaque révision enregistre l'état obtenu
+    /// <em>après</em> l'action : l'état d'avant est donc celui de la révision précédente.
+    /// </summary>
     [HttpPost("{id:guid}/restore-latest")]
     public async Task<ActionResult<CourseResponse>> RestoreLatest(Guid id, CancellationToken cancellationToken)
     {
@@ -241,31 +243,45 @@ public sealed class CoursesController(
             .SingleOrDefaultAsync(x => x.Id == id && x.SchoolClassId == user.SchoolClassId, cancellationToken);
         if (course is null) return NotFound();
 
-        var revision = await dbContext.ContributionRevisions
+        var lastRevisions = await dbContext.ContributionRevisions
             .AsNoTracking()
             .Where(x => x.SchoolClassId == user.SchoolClassId
                 && x.EntityType == ContributionType.Course
                 && x.EntityId == id)
             .OrderByDescending(x => x.CreatedAt)
-            .FirstOrDefaultAsync(cancellationToken);
-        if (revision is null) return NotFound();
+            .Take(2)
+            .ToListAsync(cancellationToken);
+        if (lastRevisions.Count == 0) return NotFound();
+        if (lastRevisions.Count == 1) return ConflictProblem("Aucune modification a annuler sur ce cours.");
 
-        var snapshot = ReadRevisionSnapshot(revision);
+        var previousRevision = lastRevisions[1];
+        var snapshot = ReadRevisionSnapshot(previousRevision);
+        var restoresDeletedState = previousRevision.Action == ContributionAction.Deleted;
+
+        if (!restoresDeletedState && !snapshot.IsCancelled)
+        {
+            var data = ReadCourseData(snapshot.EncryptedData);
+            if (await HasScheduleConflictAsync(user.SchoolClassId.Value, snapshot.Day, data.StartsAt, data.EndsAt, course.Id, cancellationToken))
+            {
+                return ConflictProblem("Impossible d'annuler : l'ancien horaire chevauche un autre cours.");
+            }
+        }
+
         course.SubjectId = snapshot.SubjectId;
         course.TeacherId = snapshot.TeacherId;
         course.Day = snapshot.Day;
         course.IsCancelled = snapshot.IsCancelled;
         course.EncryptedData = snapshot.EncryptedData;
-        course.DeletedAt = null;
+        course.DeletedAt = restoresDeletedState ? DateTimeOffset.UtcNow : null;
         course.UpdatedAt = DateTimeOffset.UtcNow;
         course.UpdatedById = user.Id;
         course.Version++;
 
         await dbContext.SaveChangesAsync(cancellationToken);
-        await SaveRevisionAsync(user, ContributionAction.Restored, course, cancellationToken);
+        await SaveRevisionAsync(user, restoresDeletedState ? ContributionAction.Deleted : ContributionAction.Restored, course, cancellationToken);
+
         await dbContext.Entry(course).Reference(x => x.Subject).LoadAsync(cancellationToken);
         await dbContext.Entry(course).Reference(x => x.Teacher).LoadAsync(cancellationToken);
-
         return Ok(ToResponse(course));
     }
 
@@ -304,43 +320,47 @@ public sealed class CoursesController(
             if (!teacherExists) return BadRequestProblem("Le professeur n'existe pas dans votre classe.");
         }
 
-        if (!isCancelled)
+        if (!isCancelled && await HasScheduleConflictAsync(schoolClassId, day, startsAt, endsAt, excludedCourseId, cancellationToken))
         {
-            var coursesSameDay = await dbContext.Courses
-                .AsNoTracking()
-                .Where(x => x.SchoolClassId == schoolClassId
-                    && x.Day == day
-                    && !x.IsCancelled
-                    && x.Id != excludedCourseId)
-                .ToListAsync(cancellationToken);
-
-            var hasConflict = coursesSameDay.Any(course =>
-            {
-                var data = JsonSerializer.Deserialize<CourseProtectedData>(
-                    protector.Unprotect(course.EncryptedData, CourseDataPurpose),
-                    JsonOptions)!;
-                return startsAt < data.EndsAt && endsAt > data.StartsAt;
-            });
-
-            if (hasConflict)
-            {
-                return Conflict(new ProblemDetails
-                {
-                    Title = "Ce cours chevauche deja un autre cours.",
-                    Detail = "Corrigez l'horaire ou modifiez le cours existant.",
-                    Status = StatusCodes.Status409Conflict
-                });
-            }
+            return ConflictProblem(
+                "Ce cours chevauche deja un autre cours.",
+                "Corrigez l'horaire ou modifiez le cours existant.");
         }
 
         return null;
     }
 
+    private async Task<bool> HasScheduleConflictAsync(
+        Guid schoolClassId,
+        DateOnly day,
+        TimeOnly startsAt,
+        TimeOnly endsAt,
+        Guid? excludedCourseId,
+        CancellationToken cancellationToken)
+    {
+        var coursesSameDay = await dbContext.Courses
+            .AsNoTracking()
+            .Where(x => x.SchoolClassId == schoolClassId
+                && x.Day == day
+                && !x.IsCancelled
+                && x.Id != excludedCourseId)
+            .ToListAsync(cancellationToken);
+
+        return coursesSameDay.Any(course =>
+        {
+            var data = ReadCourseData(course.EncryptedData);
+            return startsAt < data.EndsAt && endsAt > data.StartsAt;
+        });
+    }
+
+    private CourseProtectedData ReadCourseData(string encryptedData) =>
+        JsonSerializer.Deserialize<CourseProtectedData>(
+            protector.Unprotect(encryptedData, CourseDataPurpose),
+            JsonOptions)!;
+
     private CourseResponse ToResponse(Course course)
     {
-        var data = JsonSerializer.Deserialize<CourseProtectedData>(
-            protector.Unprotect(course.EncryptedData, CourseDataPurpose),
-            JsonOptions)!;
+        var data = ReadCourseData(course.EncryptedData);
 
         return new CourseResponse(
             course.Id,
@@ -394,18 +414,12 @@ public sealed class CoursesController(
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
-    private async Task<ApplicationUser?> CurrentUserAsync() =>
-        await userManager.FindByIdAsync(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
     private RevisionCourseSnapshot ReadRevisionSnapshot(ContributionRevision revision)
     {
         return JsonSerializer.Deserialize<RevisionCourseSnapshot>(
             protector.Unprotect(revision.EncryptedSnapshot, RevisionPurpose),
             JsonOptions)!;
     }
-
-    private ObjectResult BadRequestProblem(string title) =>
-        BadRequest(new ProblemDetails { Title = title, Status = StatusCodes.Status400BadRequest });
 
     private sealed record CourseProtectedData(TimeOnly StartsAt, TimeOnly EndsAt, string Room);
 

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Npgsql;
 using StudyFlow.Application.Security;
 using StudyFlow.Domain.School;
 using StudyFlow.Domain.Users;
@@ -40,9 +41,21 @@ public static class DevelopmentDataSeeder
 
         if (configuration.GetValue<bool>("DevelopmentSeed:ResetOnStartup"))
         {
-            logger.LogWarning(
-                "DevelopmentSeed:ResetOnStartup=true. The local development database will be deleted and recreated.");
-            await dbContext.Database.EnsureDeletedAsync();
+            // Garde-fou : un serveur lancé par erreur en Development ne doit jamais effacer une vraie base.
+            var databaseHost = new NpgsqlConnectionStringBuilder(dbContext.Database.GetConnectionString()).Host;
+            if (IsLocalDatabaseHost(databaseHost) || configuration.GetValue<bool>("DevelopmentSeed:AllowRemoteReset"))
+            {
+                logger.LogWarning(
+                    "DevelopmentSeed:ResetOnStartup=true. The local development database will be deleted and recreated.");
+                await dbContext.Database.EnsureDeletedAsync();
+            }
+            else
+            {
+                logger.LogError(
+                    "DevelopmentSeed:ResetOnStartup ignored: database host {Host} is not local. "
+                    + "Set DevelopmentSeed:AllowRemoteReset=true only for a disposable database.",
+                    databaseHost);
+            }
         }
 
         await dbContext.Database.MigrateAsync();
@@ -214,6 +227,11 @@ public static class DevelopmentDataSeeder
 
         await dbContext.SaveChangesAsync();
     }
+
+    private static bool IsLocalDatabaseHost(string? host) =>
+        host is not null
+        && host.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+            .All(x => x is "localhost" or "127.0.0.1" or "::1");
 
     private static async Task EnsureDevelopmentPasswordAsync(
         UserManager<ApplicationUser> userManager,

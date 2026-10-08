@@ -1,10 +1,10 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using StudyFlow.Api.Contracts;
+using StudyFlow.Application.Accounts;
 using StudyFlow.Application.Security;
 using StudyFlow.Domain.School;
 using StudyFlow.Domain.Users;
@@ -20,35 +20,51 @@ public sealed class AuthController(
     StudyFlowDbContext dbContext,
     IAuthTokenService tokenService,
     IPasswordResetService passwordResetService,
-    IClassCodeService classCodeService) : ControllerBase
+    IClassCodeService classCodeService,
+    IAccountDeletionService accountDeletionService) : StudyFlowControllerBase(userManager)
 {
-    [EnableRateLimiting("auth-sensitive")]
+    [EnableRateLimiting(RateLimiting.Credentials)]
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request, CancellationToken cancellationToken)
     {
+        var namesProblem = ValidateNames(request.FirstName, request.LastName);
+        if (namesProblem is not null) return namesProblem;
+
         var user = NewUser(request.Email, request.FirstName, request.LastName);
-        var result = await userManager.CreateAsync(user, request.Password);
-        if (!result.Succeeded) return IdentityErrors(result);
+        var result = await UserManager.CreateAsync(user, request.Password);
+        if (!result.Succeeded) return IdentityValidationProblem(result);
 
         return Ok(await CreateResponseAsync(user, cancellationToken));
     }
 
-    [EnableRateLimiting("auth-sensitive")]
+    [EnableRateLimiting(RateLimiting.Credentials)]
     [HttpPost("register-and-create-class")]
     public async Task<ActionResult<AuthResponse>> RegisterAndCreateClass(
         RegisterAndCreateClassRequest request,
         CancellationToken cancellationToken)
     {
+        var namesProblem = ValidateNames(request.FirstName, request.LastName);
+        if (namesProblem is not null) return namesProblem;
+
+        var className = request.SchoolClassName.Trim();
+        var schoolYear = request.SchoolYear.Trim();
+        if (string.IsNullOrWhiteSpace(className)) return BadRequestProblem("Le nom de la classe est obligatoire.");
+        if (!InputRules.IsSchoolYear(schoolYear)) return BadRequestProblem(InputRules.SchoolYearMessage);
+        if (await dbContext.SchoolClasses.AnyAsync(x => x.Name == className, cancellationToken))
+        {
+            return ConflictProblem("Ce nom de classe est deja utilise.");
+        }
+
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         var user = NewUser(request.Email, request.FirstName, request.LastName);
-        var result = await userManager.CreateAsync(user, request.Password);
-        if (!result.Succeeded) return IdentityErrors(result);
+        var result = await UserManager.CreateAsync(user, request.Password);
+        if (!result.Succeeded) return IdentityValidationProblem(result);
 
         var code = classCodeService.Generate();
         var schoolClass = new SchoolClass
         {
-            Name = request.SchoolClassName.Trim(),
-            SchoolYear = request.SchoolYear.Trim(),
+            Name = className,
+            SchoolYear = schoolYear,
             AccessCodeHash = code.Hash,
             EncryptedAccessCode = code.Ciphertext,
             AccessCodeUpdatedAt = DateTimeOffset.UtcNow,
@@ -59,27 +75,34 @@ public sealed class AuthController(
         user.UpdatedAt = DateTimeOffset.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        result = await userManager.AddToRolesAsync(user, [nameof(UserRole.Eleve), nameof(UserRole.Delegue)]);
-        if (!result.Succeeded) return IdentityErrors(result);
+        result = await UserManager.AddToRolesAsync(user, [nameof(UserRole.Eleve), nameof(UserRole.Delegue)]);
+        if (!result.Succeeded) return IdentityValidationProblem(result);
 
         await transaction.CommitAsync(cancellationToken);
         return Ok(await CreateResponseAsync(user, cancellationToken, code.Plaintext));
     }
 
-    [EnableRateLimiting("auth-sensitive")]
+    [EnableRateLimiting(RateLimiting.Credentials)]
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest request, CancellationToken cancellationToken)
     {
-        var user = await userManager.FindByEmailAsync(request.Email.Trim());
-        if (user is null || !user.IsActive || !await userManager.CheckPasswordAsync(user, request.Password))
+        var user = await UserManager.FindByEmailAsync(request.Email.Trim());
+        if (user is null || !user.IsActive) return InvalidCredentials();
+
+        // Même réponse pour un compte verrouillé : elle ne doit pas révéler qu'un compte existe.
+        if (await UserManager.IsLockedOutAsync(user)) return InvalidCredentials();
+
+        if (!await UserManager.CheckPasswordAsync(user, request.Password))
         {
-            return Unauthorized(new ProblemDetails { Title = "Identifiants invalides", Status = StatusCodes.Status401Unauthorized });
+            await UserManager.AccessFailedAsync(user);
+            return InvalidCredentials();
         }
 
+        await UserManager.ResetAccessFailedCountAsync(user);
         return Ok(await CreateResponseAsync(user, cancellationToken));
     }
 
-    [EnableRateLimiting("auth-sensitive")]
+    [EnableRateLimiting(RateLimiting.Refresh)]
     [HttpPost("refresh")]
     public async Task<ActionResult<AuthTokenPair>> Refresh(RefreshRequest request, CancellationToken cancellationToken)
     {
@@ -91,8 +114,7 @@ public sealed class AuthController(
     [HttpPost("logout")]
     public async Task<IActionResult> Logout(LogoutRequest request, CancellationToken cancellationToken)
     {
-        var userId = CurrentUserId();
-        await tokenService.RevokeAsync(userId, request.RefreshToken, cancellationToken);
+        await tokenService.RevokeAsync(CurrentUserId, request.RefreshToken, cancellationToken);
         return NoContent();
     }
 
@@ -100,36 +122,17 @@ public sealed class AuthController(
     [HttpDelete("me")]
     public async Task<IActionResult> DeleteAccount(CancellationToken cancellationToken)
     {
-        var user = await userManager.FindByIdAsync(CurrentUserId().ToString());
-        if (user is null) return Unauthorized();
-
-        user.IsActive = false;
-        user.SchoolClassId = null;
-        user.UpdatedAt = DateTimeOffset.UtcNow;
-
-        var activeRefreshTokens = await dbContext.RefreshTokens
-            .Where(x => x.UserId == user.Id && x.RevokedAt == null && x.ExpiresAt > DateTimeOffset.UtcNow)
-            .ToListAsync(cancellationToken);
-        foreach (var refreshToken in activeRefreshTokens)
+        var result = await accountDeletionService.DeleteAsync(CurrentUserId, cancellationToken);
+        return result switch
         {
-            refreshToken.RevokedAt = DateTimeOffset.UtcNow;
-        }
-
-        var activeResetTokens = await dbContext.PasswordResetTokens
-            .Where(x => x.UserId == user.Id && x.UsedAt == null && x.RevokedAt == null)
-            .ToListAsync(cancellationToken);
-        foreach (var resetToken in activeResetTokens)
-        {
-            resetToken.RevokedAt = DateTimeOffset.UtcNow;
-        }
-
-        await userManager.UpdateSecurityStampAsync(user);
-        await userManager.UpdateAsync(user);
-        await dbContext.SaveChangesAsync(cancellationToken);
-        return NoContent();
+            AccountDeletionResult.Deleted => NoContent(),
+            AccountDeletionResult.LastDelegate => ConflictProblem(
+                "Nommez un autre delegue avant de supprimer votre compte."),
+            _ => Unauthorized()
+        };
     }
 
-    [EnableRateLimiting("auth-sensitive")]
+    [EnableRateLimiting(RateLimiting.Credentials)]
     [HttpPost("forgot-password")]
     public async Task<ActionResult<ForgotPasswordResponse>> ForgotPassword(
         ForgotPasswordRequest request,
@@ -152,7 +155,7 @@ public sealed class AuthController(
             result.ExpiresAt));
     }
 
-    [EnableRateLimiting("auth-sensitive")]
+    [EnableRateLimiting(RateLimiting.Credentials)]
     [HttpPost("reset-password")]
     public async Task<IActionResult> ResetPassword(
         ResetPasswordRequest request,
@@ -188,7 +191,7 @@ public sealed class AuthController(
     [HttpGet("me")]
     public async Task<ActionResult<UserSummary>> Me()
     {
-        var user = await userManager.FindByIdAsync(CurrentUserId().ToString());
+        var user = await CurrentUserAsync();
         if (user is null) return Unauthorized();
         return Ok(await SummaryAsync(user));
     }
@@ -198,9 +201,21 @@ public sealed class AuthController(
 
     private async Task<UserSummary> SummaryAsync(ApplicationUser user) =>
         new(user.Id, user.Email ?? string.Empty, user.FirstName, user.LastName, user.SchoolClassId,
-            (await userManager.GetRolesAsync(user)).ToArray());
+            (await UserManager.GetRolesAsync(user)).ToArray());
 
-    private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    private ObjectResult InvalidCredentials() => Unauthorized(new ProblemDetails
+    {
+        Title = "Identifiants invalides",
+        Detail = "E-mail ou mot de passe incorrect. Après 5 essais ratés, le compte est bloqué 15 minutes.",
+        Status = StatusCodes.Status401Unauthorized
+    });
+
+    private ObjectResult? ValidateNames(string firstName, string lastName)
+    {
+        if (string.IsNullOrWhiteSpace(firstName)) return BadRequestProblem("Le prenom est obligatoire.");
+        if (string.IsNullOrWhiteSpace(lastName)) return BadRequestProblem("Le nom est obligatoire.");
+        return null;
+    }
 
     private static ApplicationUser NewUser(string email, string firstName, string lastName) => new()
     {
@@ -210,7 +225,4 @@ public sealed class AuthController(
         FirstName = firstName.Trim(),
         LastName = lastName.Trim()
     };
-
-    private ActionResult IdentityErrors(IdentityResult result) => ValidationProblem(new ValidationProblemDetails(
-        result.Errors.GroupBy(x => x.Code).ToDictionary(x => x.Key, x => x.Select(error => error.Description).ToArray())));
 }

@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -7,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using StudyFlow.Api.Contracts;
 using StudyFlow.Application.Notifications;
 using StudyFlow.Application.Security;
+using StudyFlow.Application.Time;
 using StudyFlow.Domain.Notifications;
 using StudyFlow.Domain.Users;
 using StudyFlow.Infrastructure.Identity;
@@ -21,7 +21,8 @@ public sealed class NotificationsController(
     UserManager<ApplicationUser> userManager,
     StudyFlowDbContext dbContext,
     INotificationReminderPlanner reminderPlanner,
-    ISensitiveDataProtector protector) : ControllerBase
+    ISensitiveDataProtector protector,
+    ISchoolClock clock) : StudyFlowControllerBase(userManager)
 {
     private static readonly int[] AllowedCourseReminderMinutes = [0, 5, 10, 15, 30, 60];
     private const string NotificationDeviceTokenPurpose = "notification-device-token";
@@ -140,7 +141,7 @@ public sealed class NotificationsController(
         if (lookBehindMinutes is < 0 or > 1440) return BadRequestProblem("lookBehindMinutes doit être entre 0 et 1440.");
         if (lookAheadMinutes is < 1 or > 1440) return BadRequestProblem("lookAheadMinutes doit être entre 1 et 1440.");
 
-        var now = DateTimeOffset.Now;
+        var now = clock.UtcNow;
         var reminders = await reminderPlanner.PlanClassRemindersAsync(
             user.SchoolClassId.Value,
             now.AddMinutes(-lookBehindMinutes),
@@ -168,9 +169,6 @@ public sealed class NotificationsController(
             ? null
             : BadRequestProblem("Le rappel de cours doit valoir 0, 5, 10, 15, 30 ou 60 minutes.");
     }
-
-    private async Task<ApplicationUser?> CurrentUserAsync() =>
-        await userManager.FindByIdAsync(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     private static NotificationPlatform? ParsePlatform(string value) =>
         value.Trim().ToLowerInvariant() switch
@@ -223,7 +221,4 @@ public sealed class NotificationsController(
             ? "******"
             : $"...{token[^visibleCharacters..]}";
     }
-
-    private ObjectResult BadRequestProblem(string title) =>
-        BadRequest(new ProblemDetails { Title = title, Status = StatusCodes.Status400BadRequest });
 }

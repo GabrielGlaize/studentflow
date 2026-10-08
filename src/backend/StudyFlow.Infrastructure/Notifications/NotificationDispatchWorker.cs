@@ -4,6 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using StudyFlow.Application.Notifications;
+using StudyFlow.Application.Time;
 using StudyFlow.Domain.Notifications;
 using StudyFlow.Infrastructure.Persistence;
 
@@ -14,6 +15,8 @@ public sealed class NotificationDispatchWorker(
     IOptions<NotificationWorkerOptions> options,
     ILogger<NotificationDispatchWorker> logger) : BackgroundService
 {
+    private const int ErrorMessageMaxLength = 1000;
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var workerOptions = options.Value;
@@ -30,7 +33,16 @@ public sealed class NotificationDispatchWorker(
 
         do
         {
-            await DispatchDueNotificationsAsync(stoppingToken);
+            try
+            {
+                await DispatchDueNotificationsAsync(stoppingToken);
+            }
+            catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
+            {
+                // Une exception non gérée dans un BackgroundService arrête toute l'API (.NET 8) :
+                // une base momentanément indisponible ne doit coûter qu'un tour de boucle.
+                logger.LogError(exception, "Notification dispatch failed. The worker will retry at the next tick.");
+            }
         }
         while (await timer.WaitForNextTickAsync(stoppingToken));
     }
@@ -40,15 +52,17 @@ public sealed class NotificationDispatchWorker(
         await using var scope = scopeFactory.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<StudyFlowDbContext>();
         var planner = scope.ServiceProvider.GetRequiredService<INotificationReminderPlanner>();
-        var sender = scope.ServiceProvider.GetRequiredService<INotificationSender>();
+        var sender = scope.ServiceProvider.GetRequiredService<IPushNotificationSender>();
+        var clock = scope.ServiceProvider.GetRequiredService<ISchoolClock>();
         var workerOptions = scope.ServiceProvider.GetRequiredService<IOptions<NotificationWorkerOptions>>().Value;
 
-        var now = DateTimeOffset.Now;
+        var now = clock.UtcNow;
         var windowStart = now.AddMinutes(-Math.Clamp(workerOptions.LookBehindMinutes, 0, 1440));
         var windowEnd = now;
 
         var classIds = await dbContext.SchoolClasses
             .AsNoTracking()
+            .Where(x => x.IsActive)
             .Select(x => x.Id)
             .ToListAsync(cancellationToken);
 
@@ -64,41 +78,52 @@ public sealed class NotificationDispatchWorker(
 
     private static async Task DispatchOnceAsync(
         StudyFlowDbContext dbContext,
-        INotificationSender sender,
+        IPushNotificationSender sender,
         NotificationReminderCandidate reminder,
         CancellationToken cancellationToken)
     {
-        var alreadyProcessed = await dbContext.NotificationDeliveries.AnyAsync(
+        // Une ligne par rappel (index unique) : un envoi en échec est retenté en mettant à jour
+        // la même ligne, sinon l'insertion suivante violerait l'index.
+        var delivery = await dbContext.NotificationDeliveries.SingleOrDefaultAsync(
             x => x.UserId == reminder.UserId
                 && x.Type == reminder.Type
                 && x.RelatedEntityId == reminder.RelatedEntityId
-                && x.ScheduledAt == reminder.ScheduledAt
-                && x.Status == NotificationDeliveryStatus.Sent,
+                && x.ScheduledAt == reminder.ScheduledAt,
             cancellationToken);
 
-        if (alreadyProcessed) return;
+        if (delivery?.Status == NotificationDeliveryStatus.Sent) return;
 
-        var delivery = new NotificationDelivery
+        if (delivery is null)
         {
-            UserId = reminder.UserId,
-            Type = reminder.Type,
-            RelatedEntityId = reminder.RelatedEntityId,
-            ScheduledAt = reminder.ScheduledAt,
-            ProcessedAt = DateTimeOffset.UtcNow
-        };
+            delivery = new NotificationDelivery
+            {
+                UserId = reminder.UserId,
+                Type = reminder.Type,
+                RelatedEntityId = reminder.RelatedEntityId,
+                ScheduledAt = reminder.ScheduledAt
+            };
+            dbContext.NotificationDeliveries.Add(delivery);
+        }
+
+        delivery.ProcessedAt = DateTimeOffset.UtcNow;
 
         try
         {
-            await sender.SendAsync(reminder, cancellationToken);
+            await sender.SendAsync(
+                [reminder.UserId],
+                new PushNotification(reminder.Type, reminder.RelatedEntityId, reminder.Title, reminder.Body),
+                cancellationToken);
             delivery.Status = NotificationDeliveryStatus.Sent;
+            delivery.ErrorMessage = null;
         }
-        catch (Exception exception)
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
         {
             delivery.Status = NotificationDeliveryStatus.Failed;
-            delivery.ErrorMessage = exception.Message;
+            delivery.ErrorMessage = exception.Message.Length <= ErrorMessageMaxLength
+                ? exception.Message
+                : exception.Message[..ErrorMessageMaxLength];
         }
 
-        dbContext.NotificationDeliveries.Add(delivery);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 }

@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace StudyFlow.Api.Contracts;
 
 public sealed record ProfileResponse(
@@ -10,13 +12,13 @@ public sealed record ProfileResponse(
     AppSettingsResponse AppSettings,
     NotificationSettingsResponse NotificationSettings);
 
-public sealed record UpdateProfileRequest(string FirstName, string LastName);
+public sealed record UpdateProfileRequest([StringLength(80, ErrorMessage = "Prénom : 80 caractères maximum.")] string FirstName, [StringLength(80, ErrorMessage = "Nom : 80 caractères maximum.")] string LastName);
 
 public sealed record AppSettingsRequest(
-    string Theme,
+    [StringLength(20, ErrorMessage = "Thème : 20 caractères maximum.")] string Theme,
     bool HasCompany,
-    string? CompanyName,
-    string ProfessionalMode);
+    [StringLength(160, ErrorMessage = "Nom de l'entreprise : 160 caractères maximum.")] string? CompanyName,
+    [StringLength(30, ErrorMessage = "Mode professionnel : 30 caractères maximum.")] string ProfessionalMode);
 
 public sealed record AppSettingsResponse(
     string Theme,

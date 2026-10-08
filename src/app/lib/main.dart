@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:studyflow_app/core/app_scope.dart';
 import 'package:studyflow_app/core/config/app_environment.dart';
 import 'package:studyflow_app/core/config/api_config.dart';
+import 'package:studyflow_app/core/config/firebase_config.dart';
 import 'package:studyflow_app/core/network/api_client.dart';
 import 'package:studyflow_app/core/settings/app_settings_controller.dart';
 import 'package:studyflow_app/core/theme/app_theme.dart';
@@ -34,6 +35,8 @@ import 'package:studyflow_app/features/dashboard/data/dashboard_repository.dart'
 import 'package:studyflow_app/features/dashboard/data/demo_dashboard_repository.dart';
 import 'package:studyflow_app/features/dashboard/data/http_dashboard_repository.dart';
 import 'package:studyflow_app/features/notifications/application/local_notification_scheduler.dart';
+import 'package:studyflow_app/features/notifications/application/push_notification_service.dart';
+import 'package:studyflow_app/features/notifications/data/notification_device_repository.dart';
 import 'package:studyflow_app/features/profile/data/app_preferences_repository.dart';
 import 'package:studyflow_app/features/profile/data/demo_app_preferences_repository.dart';
 import 'package:studyflow_app/features/profile/data/demo_notification_preferences_repository.dart';
@@ -100,6 +103,21 @@ class _StudyFlowAppState extends State<StudyFlowApp> {
   late final CompanyDocumentsController _companyDocumentsController;
   late final LocalNotificationScheduler _notificationScheduler;
 
+  // Un seul client HTTP partagé, créé une fois : avant, chaque reconstruction
+  // de l'arbre recréait tous les dépôts et leurs connexions.
+  late final ApiClient _apiClient;
+  late final AgendaRepository _agendaRepository;
+  late final ClassAnnouncementRepository _classAnnouncementRepository;
+  late final ApprenticeshipRepository _apprenticeshipRepository;
+  late final ClassManagementRepository _classManagementRepository;
+  late final ClassResourceRepository _classResourceRepository;
+  late final DashboardRepository _dashboardRepository;
+  late final AppPreferencesRepository _appPreferencesRepository;
+  late final NotificationPreferencesRepository
+  _notificationPreferencesRepository;
+  late final CourseRepository _courseRepository;
+  late final PushNotificationService _pushNotifications;
+
   @override
   void initState() {
     super.initState();
@@ -119,6 +137,28 @@ class _StudyFlowAppState extends State<StudyFlowApp> {
       authRepository: authRepository,
       sessionStorage: _buildSessionStorage(),
     );
+    _apiClient = ApiClient(baseUrl: ApiConfig.baseUrlFor(widget.environment))
+      ..onAccessTokenRejected = _sessionController.renewRejectedAccessToken;
+    _agendaRepository = _buildAgendaRepository();
+    _classAnnouncementRepository = _buildClassAnnouncementRepository();
+    _apprenticeshipRepository = _buildApprenticeshipRepository();
+    _classManagementRepository = _buildClassManagementRepository();
+    _classResourceRepository = _buildClassResourceRepository();
+    _dashboardRepository = _buildDashboardRepository();
+    _appPreferencesRepository = _buildAppPreferencesRepository();
+    _notificationPreferencesRepository =
+        _buildNotificationPreferencesRepository();
+    _courseRepository = _buildCourseRepository();
+    _pushNotifications = PushNotificationService(
+      sessionController: _sessionController,
+      deviceRepository: HttpNotificationDeviceRepository(apiClient: _apiClient),
+      // Les comptes de démonstration n'existent pas côté API.
+      firebaseOptions: _useDemoRepository(_useDemoAuthOverride)
+          ? null
+          : FirebaseConfig.currentPlatform,
+    );
+    _sessionController.beforeLogout = _pushNotifications.unregister;
+    unawaited(_pushNotifications.start());
     unawaited(_sessionController.restoreSession());
     unawaited(_settingsController.restore());
     unawaited(_companyContactsController.restore());
@@ -133,19 +173,18 @@ class _StudyFlowAppState extends State<StudyFlowApp> {
         return AppScope(
           sessionController: _sessionController,
           settingsController: _settingsController,
-          agendaRepository: _buildAgendaRepository(),
-          classAnnouncementRepository: _buildClassAnnouncementRepository(),
-          apprenticeshipRepository: _buildApprenticeshipRepository(),
-          classManagementRepository: _buildClassManagementRepository(),
-          classResourceRepository: _buildClassResourceRepository(),
+          agendaRepository: _agendaRepository,
+          classAnnouncementRepository: _classAnnouncementRepository,
+          apprenticeshipRepository: _apprenticeshipRepository,
+          classManagementRepository: _classManagementRepository,
+          classResourceRepository: _classResourceRepository,
           companyContactsController: _companyContactsController,
           companyDocumentsController: _companyDocumentsController,
-          dashboardRepository: _buildDashboardRepository(),
-          appPreferencesRepository: _buildAppPreferencesRepository(),
-          notificationPreferencesRepository:
-              _buildNotificationPreferencesRepository(),
+          dashboardRepository: _dashboardRepository,
+          appPreferencesRepository: _appPreferencesRepository,
+          notificationPreferencesRepository: _notificationPreferencesRepository,
           notificationScheduler: _notificationScheduler,
-          courseRepository: _buildCourseRepository(),
+          courseRepository: _courseRepository,
           child: MaterialApp(
             title: 'StudyFlow',
             debugShowCheckedModeBanner: false,
@@ -180,6 +219,8 @@ class _StudyFlowAppState extends State<StudyFlowApp> {
 
     if (useDemoAuth) return const DemoAuthRepository();
 
+    // Client séparé, sans renouvellement automatique : le renouvellement passe
+    // lui-même par ce dépôt.
     return HttpAuthRepository(
       apiClient: ApiClient(baseUrl: ApiConfig.baseUrlFor(widget.environment)),
     );
@@ -190,9 +231,7 @@ class _StudyFlowAppState extends State<StudyFlowApp> {
 
     if (useDemoDashboard) return const DemoDashboardRepository();
 
-    return HttpDashboardRepository(
-      apiClient: ApiClient(baseUrl: ApiConfig.baseUrlFor(widget.environment)),
-    );
+    return HttpDashboardRepository(apiClient: _apiClient);
   }
 
   AgendaRepository _buildAgendaRepository() {
@@ -200,9 +239,7 @@ class _StudyFlowAppState extends State<StudyFlowApp> {
 
     if (useDemoAgenda) return const DemoAgendaRepository();
 
-    return HttpAgendaRepository(
-      apiClient: ApiClient(baseUrl: ApiConfig.baseUrlFor(widget.environment)),
-    );
+    return HttpAgendaRepository(apiClient: _apiClient);
   }
 
   ApprenticeshipRepository _buildApprenticeshipRepository() {
@@ -212,9 +249,7 @@ class _StudyFlowAppState extends State<StudyFlowApp> {
 
     if (useDemoApprenticeships) return const DemoApprenticeshipRepository();
 
-    return HttpApprenticeshipRepository(
-      apiClient: ApiClient(baseUrl: ApiConfig.baseUrlFor(widget.environment)),
-    );
+    return HttpApprenticeshipRepository(apiClient: _apiClient);
   }
 
   ClassAnnouncementRepository _buildClassAnnouncementRepository() {
@@ -224,9 +259,7 @@ class _StudyFlowAppState extends State<StudyFlowApp> {
 
     if (useDemoAnnouncements) return const DemoClassAnnouncementRepository();
 
-    return HttpClassAnnouncementRepository(
-      apiClient: ApiClient(baseUrl: ApiConfig.baseUrlFor(widget.environment)),
-    );
+    return HttpClassAnnouncementRepository(apiClient: _apiClient);
   }
 
   CourseRepository _buildCourseRepository() {
@@ -234,9 +267,7 @@ class _StudyFlowAppState extends State<StudyFlowApp> {
 
     if (useDemoCourses) return const DemoCourseRepository();
 
-    return HttpCourseRepository(
-      apiClient: ApiClient(baseUrl: ApiConfig.baseUrlFor(widget.environment)),
-    );
+    return HttpCourseRepository(apiClient: _apiClient);
   }
 
   ClassManagementRepository _buildClassManagementRepository() {
@@ -246,9 +277,7 @@ class _StudyFlowAppState extends State<StudyFlowApp> {
 
     if (useDemoClassManagement) return const DemoClassManagementRepository();
 
-    return HttpClassManagementRepository(
-      apiClient: ApiClient(baseUrl: ApiConfig.baseUrlFor(widget.environment)),
-    );
+    return HttpClassManagementRepository(apiClient: _apiClient);
   }
 
   ClassResourceRepository _buildClassResourceRepository() {
@@ -258,9 +287,7 @@ class _StudyFlowAppState extends State<StudyFlowApp> {
 
     if (useDemoClassResources) return const DemoClassResourceRepository();
 
-    return HttpClassResourceRepository(
-      apiClient: ApiClient(baseUrl: ApiConfig.baseUrlFor(widget.environment)),
-    );
+    return HttpClassResourceRepository(apiClient: _apiClient);
   }
 
   NotificationPreferencesRepository _buildNotificationPreferencesRepository() {
@@ -272,9 +299,7 @@ class _StudyFlowAppState extends State<StudyFlowApp> {
       return const DemoNotificationPreferencesRepository();
     }
 
-    return HttpNotificationPreferencesRepository(
-      apiClient: ApiClient(baseUrl: ApiConfig.baseUrlFor(widget.environment)),
-    );
+    return HttpNotificationPreferencesRepository(apiClient: _apiClient);
   }
 
   AppPreferencesRepository _buildAppPreferencesRepository() {
@@ -284,9 +309,7 @@ class _StudyFlowAppState extends State<StudyFlowApp> {
 
     if (useDemoAppPreferences) return const DemoAppPreferencesRepository();
 
-    return HttpAppPreferencesRepository(
-      apiClient: ApiClient(baseUrl: ApiConfig.baseUrlFor(widget.environment)),
-    );
+    return HttpAppPreferencesRepository(apiClient: _apiClient);
   }
 
   SessionStorage _buildSessionStorage() {

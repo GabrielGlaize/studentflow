@@ -80,7 +80,9 @@ class ClassMember {
   final String id;
   final String firstName;
   final String lastName;
-  final String email;
+
+  /// Visible uniquement par les délégués (minimisation des données).
+  final String? email;
   final bool isDelegate;
 
   String get displayName => '$firstName $lastName'.trim();
@@ -90,7 +92,7 @@ class ClassMember {
       id: json['id'] as String,
       firstName: json['firstName'] as String,
       lastName: json['lastName'] as String,
-      email: json['email'] as String,
+      email: json['email'] as String?,
       isDelegate: json['isDelegate'] as bool? ?? false,
     );
   }

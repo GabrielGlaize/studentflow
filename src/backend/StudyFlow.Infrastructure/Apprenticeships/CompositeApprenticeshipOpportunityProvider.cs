@@ -41,7 +41,9 @@ public sealed class CompositeApprenticeshipOpportunityProvider(
         {
             return await provider.SearchAsync(query, cancellationToken);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        // Le délai d'attente d'HttpClient lève aussi une TaskCanceledException : seule l'annulation
+        // demandée par l'appelant doit interrompre la recherche, pas la lenteur d'une source.
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
         {
             logger.LogWarning(
                 exception,
@@ -53,17 +55,21 @@ public sealed class CompositeApprenticeshipOpportunityProvider(
 
     private static string DeduplicationKey(ApprenticeshipOpportunity opportunity)
     {
-        if (!string.IsNullOrWhiteSpace(opportunity.ApplicationUrl))
+        // Une même offre relayée par deux sources a un lien différent mais le même intitulé,
+        // la même entreprise et le même lieu. Les liens génériques (page d'accueil d'une source)
+        // ne doivent pas fusionner des offres distinctes.
+        if (!string.IsNullOrWhiteSpace(opportunity.Company))
         {
-            return opportunity.ApplicationUrl.Trim();
+            return string.Join(
+                "|",
+                Normalize(opportunity.Title),
+                Normalize(opportunity.Company),
+                Normalize(opportunity.Location));
         }
 
-        return string.Join(
-            "|",
-            opportunity.Source,
-            opportunity.ExternalId,
-            opportunity.Title,
-            opportunity.Company,
-            opportunity.Location);
+        return string.Join("|", opportunity.Source, opportunity.ExternalId);
     }
+
+    private static string Normalize(string? value) =>
+        string.Join(' ', (value ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries)).ToLowerInvariant();
 }

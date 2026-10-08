@@ -1,8 +1,10 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace StudyFlow.Api.Contracts;
 
 public sealed record NotificationDeviceRequest(
-    string Token,
-    string Platform);
+    [StringLength(4096, ErrorMessage = "Jeton de notification : 4096 caractères maximum.")] string Token,
+    [StringLength(20, ErrorMessage = "Plateforme : 20 caractères maximum.")] string Platform);
 
 public sealed record NotificationDeviceResponse(
     Guid Id,

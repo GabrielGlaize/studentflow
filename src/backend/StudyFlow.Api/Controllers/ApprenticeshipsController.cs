@@ -1,8 +1,8 @@
-using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using StudyFlow.Api.Contracts;
 using StudyFlow.Application.Apprenticeships;
@@ -18,9 +18,14 @@ namespace StudyFlow.Api.Controllers;
 public sealed class ApprenticeshipsController(
     UserManager<ApplicationUser> userManager,
     StudyFlowDbContext dbContext,
-    IApprenticeshipOpportunityProvider opportunityProvider) : ControllerBase
+    IApprenticeshipOpportunityProvider opportunityProvider) : StudyFlowControllerBase(userManager)
 {
+    private const int MaxSearchTextLength = 200;
+    private const int MaxRomeCodes = 10;
+    private const int MaxDistanceKm = 300;
+
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimiting.PublicSearch)]
     [HttpGet("opportunities")]
     [HttpGet("/api/v1/public/alternances")]
     public async Task<ActionResult<IReadOnlyCollection<ApprenticeshipOpportunityResponse>>> SearchOpportunities(
@@ -33,7 +38,14 @@ public sealed class ApprenticeshipsController(
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(keywords)) return BadRequestProblem("Les mots-cles sont obligatoires.");
-        if (distanceKm is < 0) return BadRequestProblem("La distance ne peut pas etre negative.");
+        if (keywords.Length > MaxSearchTextLength || location?.Length > MaxSearchTextLength)
+        {
+            return BadRequestProblem("La recherche ne doit pas depasser 200 caracteres.");
+        }
+
+        var coordinatesProblem = ValidateCoordinates(latitude, longitude, distanceKm);
+        if (coordinatesProblem is not null) return coordinatesProblem;
+        if (romeCodes is { Length: > MaxRomeCodes }) return BadRequestProblem("10 codes ROME au maximum.");
 
         var query = new ApprenticeshipOpportunitySearchQuery(
             keywords.Trim(),
@@ -184,7 +196,7 @@ public sealed class ApprenticeshipsController(
             Company = CleanOptional(request.Company),
             Location = CleanOptional(request.Location),
             Url = request.Url.Trim(),
-            PublishedAt = request.PublishedAt
+            PublishedAt = request.PublishedAt?.ToUniversalTime()
         };
 
         dbContext.FavoriteOffers.Add(offer);
@@ -212,11 +224,17 @@ public sealed class ApprenticeshipsController(
     {
         if (string.IsNullOrWhiteSpace(request.Name)) return BadRequestProblem("Le nom de la recherche est obligatoire.");
         if (string.IsNullOrWhiteSpace(request.Keywords)) return BadRequestProblem("Les mots-cles sont obligatoires.");
-        if (request.DistanceKm is < 0) return BadRequestProblem("La distance ne peut pas etre negative.");
+
+        var coordinatesProblem = ValidateCoordinates(request.Latitude, request.Longitude, request.DistanceKm);
+        if (coordinatesProblem is not null) return coordinatesProblem;
 
         try
         {
-            _ = JsonDocument.Parse(NormalizeJson(request.FiltersJson));
+            using var filters = JsonDocument.Parse(NormalizeJson(request.FiltersJson));
+            if (filters.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return BadRequestProblem("Les filtres doivent etre un objet JSON.");
+            }
         }
         catch (JsonException)
         {
@@ -226,15 +244,23 @@ public sealed class ApprenticeshipsController(
         return null;
     }
 
+    private ObjectResult? ValidateCoordinates(decimal? latitude, decimal? longitude, int? distanceKm)
+    {
+        if (distanceKm is < 0 or > MaxDistanceKm) return BadRequestProblem("La distance doit etre comprise entre 0 et 300 km.");
+        if (latitude is < -90 or > 90) return BadRequestProblem("Latitude invalide.");
+        if (longitude is < -180 or > 180) return BadRequestProblem("Longitude invalide.");
+        return null;
+    }
+
     private ActionResult? ValidateFavoriteRequest(FavoriteOfferRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Source)) return BadRequestProblem("La source est obligatoire.");
         if (string.IsNullOrWhiteSpace(request.ExternalOfferId)) return BadRequestProblem("L'identifiant externe est obligatoire.");
         if (string.IsNullOrWhiteSpace(request.Title)) return BadRequestProblem("Le titre de l'offre est obligatoire.");
         if (string.IsNullOrWhiteSpace(request.Url)) return BadRequestProblem("Le lien de l'offre est obligatoire.");
-        return Uri.TryCreate(request.Url, UriKind.Absolute, out _)
+        return InputRules.IsWebUrl(request.Url)
             ? null
-            : BadRequestProblem("Le lien de l'offre doit etre une URL valide.");
+            : BadRequestProblem("Le lien de l'offre doit etre une adresse web (http ou https).");
     }
 
     private static ApprenticeshipSearchResponse ToSearchResponse(ApprenticeshipSearch search) => new(
@@ -275,17 +301,12 @@ public sealed class ApprenticeshipsController(
         opportunity.TargetDiploma,
         opportunity.RemoteMode,
         opportunity.Summary,
-        opportunity.ApplicationUrl);
-
-    private async Task<ApplicationUser?> CurrentUserAsync() =>
-        await userManager.FindByIdAsync(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        opportunity.ApplicationUrl,
+        opportunity.IsDemo);
 
     private static string NormalizeJson(string? value) =>
         string.IsNullOrWhiteSpace(value) ? "{}" : value.Trim();
 
     private static string? CleanOptional(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-
-    private ObjectResult BadRequestProblem(string title) =>
-        BadRequest(new ProblemDetails { Title = title, Status = StatusCodes.Status400BadRequest });
 }

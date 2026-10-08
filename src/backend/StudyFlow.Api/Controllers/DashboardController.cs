@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -6,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StudyFlow.Api.Contracts;
 using StudyFlow.Application.Security;
+using StudyFlow.Application.Time;
 using StudyFlow.Domain.School;
 using StudyFlow.Infrastructure.Identity;
 using StudyFlow.Infrastructure.Persistence;
@@ -18,7 +18,8 @@ namespace StudyFlow.Api.Controllers;
 public sealed class DashboardController(
     UserManager<ApplicationUser> userManager,
     StudyFlowDbContext dbContext,
-    ISensitiveDataProtector protector) : ControllerBase
+    ISensitiveDataProtector protector,
+    ISchoolClock clock) : StudyFlowControllerBase(userManager)
 {
     private const string CourseDataPurpose = "course-data";
     private const string PersonalEventDataPurpose = "personal-event-data";
@@ -35,8 +36,9 @@ public sealed class DashboardController(
         var user = await CurrentUserAsync();
         if (user is null) return Unauthorized();
 
-        var now = DateTimeOffset.UtcNow;
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        // Heure de l'établissement, pas celle du serveur (souvent UTC dans un conteneur).
+        var now = clock.UtcNow;
+        var today = clock.Today;
         var homework = user.SchoolClassId is null
             ? []
             : await GetUpcomingHomeworkAsync(user.SchoolClassId.Value, user.Id, homeworkLimit, now, cancellationToken);
@@ -46,7 +48,7 @@ public sealed class DashboardController(
             HasClass: user.SchoolClassId is not null,
             NextCourse: user.SchoolClassId is null
                 ? null
-                : await GetNextCourseAsync(user.SchoolClassId.Value, today, TimeOnly.FromDateTime(DateTime.Now), cancellationToken),
+                : await GetNextCourseAsync(user.SchoolClassId.Value, today, clock.CurrentTime, cancellationToken),
             PinnedAnnouncements: user.SchoolClassId is null
                 ? []
                 : await GetPinnedAnnouncementsAsync(user.SchoolClassId.Value, cancellationToken),
@@ -254,9 +256,6 @@ public sealed class DashboardController(
             PersonalEventCategory.Personnel => "personal",
             _ => "personal"
         };
-
-    private async Task<ApplicationUser?> CurrentUserAsync() =>
-        await userManager.FindByIdAsync(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     private sealed record CourseProtectedData(TimeOnly StartsAt, TimeOnly EndsAt, string Room);
     private sealed record PersonalEventProtectedData(

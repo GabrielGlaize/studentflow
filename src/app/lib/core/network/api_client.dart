@@ -1,21 +1,38 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+/// Renvoie un nouvel access token après un refus du serveur, ou `null` si la
+/// session ne peut pas être renouvelée.
+typedef AccessTokenRenewer =
+    Future<String?> Function(String rejectedAccessToken);
+
 class ApiClient {
-  ApiClient({required String baseUrl, http.Client? httpClient})
-    : _baseUri = Uri.parse(baseUrl.endsWith('/') ? baseUrl : '$baseUrl/'),
-      _httpClient = httpClient ?? http.Client();
+  ApiClient({
+    required String baseUrl,
+    http.Client? httpClient,
+    Duration timeout = const Duration(seconds: 15),
+  }) : _baseUri = Uri.parse(baseUrl.endsWith('/') ? baseUrl : '$baseUrl/'),
+       _httpClient = httpClient ?? http.Client(),
+       _timeout = timeout;
 
   final Uri _baseUri;
   final http.Client _httpClient;
+  final Duration _timeout;
+
+  /// Appelé quand le serveur répond 401 à une requête authentifiée, par exemple
+  /// juste après une approbation dans une classe (le serveur invalide alors les
+  /// anciens jetons). La requête est rejouée une fois avec le nouveau jeton.
+  AccessTokenRenewer? onAccessTokenRejected;
 
   Future<Map<String, Object?>> getJson(
     String path, {
     String? accessToken,
   }) async {
     final response = await _send(
-      () => _httpClient.get(_resolve(path), headers: _headers(accessToken)),
+      accessToken,
+      (headers) => _httpClient.get(_resolve(path), headers: headers),
     );
 
     return _decodeObjectResponse(response);
@@ -26,7 +43,8 @@ class ApiClient {
     String? accessToken,
   }) async {
     final response = await _send(
-      () => _httpClient.get(_resolve(path), headers: _headers(accessToken)),
+      accessToken,
+      (headers) => _httpClient.get(_resolve(path), headers: headers),
     );
 
     return _decodeListResponse(response);
@@ -38,9 +56,10 @@ class ApiClient {
     String? accessToken,
   }) async {
     final response = await _send(
-      () => _httpClient.post(
+      accessToken,
+      (headers) => _httpClient.post(
         _resolve(path),
-        headers: _headers(accessToken),
+        headers: headers,
         body: jsonEncode(body),
       ),
     );
@@ -54,9 +73,10 @@ class ApiClient {
     String? accessToken,
   }) async {
     final response = await _send(
-      () => _httpClient.put(
+      accessToken,
+      (headers) => _httpClient.put(
         _resolve(path),
-        headers: _headers(accessToken),
+        headers: headers,
         body: jsonEncode(body),
       ),
     );
@@ -70,37 +90,53 @@ class ApiClient {
     String? accessToken,
   }) async {
     final response = await _send(
-      () => _httpClient.post(
+      accessToken,
+      (headers) => _httpClient.post(
         _resolve(path),
-        headers: _headers(accessToken),
+        headers: headers,
         body: jsonEncode(body),
       ),
     );
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw ApiException(
-        statusCode: response.statusCode,
-        message: _readProblemMessage(response.body) ?? 'Erreur API.',
-      );
-    }
+    _ensureSuccess(response);
   }
 
   Future<void> deleteNoContent(String path, {String? accessToken}) async {
     final response = await _send(
-      () => _httpClient.delete(_resolve(path), headers: _headers(accessToken)),
+      accessToken,
+      (headers) => _httpClient.delete(_resolve(path), headers: headers),
     );
 
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw ApiException(
-        statusCode: response.statusCode,
-        message: _readProblemMessage(response.body) ?? 'Erreur API.',
-      );
-    }
+    _ensureSuccess(response);
   }
 
-  Future<http.Response> _send(Future<http.Response> Function() request) async {
+  Future<http.Response> _send(
+    String? accessToken,
+    Future<http.Response> Function(Map<String, String> headers) request,
+  ) async {
+    final response = await _sendOnce(() => request(_headers(accessToken)));
+
+    final renewer = onAccessTokenRejected;
+    if (response.statusCode != 401 || accessToken == null || renewer == null) {
+      return response;
+    }
+
+    final renewedToken = await renewer(accessToken);
+    if (renewedToken == null || renewedToken == accessToken) return response;
+
+    return _sendOnce(() => request(_headers(renewedToken)));
+  }
+
+  Future<http.Response> _sendOnce(
+    Future<http.Response> Function() request,
+  ) async {
     try {
-      return await request();
+      return await request().timeout(_timeout);
+    } on TimeoutException {
+      throw const ApiException(
+        statusCode: 0,
+        message: 'Le serveur ne répond pas. Réessaie dans un instant.',
+      );
     } on http.ClientException {
       throw const ApiException(
         statusCode: 0,
@@ -124,34 +160,41 @@ class ApiClient {
     };
   }
 
-  Map<String, Object?> _decodeObjectResponse(http.Response response) {
+  void _ensureSuccess(http.Response response) {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw ApiException(
         statusCode: response.statusCode,
         message: _readProblemMessage(response.body) ?? 'Erreur API.',
       );
     }
+  }
 
-    final decoded = jsonDecode(response.body);
+  Map<String, Object?> _decodeObjectResponse(http.Response response) {
+    _ensureSuccess(response);
+
+    final decoded = _decodeBody(response.body);
     if (decoded is Map<String, Object?>) return decoded;
 
     throw const ApiException(statusCode: 0, message: 'Réponse API invalide.');
   }
 
   List<Map<String, Object?>> _decodeListResponse(http.Response response) {
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw ApiException(
-        statusCode: response.statusCode,
-        message: _readProblemMessage(response.body) ?? 'Erreur API.',
-      );
-    }
+    _ensureSuccess(response);
 
-    final decoded = jsonDecode(response.body);
+    final decoded = _decodeBody(response.body);
     if (decoded is List<Object?>) {
       return decoded.whereType<Map<String, Object?>>().toList(growable: false);
     }
 
     throw const ApiException(statusCode: 0, message: 'Réponse API invalide.');
+  }
+
+  Object? _decodeBody(String body) {
+    try {
+      return jsonDecode(body);
+    } on FormatException {
+      throw const ApiException(statusCode: 0, message: 'Réponse API invalide.');
+    }
   }
 
   String? _readProblemMessage(String body) {

@@ -21,7 +21,7 @@ class HttpAuthRepository implements AuthRepository {
 
       return AuthSession.fromJson(json);
     } on ApiException catch (error) {
-      throw AuthException(error.message);
+      throw AuthException(error.message, statusCode: error.statusCode);
     }
   }
 
@@ -45,7 +45,7 @@ class HttpAuthRepository implements AuthRepository {
 
       return AuthSession.fromJson(json);
     } on ApiException catch (error) {
-      throw AuthException(error.message);
+      throw AuthException(error.message, statusCode: error.statusCode);
     }
   }
 
@@ -73,7 +73,7 @@ class HttpAuthRepository implements AuthRepository {
 
       return AuthSession.fromJson(json);
     } on ApiException catch (error) {
-      throw AuthException(error.message);
+      throw AuthException(error.message, statusCode: error.statusCode);
     }
   }
 
@@ -87,7 +87,7 @@ class HttpAuthRepository implements AuthRepository {
 
       return AuthTokenPair.fromJson(json);
     } on ApiException catch (error) {
-      throw AuthException(error.message);
+      throw AuthException(error.message, statusCode: error.statusCode);
     }
   }
 
@@ -103,7 +103,7 @@ class HttpAuthRepository implements AuthRepository {
 
       return PasswordResetRequestResult.fromJson(json);
     } on ApiException catch (error) {
-      throw AuthException(error.message);
+      throw AuthException(error.message, statusCode: error.statusCode);
     }
   }
 
@@ -123,7 +123,7 @@ class HttpAuthRepository implements AuthRepository {
         },
       );
     } on ApiException catch (error) {
-      throw AuthException(error.message);
+      throw AuthException(error.message, statusCode: error.statusCode);
     }
   }
 
@@ -136,7 +136,7 @@ class HttpAuthRepository implements AuthRepository {
         body: {'refreshToken': session.refreshToken},
       );
     } on ApiException catch (error) {
-      throw AuthException(error.message);
+      throw AuthException(error.message, statusCode: error.statusCode);
     }
   }
 
@@ -148,7 +148,7 @@ class HttpAuthRepository implements AuthRepository {
         accessToken: session.accessToken,
       );
     } on ApiException catch (error) {
-      throw AuthException(error.message);
+      throw AuthException(error.message, statusCode: error.statusCode);
     }
   }
 }

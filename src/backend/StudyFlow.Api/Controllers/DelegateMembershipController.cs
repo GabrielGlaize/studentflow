@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -16,7 +15,7 @@ namespace StudyFlow.Api.Controllers;
 [Route("api/v1/delegate/membership-requests")]
 public sealed class DelegateMembershipController(
     UserManager<ApplicationUser> userManager,
-    StudyFlowDbContext dbContext) : ControllerBase
+    StudyFlowDbContext dbContext) : StudyFlowControllerBase(userManager)
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyCollection<PendingMembershipResponse>>> Pending(CancellationToken cancellationToken)
@@ -48,7 +47,7 @@ public sealed class DelegateMembershipController(
         if (request is null) return NotFound();
         if (request.Status != ClassMembershipRequestStatus.Pending) return ConflictProblem("Cette demande a deja ete traitee.");
 
-        var student = await userManager.FindByIdAsync(request.UserId.ToString());
+        var student = await UserManager.FindByIdAsync(request.UserId.ToString());
         if (student is null) return NotFound();
         if (student.SchoolClassId is not null) return ConflictProblem("Cet eleve appartient deja a une classe.");
 
@@ -56,18 +55,13 @@ public sealed class DelegateMembershipController(
         student.UpdatedAt = DateTimeOffset.UtcNow;
         request.Status = ClassMembershipRequestStatus.Approved;
         request.DecidedAt = DateTimeOffset.UtcNow;
-        request.DecidedById = CurrentUserId();
+        request.DecidedById = CurrentUserId;
 
-        var roleResult = await userManager.AddToRoleAsync(student, nameof(UserRole.Eleve));
-        if (!roleResult.Succeeded)
-        {
-            return ValidationProblem(new ValidationProblemDetails(roleResult.Errors
-                .GroupBy(x => x.Code)
-                .ToDictionary(x => x.Key, x => x.Select(error => error.Description).ToArray())));
-        }
+        var roleResult = await UserManager.AddToRoleAsync(student, nameof(UserRole.Eleve));
+        if (!roleResult.Succeeded) return IdentityValidationProblem(roleResult);
 
         await dbContext.SaveChangesAsync(cancellationToken);
-        await userManager.UpdateSecurityStampAsync(student);
+        await UserManager.UpdateSecurityStampAsync(student);
         await transaction.CommitAsync(cancellationToken);
         return NoContent();
     }
@@ -85,19 +79,14 @@ public sealed class DelegateMembershipController(
 
         request.Status = ClassMembershipRequestStatus.Rejected;
         request.DecidedAt = DateTimeOffset.UtcNow;
-        request.DecidedById = CurrentUserId();
+        request.DecidedById = CurrentUserId;
         await dbContext.SaveChangesAsync(cancellationToken);
         return NoContent();
     }
 
     private async Task<Guid?> CurrentDelegateClassId(CancellationToken cancellationToken) =>
         await dbContext.Users
-            .Where(x => x.Id == CurrentUserId())
+            .Where(x => x.Id == CurrentUserId)
             .Select(x => x.SchoolClassId)
             .SingleOrDefaultAsync(cancellationToken);
-
-    private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-    private ObjectResult ConflictProblem(string title) =>
-        Conflict(new ProblemDetails { Title = title, Status = StatusCodes.Status409Conflict });
 }

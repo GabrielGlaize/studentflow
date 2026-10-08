@@ -59,10 +59,7 @@ public sealed class PasswordResetService(
         dbContext.PasswordResetTokens.Add(token);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        logger.LogInformation(
-            "Password reset token generated for {Email}. In development, token={ResetToken}",
-            user.Email,
-            environment.IsDevelopment() ? rawToken : "[hidden]");
+        logger.LogInformation("Password reset token generated for user {UserId}.", user.Id);
 
         await emailSender.SendPasswordResetAsync(
             user.Email ?? email.Trim(),

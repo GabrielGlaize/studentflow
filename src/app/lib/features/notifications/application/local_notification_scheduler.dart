@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:studyflow_app/features/notifications/application/notification_channel.dart';
 import 'package:studyflow_app/features/notifications/domain/notification_models.dart';
 import 'package:timezone/data/latest.dart' as timezone_data;
 import 'package:timezone/timezone.dart' as timezone;
@@ -43,10 +44,9 @@ class NativeLocalNotificationScheduler extends ChangeNotifier
   }) : _notificationsPlugin =
            notificationsPlugin ?? FlutterLocalNotificationsPlugin();
 
-  static const _channelId = 'studyflow_reminders';
-  static const _channelName = 'Rappels StudyFlow';
-  static const _channelDescription =
-      'Notifications avant les cours et les devoirs importants.';
+  static const _channelId = StudyFlowNotificationChannel.id;
+  static const _channelName = StudyFlowNotificationChannel.name;
+  static const _channelDescription = StudyFlowNotificationChannel.description;
 
   final FlutterLocalNotificationsPlugin _notificationsPlugin;
   final List<ScheduledReminder> _scheduledReminders = [];

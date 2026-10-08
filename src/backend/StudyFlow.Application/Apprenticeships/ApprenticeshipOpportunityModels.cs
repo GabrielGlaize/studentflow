@@ -22,7 +22,11 @@ public sealed record ApprenticeshipOpportunity(
     string? TargetDiploma,
     string? RemoteMode,
     string? Summary,
-    string ApplicationUrl);
+    string ApplicationUrl)
+{
+    /// <summary>Offre fictive affichée quand aucune source externe n'est configurée.</summary>
+    public bool IsDemo => Source.StartsWith("demo", StringComparison.OrdinalIgnoreCase);
+}
 
 public interface IApprenticeshipOpportunityProvider
 {

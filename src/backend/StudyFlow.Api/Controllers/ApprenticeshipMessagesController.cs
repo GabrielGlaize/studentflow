@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -18,7 +17,7 @@ namespace StudyFlow.Api.Controllers;
 public sealed class ApprenticeshipMessagesController(
     UserManager<ApplicationUser> userManager,
     StudyFlowDbContext dbContext,
-    ISensitiveDataProtector protector) : ControllerBase
+    ISensitiveDataProtector protector) : StudyFlowControllerBase(userManager)
 {
     private const string ContentPurpose = "apprenticeship-message-content";
     private const string LinkPurpose = "apprenticeship-message-link";
@@ -50,6 +49,10 @@ public sealed class ApprenticeshipMessagesController(
 
         var content = CleanRequired(request.Content);
         if (content is null) return BadRequestProblem("Le message est obligatoire.");
+        if (!string.IsNullOrWhiteSpace(request.Link) && !InputRules.IsWebUrl(request.Link))
+        {
+            return BadRequestProblem("Le lien doit etre une adresse web (http ou https).");
+        }
 
         // Le fil alternance peut contenir des contacts ou liens sensibles : le contenu est chiffre en base.
         var message = new ApprenticeshipMessage
@@ -106,9 +109,6 @@ public sealed class ApprenticeshipMessagesController(
             x.CreatedAt)).ToArray();
     }
 
-    private async Task<ApplicationUser?> CurrentUserAsync() =>
-        await userManager.FindByIdAsync(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
     private string? ProtectOptional(string? value, string purpose) =>
         string.IsNullOrWhiteSpace(value) ? null : protector.Protect(value.Trim(), purpose);
 
@@ -120,7 +120,4 @@ public sealed class ApprenticeshipMessagesController(
         var clean = value.Trim();
         return string.IsNullOrWhiteSpace(clean) ? null : clean;
     }
-
-    private ObjectResult BadRequestProblem(string title) =>
-        BadRequest(new ProblemDetails { Title = title, Status = StatusCodes.Status400BadRequest });
 }

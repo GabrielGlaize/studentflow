@@ -1,7 +1,7 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using StudyFlow.Api.Contracts;
 using StudyFlow.Application.Security;
@@ -19,7 +19,7 @@ public sealed class SchoolClassesController(
     UserManager<ApplicationUser> userManager,
     StudyFlowDbContext dbContext,
     IClassCodeService classCodeService,
-    IAuthTokenService tokenService) : ControllerBase
+    IAuthTokenService tokenService) : StudyFlowControllerBase(userManager)
 {
     [HttpGet("current")]
     public async Task<ActionResult<CurrentClassResponse>> Current(CancellationToken cancellationToken)
@@ -32,17 +32,19 @@ public sealed class SchoolClassesController(
             .SingleOrDefaultAsync(x => x.Id == user.SchoolClassId && x.IsActive, cancellationToken);
         if (schoolClass is null) return NotFound();
 
-        var isDelegate = await userManager.IsInRoleAsync(user, nameof(UserRole.Delegue));
+        var isDelegate = await UserManager.IsInRoleAsync(user, nameof(UserRole.Delegue));
         return Ok(ToCurrentClassResponse(schoolClass, isDelegate));
     }
 
+    // Limite par utilisateur : un code de classe ne doit pas pouvoir être deviné par essais successifs.
+    [EnableRateLimiting(RateLimiting.ClassJoin)]
     [HttpPost("join")]
     public async Task<ActionResult<MembershipRequestResponse>> Join(
         JoinClassRequest request,
         CancellationToken cancellationToken)
     {
-        var userId = CurrentUserId();
-        var user = await userManager.FindByIdAsync(userId.ToString());
+        var userId = CurrentUserId;
+        var user = await CurrentUserAsync();
         if (user is null) return Unauthorized();
         if (user.SchoolClassId is not null) return ConflictProblem("Vous appartenez deja a une classe.");
 
@@ -75,7 +77,7 @@ public sealed class SchoolClassesController(
         var name = request.SchoolClassName.Trim();
         var schoolYear = request.SchoolYear.Trim();
         if (string.IsNullOrWhiteSpace(name)) return BadRequestProblem("Le nom de la classe est obligatoire.");
-        if (string.IsNullOrWhiteSpace(schoolYear)) return BadRequestProblem("L'annee scolaire est obligatoire.");
+        if (!InputRules.IsSchoolYear(schoolYear)) return BadRequestProblem(InputRules.SchoolYearMessage);
 
         var nameAlreadyUsed = await dbContext.SchoolClasses.AnyAsync(
             x => x.Name == name,
@@ -99,35 +101,23 @@ public sealed class SchoolClassesController(
         user.UpdatedAt = DateTimeOffset.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        if (!await userManager.IsInRoleAsync(user, nameof(UserRole.Eleve)))
+        if (!await UserManager.IsInRoleAsync(user, nameof(UserRole.Eleve)))
         {
-            var studentRoleResult = await userManager.AddToRoleAsync(user, nameof(UserRole.Eleve));
+            var studentRoleResult = await UserManager.AddToRoleAsync(user, nameof(UserRole.Eleve));
             if (!studentRoleResult.Succeeded) return IdentityValidationProblem(studentRoleResult);
         }
 
-        if (!await userManager.IsInRoleAsync(user, nameof(UserRole.Delegue)))
+        if (!await UserManager.IsInRoleAsync(user, nameof(UserRole.Delegue)))
         {
-            var delegateRoleResult = await userManager.AddToRoleAsync(user, nameof(UserRole.Delegue));
+            var delegateRoleResult = await UserManager.AddToRoleAsync(user, nameof(UserRole.Delegue));
             if (!delegateRoleResult.Succeeded) return IdentityValidationProblem(delegateRoleResult);
         }
 
-        await userManager.UpdateSecurityStampAsync(user);
+        await UserManager.UpdateSecurityStampAsync(user);
 
         await transaction.CommitAsync(cancellationToken);
 
-        var roles = await userManager.GetRolesAsync(user);
-        var response = new AuthResponse(
-            await tokenService.IssueAsync(user.Id, cancellationToken),
-            new UserSummary(
-                user.Id,
-                user.Email ?? string.Empty,
-                user.FirstName,
-                user.LastName,
-                user.SchoolClassId,
-                roles.ToArray()),
-            code.Plaintext);
-
-        return Ok(response);
+        return Ok(await NewSessionAsync(user, cancellationToken, code.Plaintext));
     }
 
     [Authorize(Roles = nameof(UserRole.Delegue))]
@@ -146,7 +136,7 @@ public sealed class SchoolClassesController(
         var name = request.Name.Trim();
         var schoolYear = request.SchoolYear.Trim();
         if (string.IsNullOrWhiteSpace(name)) return BadRequestProblem("Le nom de la classe est obligatoire.");
-        if (string.IsNullOrWhiteSpace(schoolYear)) return BadRequestProblem("L'annee scolaire est obligatoire.");
+        if (!InputRules.IsSchoolYear(schoolYear)) return BadRequestProblem(InputRules.SchoolYearMessage);
 
         var nameAlreadyUsed = await dbContext.SchoolClasses.AnyAsync(
             x => x.Id != schoolClass.Id && x.Name == name,
@@ -197,25 +187,28 @@ public sealed class SchoolClassesController(
         var user = await CurrentUserAsync();
         if (user?.SchoolClassId is null) return Forbid();
 
-        var members = await dbContext.Users
-            .AsNoTracking()
-            .Where(x => x.SchoolClassId == user.SchoolClassId)
-            .OrderBy(x => x.LastName)
-            .ThenBy(x => x.FirstName)
+        var classId = user.SchoolClassId.Value;
+        var delegateIds = await dbContext.ActiveDelegatesOfClass(classId)
+            .Select(x => x.Id)
             .ToListAsync(cancellationToken);
 
-        var responses = new List<ClassMemberResponse>(members.Count);
-        foreach (var member in members)
-        {
-            responses.Add(new ClassMemberResponse(
-                member.Id,
-                member.FirstName,
-                member.LastName,
-                member.Email ?? string.Empty,
-                await userManager.IsInRoleAsync(member, nameof(UserRole.Delegue))));
-        }
+        // Minimisation des données : seuls les délégués, qui gèrent la classe, voient les e-mails.
+        var showEmails = delegateIds.Contains(user.Id);
 
-        return Ok(responses);
+        var members = await dbContext.Users
+            .AsNoTracking()
+            .Where(x => x.SchoolClassId == classId && x.IsActive)
+            .OrderBy(x => x.LastName)
+            .ThenBy(x => x.FirstName)
+            .Select(x => new { x.Id, x.FirstName, x.LastName, x.Email })
+            .ToListAsync(cancellationToken);
+
+        return Ok(members.Select(member => new ClassMemberResponse(
+            member.Id,
+            member.FirstName,
+            member.LastName,
+            showEmails ? member.Email ?? string.Empty : null,
+            delegateIds.Contains(member.Id))).ToArray());
     }
 
     [Authorize(Roles = nameof(UserRole.Delegue))]
@@ -225,21 +218,21 @@ public sealed class SchoolClassesController(
         var currentUser = await CurrentUserAsync();
         if (currentUser?.SchoolClassId is null) return Forbid();
 
-        var member = await userManager.FindByIdAsync(memberId.ToString());
+        var member = await UserManager.FindByIdAsync(memberId.ToString());
         if (member?.SchoolClassId != currentUser.SchoolClassId) return NotFound();
 
-        if (!await userManager.IsInRoleAsync(member, nameof(UserRole.Eleve)))
+        if (!await UserManager.IsInRoleAsync(member, nameof(UserRole.Eleve)))
         {
-            await userManager.AddToRoleAsync(member, nameof(UserRole.Eleve));
+            await UserManager.AddToRoleAsync(member, nameof(UserRole.Eleve));
         }
 
-        if (!await userManager.IsInRoleAsync(member, nameof(UserRole.Delegue)))
+        if (!await UserManager.IsInRoleAsync(member, nameof(UserRole.Delegue)))
         {
-            var result = await userManager.AddToRoleAsync(member, nameof(UserRole.Delegue));
+            var result = await UserManager.AddToRoleAsync(member, nameof(UserRole.Delegue));
             if (!result.Succeeded) return IdentityValidationProblem(result);
         }
 
-        await userManager.UpdateSecurityStampAsync(member);
+        await UserManager.UpdateSecurityStampAsync(member);
         return NoContent();
     }
 
@@ -251,26 +244,17 @@ public sealed class SchoolClassesController(
         if (currentUser?.SchoolClassId is null) return Forbid();
         if (memberId == currentUser.Id) return ConflictProblem("Un delegue ne peut pas se retirer lui-meme de la classe.");
 
-        var member = await userManager.FindByIdAsync(memberId.ToString());
+        var member = await UserManager.FindByIdAsync(memberId.ToString());
         if (member?.SchoolClassId != currentUser.SchoolClassId) return NotFound();
 
         member.SchoolClassId = null;
         member.UpdatedAt = DateTimeOffset.UtcNow;
 
-        if (await userManager.IsInRoleAsync(member, nameof(UserRole.Delegue)))
-        {
-            var delegateResult = await userManager.RemoveFromRoleAsync(member, nameof(UserRole.Delegue));
-            if (!delegateResult.Succeeded) return IdentityValidationProblem(delegateResult);
-        }
+        var rolesProblem = await RemoveClassRolesAsync(member);
+        if (rolesProblem is not null) return rolesProblem;
 
-        if (await userManager.IsInRoleAsync(member, nameof(UserRole.Eleve)))
-        {
-            var studentResult = await userManager.RemoveFromRoleAsync(member, nameof(UserRole.Eleve));
-            if (!studentResult.Succeeded) return IdentityValidationProblem(studentResult);
-        }
-
-        await userManager.UpdateAsync(member);
-        await userManager.UpdateSecurityStampAsync(member);
+        await UserManager.UpdateAsync(member);
+        await UserManager.UpdateSecurityStampAsync(member);
         return NoContent();
     }
 
@@ -281,28 +265,17 @@ public sealed class SchoolClassesController(
         var currentUser = await CurrentUserAsync();
         if (currentUser?.SchoolClassId is null) return Forbid();
 
-        var delegateRoleId = await dbContext.Roles
-            .Where(role => role.Name == nameof(UserRole.Delegue))
-            .Select(role => role.Id)
-            .SingleAsync(cancellationToken);
-
-        var delegateIds = await dbContext.UserRoles
-            .Where(x => x.RoleId == delegateRoleId)
-            .Select(x => x.UserId)
-            .ToListAsync(cancellationToken);
-
-        var delegateCountInClass = await dbContext.Users
-            .CountAsync(x => x.SchoolClassId == currentUser.SchoolClassId && delegateIds.Contains(x.Id), cancellationToken);
-
+        var delegateCountInClass = await dbContext.ActiveDelegatesOfClass(currentUser.SchoolClassId.Value)
+            .CountAsync(cancellationToken);
         if (delegateCountInClass <= 1)
         {
             return ConflictProblem("Nommez un autre delegue avant de quitter ce role.");
         }
 
-        var result = await userManager.RemoveFromRoleAsync(currentUser, nameof(UserRole.Delegue));
+        var result = await UserManager.RemoveFromRoleAsync(currentUser, nameof(UserRole.Delegue));
         if (!result.Succeeded) return IdentityValidationProblem(result);
 
-        await userManager.UpdateSecurityStampAsync(currentUser);
+        await UserManager.UpdateSecurityStampAsync(currentUser);
         return NoContent();
     }
 
@@ -313,28 +286,13 @@ public sealed class SchoolClassesController(
         if (currentUser?.SchoolClassId is null) return Forbid();
 
         var classId = currentUser.SchoolClassId.Value;
-        var membersCount = await dbContext.Users
-            .CountAsync(x => x.SchoolClassId == classId && x.IsActive, cancellationToken);
+        var otherMembersCount = await dbContext.Users
+            .CountAsync(x => x.SchoolClassId == classId && x.IsActive && x.Id != currentUser.Id, cancellationToken);
 
-        if (await userManager.IsInRoleAsync(currentUser, nameof(UserRole.Delegue)) && membersCount > 1)
+        if (otherMembersCount > 0 && await UserManager.IsInRoleAsync(currentUser, nameof(UserRole.Delegue)))
         {
-            var delegateRoleId = await dbContext.Roles
-                .Where(role => role.Name == nameof(UserRole.Delegue))
-                .Select(role => role.Id)
-                .SingleAsync(cancellationToken);
-
-            var otherDelegateExists = await dbContext.UserRoles
-                .Join(
-                    dbContext.Users,
-                    userRole => userRole.UserId,
-                    user => user.Id,
-                    (userRole, user) => new { userRole, user })
-                .AnyAsync(
-                    x => x.userRole.RoleId == delegateRoleId
-                        && x.user.SchoolClassId == classId
-                        && x.user.Id != currentUser.Id
-                        && x.user.IsActive,
-                    cancellationToken);
+            var otherDelegateExists = await dbContext.ActiveDelegatesOfClass(classId)
+                .AnyAsync(x => x.Id != currentUser.Id, cancellationToken);
 
             if (!otherDelegateExists)
             {
@@ -342,34 +300,24 @@ public sealed class SchoolClassesController(
             }
         }
 
+        if (otherMembersCount == 0)
+        {
+            // Plus personne ne pourrait valider les demandes faites avec le code de cette classe.
+            var schoolClass = await dbContext.SchoolClasses.SingleAsync(x => x.Id == classId, cancellationToken);
+            schoolClass.IsActive = false;
+            schoolClass.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
         currentUser.SchoolClassId = null;
         currentUser.UpdatedAt = DateTimeOffset.UtcNow;
 
-        if (await userManager.IsInRoleAsync(currentUser, nameof(UserRole.Delegue)))
-        {
-            var delegateResult = await userManager.RemoveFromRoleAsync(currentUser, nameof(UserRole.Delegue));
-            if (!delegateResult.Succeeded) return IdentityValidationProblem(delegateResult);
-        }
+        var rolesProblem = await RemoveClassRolesAsync(currentUser);
+        if (rolesProblem is not null) return rolesProblem;
 
-        if (await userManager.IsInRoleAsync(currentUser, nameof(UserRole.Eleve)))
-        {
-            var studentResult = await userManager.RemoveFromRoleAsync(currentUser, nameof(UserRole.Eleve));
-            if (!studentResult.Succeeded) return IdentityValidationProblem(studentResult);
-        }
+        await UserManager.UpdateAsync(currentUser);
+        await UserManager.UpdateSecurityStampAsync(currentUser);
 
-        await userManager.UpdateAsync(currentUser);
-        await userManager.UpdateSecurityStampAsync(currentUser);
-
-        var roles = await userManager.GetRolesAsync(currentUser);
-        return Ok(new AuthResponse(
-            await tokenService.IssueAsync(currentUser.Id, cancellationToken),
-            new UserSummary(
-                currentUser.Id,
-                currentUser.Email ?? string.Empty,
-                currentUser.FirstName,
-                currentUser.LastName,
-                currentUser.SchoolClassId,
-                roles.ToArray())));
+        return Ok(await NewSessionAsync(currentUser, cancellationToken));
     }
 
     [HttpGet("current-request")]
@@ -377,13 +325,44 @@ public sealed class SchoolClassesController(
     {
         var membership = await dbContext.ClassMembershipRequests
             .AsNoTracking()
-            .Where(x => x.UserId == CurrentUserId())
+            .Where(x => x.UserId == CurrentUserId)
             .OrderByDescending(x => x.RequestedAt)
             .FirstOrDefaultAsync(cancellationToken);
 
         return membership is null
             ? NotFound()
             : Ok(new MembershipRequestResponse(membership.Id, membership.Status.ToString(), membership.RequestedAt));
+    }
+
+    private async Task<ActionResult?> RemoveClassRolesAsync(ApplicationUser member)
+    {
+        foreach (var role in new[] { nameof(UserRole.Delegue), nameof(UserRole.Eleve) })
+        {
+            if (!await UserManager.IsInRoleAsync(member, role)) continue;
+
+            var result = await UserManager.RemoveFromRoleAsync(member, role);
+            if (!result.Succeeded) return IdentityValidationProblem(result);
+        }
+
+        return null;
+    }
+
+    private async Task<AuthResponse> NewSessionAsync(
+        ApplicationUser user,
+        CancellationToken cancellationToken,
+        string? classCode = null)
+    {
+        var roles = await UserManager.GetRolesAsync(user);
+        return new AuthResponse(
+            await tokenService.IssueAsync(user.Id, cancellationToken),
+            new UserSummary(
+                user.Id,
+                user.Email ?? string.Empty,
+                user.FirstName,
+                user.LastName,
+                user.SchoolClassId,
+                roles.ToArray()),
+            classCode);
     }
 
     private CurrentClassResponse ToCurrentClassResponse(SchoolClass schoolClass, bool isDelegate) => new(
@@ -402,20 +381,4 @@ public sealed class SchoolClassesController(
         return await dbContext.SchoolClasses
             .SingleOrDefaultAsync(x => x.Id == user.SchoolClassId && x.IsActive, cancellationToken);
     }
-
-    private async Task<ApplicationUser?> CurrentUserAsync() =>
-        await userManager.FindByIdAsync(CurrentUserId().ToString());
-
-    private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-    private ObjectResult BadRequestProblem(string title) =>
-        BadRequest(new ProblemDetails { Title = title, Status = StatusCodes.Status400BadRequest });
-
-    private ObjectResult ConflictProblem(string title) =>
-        Conflict(new ProblemDetails { Title = title, Status = StatusCodes.Status409Conflict });
-
-    private ActionResult IdentityValidationProblem(IdentityResult result) =>
-        ValidationProblem(new ValidationProblemDetails(result.Errors
-            .GroupBy(x => x.Code)
-            .ToDictionary(x => x.Key, x => x.Select(error => error.Description).ToArray())));
 }

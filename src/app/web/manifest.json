@@ -1,11 +1,11 @@
 {
-    "name": "studyflow_app",
-    "short_name": "studyflow_app",
+    "name": "StudyFlow",
+    "short_name": "StudyFlow",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Emploi du temps, devoirs et recherche d'alternance pour ta classe.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -42,10 +42,18 @@ services:
       Adzuna__AppKey: ${ADZUNA_APP_KEY:-}
       FranceTravail__ClientId: ${FRANCE_TRAVAIL_CLIENT_ID:-}
       FranceTravail__ClientSecret: ${FRANCE_TRAVAIL_CLIENT_SECRET:-}
+      # Notifications push : vide = notifications seulement journalisées.
+      Firebase__CredentialsPath: ${STUDYFLOW_FIREBASE_CREDENTIALS_PATH:-}
+      NotificationWorker__Enabled: ${STUDYFLOW_NOTIFICATIONS_ENABLED:-true}
+      # Le reverse proxy Synology passe par le réseau Docker : on lui fait confiance pour
+      # transmettre la vraie IP du client (limites de requêtes par utilisateur, pas globales).
+      ReverseProxy__KnownNetworks__0: ${STUDYFLOW_TRUSTED_PROXY_NETWORK:-172.16.0.0/12}
     ports:
       - "${STUDYFLOW_API_PORT:-5028}:8080"
     volumes:
       - studyflow-nas-api-keys:/var/lib/studyflow/data-protection-keys
+      # Dossier du NAS (hors Git) contenant la clé du compte de service Firebase.
+      - ./secrets:/run/secrets/studyflow:ro
 
 volumes:
   studyflow-nas-postgres-data:

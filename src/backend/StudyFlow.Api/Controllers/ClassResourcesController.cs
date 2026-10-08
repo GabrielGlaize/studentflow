@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -7,18 +6,20 @@ using Microsoft.EntityFrameworkCore;
 using StudyFlow.Api.Contracts;
 using StudyFlow.Application.Security;
 using StudyFlow.Domain.School;
+using StudyFlow.Domain.Users;
 using StudyFlow.Infrastructure.Identity;
 using StudyFlow.Infrastructure.Persistence;
 
 namespace StudyFlow.Api.Controllers;
 
+// Lecture pour toute la classe ; la gestion des listes communes est réservée aux délégués.
 [ApiController]
 [Authorize]
 [Route("api/v1/class-resources")]
 public sealed class ClassResourcesController(
     UserManager<ApplicationUser> userManager,
     StudyFlowDbContext dbContext,
-    ISensitiveDataProtector protector) : ControllerBase
+    ISensitiveDataProtector protector) : StudyFlowControllerBase(userManager)
 {
     private const string ProfessorDisplayPurpose = "teacher-display-name";
     private const string ProfessorLookupPurpose = "teacher-search-name";
@@ -40,6 +41,7 @@ public sealed class ClassResourcesController(
         return Ok(subjects);
     }
 
+    [Authorize(Roles = nameof(UserRole.Delegue))]
     [HttpPost("subjects")]
     public async Task<ActionResult<SubjectResponse>> CreateSubject(SubjectRequest request, CancellationToken cancellationToken)
     {
@@ -67,6 +69,7 @@ public sealed class ClassResourcesController(
         return CreatedAtAction(nameof(ListSubjects), new SubjectResponse(subject.Id, subject.Name, subject.IsActive));
     }
 
+    [Authorize(Roles = nameof(UserRole.Delegue))]
     [HttpDelete("subjects/{id:guid}")]
     public async Task<IActionResult> DeleteSubject(Guid id, CancellationToken cancellationToken)
     {
@@ -103,6 +106,7 @@ public sealed class ClassResourcesController(
         return Ok(responses);
     }
 
+    [Authorize(Roles = nameof(UserRole.Delegue))]
     [HttpPost("teachers")]
     public async Task<ActionResult<TeacherResponse>> CreateTeacher(
         TeacherRequest request,
@@ -136,6 +140,7 @@ public sealed class ClassResourcesController(
         return CreatedAtAction(nameof(ListTeachers), ToResponse(teacher));
     }
 
+    [Authorize(Roles = nameof(UserRole.Delegue))]
     [HttpDelete("teachers/{id:guid}")]
     public async Task<IActionResult> DeleteTeacher(Guid id, CancellationToken cancellationToken)
     {
@@ -172,18 +177,9 @@ public sealed class ClassResourcesController(
         }
     }
 
-    private async Task<ApplicationUser?> CurrentUserAsync() =>
-        await userManager.FindByIdAsync(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
     private string? ProtectOptional(string? value, string purpose) =>
         string.IsNullOrWhiteSpace(value) ? null : protector.Protect(value.Trim(), purpose);
 
     private string? UnprotectOptional(string? value, string purpose) =>
         string.IsNullOrWhiteSpace(value) ? null : protector.Unprotect(value, purpose);
-
-    private ObjectResult ConflictProblem(string title) =>
-        Conflict(new ProblemDetails { Title = title, Status = StatusCodes.Status409Conflict });
-
-    private ObjectResult BadRequestProblem(string title) =>
-        BadRequest(new ProblemDetails { Title = title, Status = StatusCodes.Status400BadRequest });
 }

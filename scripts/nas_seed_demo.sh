@@ -24,6 +24,7 @@ fi
 
 docker compose --env-file .env.nas -f compose.nas.yaml run --rm \
   -e DevelopmentSeed__ResetOnStartup="$RESET_ON_STARTUP" \
+  -e DevelopmentSeed__AllowRemoteReset="$RESET_ON_STARTUP" \
   api \
   --seed-development-data
 
