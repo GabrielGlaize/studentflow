@@ -1,3 +1,8 @@
+# Nom fixe : les volumes (base, clés de chiffrement) sont préfixés par ce nom.
+# Sans lui, Docker le déduit du dossier ou de la commande et crée de nouveaux
+# volumes vides à chaque variante de déploiement.
+name: studyflow
+
 services:
   postgres:
     image: postgres:16-alpine
