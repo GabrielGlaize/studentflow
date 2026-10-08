@@ -12,4 +12,5 @@ public sealed class Subject : Entity
 
     public SchoolClass SchoolClass { get; set; } = null!;
     public ICollection<Course> Courses { get; set; } = [];
+    public ICollection<SubjectTeacher> TeacherLinks { get; set; } = [];
 }

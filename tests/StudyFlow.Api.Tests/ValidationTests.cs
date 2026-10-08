@@ -51,10 +51,12 @@ public sealed class ValidationTests(ApiFixture fixture)
     public async Task Deadlines_sent_with_a_time_zone_offset_are_accepted()
     {
         var scenario = await fixture.Api.CreateClassWithStudentAsync();
+        var subject = await fixture.Api.CreateSubjectAsync(scenario.Delegate);
+        var course = await fixture.Api.CreateCourseAsync(scenario.Student, subject.Id);
         var deadline = new DateTimeOffset(2026, 11, 20, 18, 0, 0, TimeSpan.FromHours(1));
 
         var response = await fixture.Api.As(scenario.Student).PostAsJsonAsync("/api/v1/homework",
-            new HomeworkRequest("Rapport de stage", null, deadline));
+            new HomeworkRequest("Rapport de stage", null, deadline, course.Id));
 
         var homework = await response.ReadSuccessAsync<HomeworkResponse>();
         Assert.Equal(deadline.UtcDateTime, homework.Deadline.UtcDateTime);

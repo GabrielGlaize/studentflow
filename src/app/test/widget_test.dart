@@ -65,37 +65,63 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('add-course-button')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Ajouter un cours'), findsWidgets);
+    expect(find.text('Nouveau cours'), findsOneWidget);
     expect(find.text('Matière'), findsOneWidget);
-    expect(find.text('Professeur optionnel'), findsOneWidget);
+    expect(find.text('Intervenant'), findsOneWidget);
+    expect(find.text('Partagé avec toute la classe'), findsOneWidget);
 
-    await tester.tap(find.text('Annuler'));
+    // Choisir la matière propose directement son intervenant.
+    await tester.tap(find.byKey(const ValueKey('subject-chip-subject-1')));
+    await tester.pumpAndSettle();
+    final teacherChip = tester.widget<ChoiceChip>(
+      find.byKey(const ValueKey('teacher-chip-teacher-2')),
+    );
+    expect(teacherChip.selected, isTrue);
+
+    await tester.ensureVisible(find.byKey(const ValueKey('add-slot-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('add-slot-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('Ajouter 2 cours'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Fermer'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Agenda'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Agenda et tâches'), findsOneWidget);
-    expect(find.text('Devoirs de classe'), findsOneWidget);
-    expect(find.text('Rendre le dossier d’anglais'), findsOneWidget);
+    expect(find.text('Devoirs de la classe'), findsOneWidget);
+    expect(find.text('Exercices 3 à 5 page 42'), findsOneWidget);
 
-    await tester.tap(find.text('Ajouter'));
+    await tester.tap(find.byKey(const ValueKey('agenda-add-button')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Tâche école'));
+    expect(find.text('POUR TOUTE LA CLASSE'), findsOneWidget);
+    expect(find.text('RIEN QUE POUR MOI'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('create-task')));
     await tester.pumpAndSettle();
+    expect(find.text('Visible uniquement par toi'), findsOneWidget);
 
     await tester.enterText(
       find.byType(EditableText).first,
       'Appeler une entreprise',
     );
+    await tester.ensureVisible(find.text('Créer'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Créer'));
     await tester.pumpAndSettle();
+    expect(find.text('Visible uniquement par toi'), findsNothing);
 
     await tester.drag(find.byType(ListView), const Offset(0, -220));
     await tester.pumpAndSettle();
     expect(find.text('Appeler une entreprise'), findsOneWidget);
 
-    await tester.tap(find.text('Appeler une entreprise'));
+    await tester.ensureVisible(find.text('Appeler une entreprise'));
+    await tester.pumpAndSettle();
+    // Le bouton flottant peut recouvrir le centre de la carte : on touche son titre.
+    await tester.tapAt(
+      tester.getTopLeft(find.text('Appeler une entreprise')) +
+          const Offset(4, 4),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('École'), findsWidgets);
@@ -104,6 +130,10 @@ void main() {
     await tester.tap(find.text('Fermer'));
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('task-done-demo-task-2')),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('task-done-demo-task-2')));
     await tester.pumpAndSettle();
 
@@ -137,6 +167,8 @@ void main() {
     expect(find.text('Code classe : SIO1-42'), findsOneWidget);
     expect(find.text('Lina Moreau'), findsOneWidget);
 
+    await tester.ensureVisible(find.text('Approuver'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Approuver'));
     await tester.pumpAndSettle();
     expect(find.text('Lina Moreau'), findsNothing);
@@ -184,7 +216,10 @@ void main() {
     await tester.tap(find.text('Tâches entreprise'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Agenda et tâches'), findsOneWidget);
+    expect(
+      find.text('Devoirs de la classe et organisation perso.'),
+      findsOneWidget,
+    );
     await tester.scrollUntilVisible(
       find.text('Relancer une entreprise'),
       160,

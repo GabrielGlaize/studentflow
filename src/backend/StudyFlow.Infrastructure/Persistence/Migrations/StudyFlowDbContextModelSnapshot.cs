@@ -422,6 +422,11 @@ namespace StudyFlow.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("EncryptedToken")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("encrypted_token");
+
                     b.Property<DateTimeOffset>("LastSeenAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_seen_at");
@@ -431,11 +436,6 @@ namespace StudyFlow.Infrastructure.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("platform");
-
-                    b.Property<string>("EncryptedToken")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("encrypted_token");
 
                     b.Property<string>("TokenHash")
                         .IsRequired()
@@ -1018,9 +1018,27 @@ namespace StudyFlow.Infrastructure.Persistence.Migrations
                     b.HasIndex("CreatedById");
 
                     b.HasIndex("SchoolClassId", "Name")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("is_active");
 
                     b.ToTable("subjects", (string)null);
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.School.SubjectTeacher", b =>
+                {
+                    b.Property<Guid>("SubjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subject_id");
+
+                    b.Property<Guid>("TeacherId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("teacher_id");
+
+                    b.HasKey("SubjectId", "TeacherId");
+
+                    b.HasIndex("TeacherId");
+
+                    b.ToTable("subject_teachers", (string)null);
                 });
 
             modelBuilder.Entity("StudyFlow.Domain.School.Teacher", b =>
@@ -1066,7 +1084,8 @@ namespace StudyFlow.Infrastructure.Persistence.Migrations
                     b.HasIndex("CreatedById");
 
                     b.HasIndex("SchoolClassId", "SearchNameHash")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("is_active");
 
                     b.ToTable("teachers", (string)null);
                 });
@@ -1623,6 +1642,25 @@ namespace StudyFlow.Infrastructure.Persistence.Migrations
                     b.Navigation("SchoolClass");
                 });
 
+            modelBuilder.Entity("StudyFlow.Domain.School.SubjectTeacher", b =>
+                {
+                    b.HasOne("StudyFlow.Domain.School.Subject", "Subject")
+                        .WithMany("TeacherLinks")
+                        .HasForeignKey("SubjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("StudyFlow.Domain.School.Teacher", "Teacher")
+                        .WithMany("SubjectLinks")
+                        .HasForeignKey("TeacherId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Subject");
+
+                    b.Navigation("Teacher");
+                });
+
             modelBuilder.Entity("StudyFlow.Domain.School.Teacher", b =>
                 {
                     b.HasOne("StudyFlow.Infrastructure.Identity.ApplicationUser", null)
@@ -1711,11 +1749,15 @@ namespace StudyFlow.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("StudyFlow.Domain.School.Subject", b =>
                 {
                     b.Navigation("Courses");
+
+                    b.Navigation("TeacherLinks");
                 });
 
             modelBuilder.Entity("StudyFlow.Domain.School.Teacher", b =>
                 {
                     b.Navigation("Courses");
+
+                    b.Navigation("SubjectLinks");
                 });
 #pragma warning restore 612, 618
         }

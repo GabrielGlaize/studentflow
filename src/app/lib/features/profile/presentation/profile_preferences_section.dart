@@ -91,7 +91,7 @@ class _ScheduledRemindersCardState extends State<_ScheduledRemindersCard> {
 
     final courses = await appScope.courseRepository.listCourses(
       from: weekStart,
-      to: weekStart.add(const Duration(days: 6)),
+      to: DateTime(weekStart.year, weekStart.month, weekStart.day + 6),
       accessToken: accessToken,
     );
     final agenda = await appScope.agendaRepository.getAgenda(
@@ -155,7 +155,7 @@ class _ReminderPreviewLine extends StatelessWidget {
                   '${_formatDateTime(reminder.scheduledAt)} · ${reminder.body}',
                   style: TextStyle(
                     color: context.sfMuted,
-                    fontSize: 10,
+                    fontSize: 13,
                     height: 1.3,
                   ),
                 ),

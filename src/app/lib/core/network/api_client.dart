@@ -67,6 +67,23 @@ class ApiClient {
     return _decodeObjectResponse(response);
   }
 
+  Future<List<Map<String, Object?>>> postJsonList(
+    String path, {
+    required Map<String, Object?> body,
+    String? accessToken,
+  }) async {
+    final response = await _send(
+      accessToken,
+      (headers) => _httpClient.post(
+        _resolve(path),
+        headers: headers,
+        body: jsonEncode(body),
+      ),
+    );
+
+    return _decodeListResponse(response);
+  }
+
   Future<Map<String, Object?>> putJson(
     String path, {
     required Map<String, Object?> body,

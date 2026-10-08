@@ -34,6 +34,7 @@ public sealed class HomeworkController(
         var homeworkItems = await dbContext.HomeworkItems
             .AsNoTracking()
             .Include(x => x.ProgressItems.Where(progress => progress.UserId == user.Id))
+            .Include(x => x.Course).ThenInclude(course => course!.Subject)
             .Where(x => x.SchoolClassId == user.SchoolClassId && x.DeletedAt == null)
             .OrderBy(x => x.Deadline)
             .ToListAsync(cancellationToken);
@@ -55,6 +56,7 @@ public sealed class HomeworkController(
         var homework = await dbContext.HomeworkItems
             .AsNoTracking()
             .Include(x => x.ProgressItems.Where(progress => progress.UserId == user.Id))
+            .Include(x => x.Course).ThenInclude(course => course!.Subject)
             .SingleOrDefaultAsync(x => x.Id == id
                 && x.SchoolClassId == user.SchoolClassId
                 && x.DeletedAt == null, cancellationToken);
@@ -86,6 +88,7 @@ public sealed class HomeworkController(
         dbContext.HomeworkItems.Add(homework);
         await dbContext.SaveChangesAsync(cancellationToken);
         await SaveRevisionAsync(user, ContributionAction.Created, homework, cancellationToken);
+        await LoadCourseAsync(homework, cancellationToken);
 
         return CreatedAtAction(nameof(GetById), new { id = homework.Id }, ToResponse(homework));
     }
@@ -118,6 +121,7 @@ public sealed class HomeworkController(
         await dbContext.SaveChangesAsync(cancellationToken);
         await SaveRevisionAsync(user, ContributionAction.Updated, homework, cancellationToken);
         await LoadCurrentUserProgressAsync(homework, user.Id, cancellationToken);
+        await LoadCourseAsync(homework, cancellationToken);
 
         return Ok(ToResponse(homework));
     }
@@ -159,6 +163,7 @@ public sealed class HomeworkController(
 
         await dbContext.SaveChangesAsync(cancellationToken);
         await LoadCurrentUserProgressAsync(homework, user.Id, cancellationToken);
+        await LoadCourseAsync(homework, cancellationToken);
 
         return Ok(ToResponse(homework));
     }
@@ -195,14 +200,20 @@ public sealed class HomeworkController(
             return BadRequestProblem("Le titre du devoir est obligatoire.");
         }
 
-        if (courseId is not null)
+        // Un devoir est toujours rattaché au cours pour lequel il est à faire : c'est ce qui
+        // permet d'afficher sa matière et de le retrouver depuis le planning.
+        if (courseId is null)
+        {
+            return BadRequestProblem("Choisis le cours pour lequel ce devoir est à faire.");
+        }
+
         {
             var courseExists = await dbContext.Courses.AnyAsync(
                 x => x.Id == courseId
                     && x.SchoolClassId == schoolClassId
                     && x.DeletedAt == null,
                 cancellationToken);
-            if (!courseExists) return BadRequestProblem("Le cours lie au devoir n'existe pas dans votre classe.");
+            if (!courseExists) return BadRequestProblem("Le cours lié au devoir n'existe pas dans votre classe.");
         }
 
         return null;
@@ -214,11 +225,24 @@ public sealed class HomeworkController(
         homework.Description,
         homework.Deadline,
         homework.CourseId,
+        homework.Course?.Subject.Name,
+        homework.Course?.Day,
         homework.ProgressItems.SingleOrDefault()?.IsDone ?? false,
         homework.ProgressItems.SingleOrDefault()?.NotificationsEnabled ?? true,
         homework.ProgressItems.SingleOrDefault()?.CompletedAt,
         homework.CreatedAt,
         homework.UpdatedAt);
+
+    private async Task LoadCourseAsync(Homework homework, CancellationToken cancellationToken)
+    {
+        if (homework.CourseId is null) return;
+
+        await dbContext.Entry(homework).Reference(x => x.Course).LoadAsync(cancellationToken);
+        if (homework.Course is not null)
+        {
+            await dbContext.Entry(homework.Course).Reference(x => x.Subject).LoadAsync(cancellationToken);
+        }
+    }
 
     private async Task LoadCurrentUserProgressAsync(
         Homework homework,

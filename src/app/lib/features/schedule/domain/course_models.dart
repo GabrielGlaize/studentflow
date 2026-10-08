@@ -43,7 +43,9 @@ class CourseItem {
 
   CourseFormData toFormData() {
     return CourseFormData(
+      subjectId: subjectId,
       subjectName: subjectName,
+      teacherId: teacherId,
       teacherName: teacherName,
       day: day,
       startsAt: startsAt,
@@ -53,21 +55,32 @@ class CourseItem {
       version: version,
     );
   }
+
+  DateTime get startDateTime => _at(day, startsAt);
+
+  DateTime get endDateTime => _at(day, endsAt);
 }
 
+/// Ce que l'élève saisit pour un cours. La matière et l'intervenant sont choisis
+/// dans les listes de la classe : on transmet leurs identifiants, les noms ne
+/// servent qu'à l'affichage.
 class CourseFormData {
   const CourseFormData({
+    required this.subjectId,
     required this.subjectName,
     required this.day,
     required this.startsAt,
     required this.endsAt,
     required this.room,
+    this.teacherId,
     this.teacherName,
     this.isCancelled = false,
     this.version,
   });
 
+  final String subjectId;
   final String subjectName;
+  final String? teacherId;
   final String? teacherName;
   final DateTime day;
   final String startsAt;
@@ -75,6 +88,21 @@ class CourseFormData {
   final String room;
   final bool isCancelled;
   final int? version;
+
+  CourseFormData copyWith({DateTime? day, String? startsAt, String? endsAt}) {
+    return CourseFormData(
+      subjectId: subjectId,
+      subjectName: subjectName,
+      teacherId: teacherId,
+      teacherName: teacherName,
+      day: day ?? this.day,
+      startsAt: startsAt ?? this.startsAt,
+      endsAt: endsAt ?? this.endsAt,
+      room: room,
+      isCancelled: isCancelled,
+      version: version,
+    );
+  }
 }
 
 class CourseRevisionItem {
@@ -101,6 +129,17 @@ class CourseRevisionItem {
       version: (json['version'] as num?)?.toInt() ?? 1,
     );
   }
+}
+
+DateTime _at(DateTime day, String time) {
+  final parts = time.split(':');
+  return DateTime(
+    day.year,
+    day.month,
+    day.day,
+    int.parse(parts[0]),
+    int.parse(parts[1]),
+  );
 }
 
 String _shortTime(String value) {

@@ -20,11 +20,27 @@ class HttpClassResourceRepository implements ClassResourceRepository {
   @override
   Future<ClassSubject> createSubject({
     required String name,
+    List<String> teacherIds = const [],
     String? accessToken,
   }) async {
     final json = await _apiClient.postJson(
       '/api/v1/class-resources/subjects',
-      body: {'name': name.trim()},
+      body: {'name': name.trim(), 'teacherIds': teacherIds},
+      accessToken: accessToken,
+    );
+    return ClassSubject.fromJson(json);
+  }
+
+  @override
+  Future<ClassSubject> updateSubject({
+    required String subjectId,
+    required String name,
+    required List<String> teacherIds,
+    String? accessToken,
+  }) async {
+    final json = await _apiClient.putJson(
+      '/api/v1/class-resources/subjects/$subjectId',
+      body: {'name': name.trim(), 'teacherIds': teacherIds},
       accessToken: accessToken,
     );
     return ClassSubject.fromJson(json);
@@ -51,16 +67,28 @@ class HttpClassResourceRepository implements ClassResourceRepository {
   Future<ClassTeacher> createTeacher({
     required String displayName,
     String? information,
+    List<String> subjectIds = const [],
     String? accessToken,
   }) async {
     final json = await _apiClient.postJson(
       '/api/v1/class-resources/teachers',
-      body: {
-        'displayName': displayName.trim(),
-        'information': information?.trim().isEmpty == true
-            ? null
-            : information?.trim(),
-      },
+      body: _teacherBody(displayName, information, subjectIds),
+      accessToken: accessToken,
+    );
+    return ClassTeacher.fromJson(json);
+  }
+
+  @override
+  Future<ClassTeacher> updateTeacher({
+    required String teacherId,
+    required String displayName,
+    required List<String> subjectIds,
+    String? information,
+    String? accessToken,
+  }) async {
+    final json = await _apiClient.putJson(
+      '/api/v1/class-resources/teachers/$teacherId',
+      body: _teacherBody(displayName, information, subjectIds),
       accessToken: accessToken,
     );
     return ClassTeacher.fromJson(json);
@@ -72,5 +100,20 @@ class HttpClassResourceRepository implements ClassResourceRepository {
       '/api/v1/class-resources/teachers/$teacherId',
       accessToken: accessToken,
     );
+  }
+
+  Map<String, Object?> _teacherBody(
+    String displayName,
+    String? information,
+    List<String> subjectIds,
+  ) {
+    final cleanedInformation = information?.trim();
+    return {
+      'displayName': displayName.trim(),
+      'information': cleanedInformation == null || cleanedInformation.isEmpty
+          ? null
+          : cleanedInformation,
+      'subjectIds': subjectIds,
+    };
   }
 }

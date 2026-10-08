@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:studyflow_app/core/app_scope.dart';
+import 'package:studyflow_app/core/theme/app_colors.dart';
 import 'package:studyflow_app/features/agenda/presentation/agenda_page.dart';
 import 'package:studyflow_app/features/apprenticeships/presentation/apprenticeships_page.dart';
 import 'package:studyflow_app/features/company/presentation/company_page.dart';
@@ -69,16 +70,9 @@ class _MainShellState extends State<MainShell> {
                 hasCompany: settingsController.hasCompany,
               ),
               bottomNavigationBar: DecoratedBox(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  border: Border(top: BorderSide(color: Color(0xFFD7E3EA))),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x10073B4C),
-                      blurRadius: 30,
-                      offset: Offset(0, -8),
-                    ),
-                  ],
+                decoration: BoxDecoration(
+                  color: context.sfCard,
+                  border: Border(top: BorderSide(color: context.sfLine)),
                 ),
                 child: NavigationBar(
                   selectedIndex: _selectedIndex,

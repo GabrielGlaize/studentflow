@@ -110,7 +110,7 @@ class _ClassManagementSectionState extends State<_ClassManagementSection> {
                       '${currentClass.name} · ${currentClass.schoolYear}',
                       style: const TextStyle(
                         color: Colors.white70,
-                        fontSize: 10,
+                        fontSize: 13,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -118,7 +118,7 @@ class _ClassManagementSectionState extends State<_ClassManagementSection> {
                       'À partager seulement aux élèves de la classe. Le délégué approuve ensuite les demandes.',
                       style: TextStyle(
                         color: Color(0xDFFFFFFF),
-                        fontSize: 11,
+                        fontSize: 13,
                         height: 1.45,
                         fontWeight: FontWeight.w600,
                       ),
@@ -210,14 +210,11 @@ class _ClassManagementSectionState extends State<_ClassManagementSection> {
               onRemoveMember: _removeMember,
               onLeaveDelegateRole: _leaveDelegateRole,
             ),
-            _ClassResourcesCard(
+            _ClassResourcesEntryCard(
               subjects: state.subjects,
               teachers: state.teachers,
               isDelegate: isDelegate,
-              onAddSubject: _openSubjectSheet,
-              onAddTeacher: _openTeacherSheet,
-              onDeleteSubject: _deleteSubject,
-              onDeleteTeacher: _deleteTeacher,
+              onOpen: () => _openResources(isDelegate: isDelegate),
             ),
           ],
         );
@@ -539,101 +536,13 @@ class _ClassManagementSectionState extends State<_ClassManagementSection> {
     });
   }
 
-  Future<void> _openSubjectSheet() async {
-    final created = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (context) => const _CreateSubjectSheet(),
-    );
-
-    if (!mounted || created != true) return;
-    setState(() {
-      _future = _load();
-    });
-  }
-
-  Future<void> _openTeacherSheet() async {
-    final created = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (context) => const _CreateTeacherSheet(),
-    );
-
-    if (!mounted || created != true) return;
-    setState(() {
-      _future = _load();
-    });
-  }
-
-  Future<void> _deleteSubject(ClassSubject subject) async {
-    final shouldDelete = await _confirmResourceDelete(
-      title: 'Retirer cette matière ?',
-      message:
-          '“${subject.name}” ne sera plus proposée dans les nouveaux cours.',
-    );
-    if (shouldDelete != true || !mounted) return;
-
-    final appScope = AppScope.of(context);
-    final accessToken = await appScope.sessionController.accessTokenForApi();
-    await appScope.classResourceRepository.deleteSubject(
-      subjectId: subject.id,
-      accessToken: accessToken,
-    );
-
-    if (!mounted) return;
-    _showSnack('Matière retirée.');
-    setState(() => _future = _load());
-  }
-
-  Future<void> _deleteTeacher(ClassTeacher teacher) async {
-    final shouldDelete = await _confirmResourceDelete(
-      title: 'Retirer ce professeur ?',
-      message:
-          '“${teacher.displayName}” ne sera plus proposé dans les nouveaux cours.',
-    );
-    if (shouldDelete != true || !mounted) return;
-
-    final appScope = AppScope.of(context);
-    final accessToken = await appScope.sessionController.accessTokenForApi();
-    await appScope.classResourceRepository.deleteTeacher(
-      teacherId: teacher.id,
-      accessToken: accessToken,
-    );
-
-    if (!mounted) return;
-    _showSnack('Professeur retiré.');
-    setState(() => _future = _load());
-  }
-
-  Future<bool?> _confirmResourceDelete({
-    required String title,
-    required String message,
-  }) {
-    return showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Retirer'),
-          ),
-        ],
+  Future<void> _openResources({required bool isDelegate}) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => ClassResourcesPage(isDelegate: isDelegate),
       ),
     );
+    if (mounted) setState(() => _future = _load());
   }
 }
 

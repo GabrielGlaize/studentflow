@@ -47,6 +47,35 @@ class DemoCourseRepository implements CourseRepository {
   }
 
   @override
+  Future<List<CourseItem>> createCourses({
+    required List<CourseFormData> courses,
+    String? accessToken,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 220));
+    if (DemoSessionState.hasNoClass(accessToken)) {
+      throw StateError('Rejoins une classe pour créer un cours partagé.');
+    }
+    for (var i = 0; i < courses.length; i++) {
+      _throwIfConflict(courses[i]);
+      for (final other in courses.skip(i + 1)) {
+        if (_overlaps(courses[i], other)) {
+          throw StateError('Deux créneaux se chevauchent.');
+        }
+      }
+    }
+
+    final created = [
+      for (final data in courses)
+        _fromFormData(
+          id: 'course-${DateTime.now().microsecondsSinceEpoch}-${data.startsAt}',
+          data: data,
+        ),
+    ];
+    _courses.addAll(created);
+    return created;
+  }
+
+  @override
   Future<CourseItem> updateCourse({
     required String courseId,
     required CourseFormData data,
@@ -138,10 +167,10 @@ class DemoCourseRepository implements CourseRepository {
       ..addAll([
         CourseItem(
           id: 'course-1',
-          subjectId: 'subject-flutter',
-          subjectName: 'Flutter',
+          subjectId: 'subject-2',
+          subjectName: 'Développement',
           teacherId: 'teacher-1',
-          teacherName: 'Mme Dupont',
+          teacherName: 'Mme Martin',
           day: start,
           startsAt: '10:15',
           endsAt: '12:15',
@@ -151,10 +180,10 @@ class DemoCourseRepository implements CourseRepository {
         ),
         CourseItem(
           id: 'course-2',
-          subjectId: 'subject-api',
-          subjectName: 'API ASP.NET Core',
+          subjectId: 'subject-1',
+          subjectName: 'Mathématiques',
           teacherId: 'teacher-2',
-          teacherName: 'M. Martin',
+          teacherName: 'M. Bernard',
           day: start.add(const Duration(days: 1)),
           startsAt: '08:30',
           endsAt: '10:30',
@@ -164,8 +193,8 @@ class DemoCourseRepository implements CourseRepository {
         ),
         CourseItem(
           id: 'course-3',
-          subjectId: 'subject-db',
-          subjectName: 'Base de données',
+          subjectId: 'subject-3',
+          subjectName: 'Réseaux',
           day: start.add(const Duration(days: 2)),
           startsAt: '14:00',
           endsAt: '16:00',
@@ -183,11 +212,9 @@ class DemoCourseRepository implements CourseRepository {
   }) {
     return CourseItem(
       id: id,
-      subjectId: 'subject-${data.subjectName.toLowerCase()}',
+      subjectId: data.subjectId,
       subjectName: data.subjectName.trim(),
-      teacherId: data.teacherName == null
-          ? null
-          : 'teacher-${data.teacherName}',
+      teacherId: data.teacherId,
       teacherName: data.teacherName?.trim(),
       day: data.day,
       startsAt: data.startsAt,
@@ -217,6 +244,17 @@ class DemoCourseRepository implements CourseRepository {
     if (hasConflict) {
       throw StateError('Ce cours chevauche déjà un autre cours.');
     }
+  }
+
+  bool _overlaps(CourseFormData first, CourseFormData second) {
+    if (first.isCancelled || second.isCancelled) return false;
+    final sameDay =
+        first.day.year == second.day.year &&
+        first.day.month == second.day.month &&
+        first.day.day == second.day.day;
+    return sameDay &&
+        _minutes(first.startsAt) < _minutes(second.endsAt) &&
+        _minutes(first.endsAt) > _minutes(second.startsAt);
   }
 
   int _minutes(String value) {

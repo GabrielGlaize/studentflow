@@ -230,7 +230,7 @@ class _ClassPill extends StatelessWidget {
         text.toUpperCase(),
         style: TextStyle(
           color: context.sfText,
-          fontSize: 10,
+          fontSize: 13,
           fontWeight: FontWeight.w900,
           letterSpacing: .6,
         ),
@@ -302,15 +302,8 @@ class _PinnedAnnouncementCard extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: context.sfCard,
               borderRadius: BorderRadius.circular(12),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x17073B4C),
-                  blurRadius: 14,
-                  offset: Offset(0, 6),
-                ),
-              ],
             ),
             child: const Icon(Icons.push_pin_outlined, color: AppColors.rose),
           ),
@@ -401,7 +394,7 @@ class _Overline extends StatelessWidget {
       text.toUpperCase(),
       style: TextStyle(
         color: effectiveColor,
-        fontSize: 10,
+        fontSize: 13,
         fontWeight: FontWeight.w900,
         letterSpacing: .8,
       ),
@@ -447,7 +440,7 @@ class _NextCourseCard extends StatelessWidget {
                 course == null ? 'AUCUN COURS À VENIR' : 'TON PROCHAIN COURS',
                 style: const TextStyle(
                   color: Color(0xBFFFFFFF),
-                  fontSize: 10,
+                  fontSize: 13,
                   fontWeight: FontWeight.w900,
                   letterSpacing: .8,
                 ),
@@ -693,7 +686,7 @@ class _AnnouncementMiniCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: context.sfText,
-                    fontSize: 11,
+                    fontSize: 13,
                     fontWeight: FontWeight.w800,
                     height: 1.35,
                   ),
@@ -701,7 +694,7 @@ class _AnnouncementMiniCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   '${announcement.authorName} · ${_formatDate(announcement.updatedAt)}',
-                  style: TextStyle(color: context.sfMuted, fontSize: 8),
+                  style: TextStyle(color: context.sfMuted, fontSize: 11),
                 ),
               ],
             ),

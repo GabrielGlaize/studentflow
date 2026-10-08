@@ -17,6 +17,7 @@ public sealed class StudyFlowDbContext(
     public DbSet<SchoolClass> SchoolClasses => Set<SchoolClass>();
     public DbSet<Subject> Subjects => Set<Subject>();
     public DbSet<Teacher> Teachers => Set<Teacher>();
+    public DbSet<SubjectTeacher> SubjectTeachers => Set<SubjectTeacher>();
     public DbSet<Course> Courses => Set<Course>();
     public DbSet<Homework> HomeworkItems => Set<Homework>();
     public DbSet<HomeworkProgress> HomeworkProgressItems => Set<HomeworkProgress>();
@@ -149,7 +150,8 @@ public sealed class StudyFlowDbContext(
             entity.Property(x => x.Name).HasMaxLength(120).IsRequired();
             entity.HasOne(x => x.SchoolClass).WithMany(x => x.Subjects).HasForeignKey(x => x.SchoolClassId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.Restrict);
-            entity.HasIndex(x => new { x.SchoolClassId, x.Name }).IsUnique();
+            // Unicité limitée aux matières actives : une matière supprimée peut être recréée.
+            entity.HasIndex(x => new { x.SchoolClassId, x.Name }).IsUnique().HasFilter("is_active");
         });
 
         modelBuilder.Entity<Teacher>(entity =>
@@ -160,7 +162,16 @@ public sealed class StudyFlowDbContext(
             entity.Property(x => x.EncryptedInformation);
             entity.HasOne(x => x.SchoolClass).WithMany(x => x.Teachers).HasForeignKey(x => x.SchoolClassId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.Restrict);
-            entity.HasIndex(x => new { x.SchoolClassId, x.SearchNameHash }).IsUnique();
+            entity.HasIndex(x => new { x.SchoolClassId, x.SearchNameHash }).IsUnique().HasFilter("is_active");
+        });
+
+        modelBuilder.Entity<SubjectTeacher>(entity =>
+        {
+            entity.ToTable("subject_teachers");
+            entity.HasKey(x => new { x.SubjectId, x.TeacherId });
+            entity.HasOne(x => x.Subject).WithMany(x => x.TeacherLinks).HasForeignKey(x => x.SubjectId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Teacher).WithMany(x => x.SubjectLinks).HasForeignKey(x => x.TeacherId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(x => x.TeacherId);
         });
 
         modelBuilder.Entity<Course>(entity =>

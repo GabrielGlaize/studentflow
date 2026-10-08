@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:studyflow_app/core/theme/app_colors.dart';
 
-/// Components inspired by the HTML prototype.
-///
-/// They keep the visual language consistent across screens: soft background,
-/// rounded white cards, small overlines, muted captions and petrol accents.
+/// Composants partagés par tous les écrans : fonds neutres, cartes blanches
+/// arrondies, petits sur-titres, légendes discrètes et accents pétrole.
 class ProtoCard extends StatelessWidget {
   const ProtoCard({
     required this.child,
-    this.padding = const EdgeInsets.all(15),
+    this.padding = const EdgeInsets.all(16),
     this.margin = const EdgeInsets.only(bottom: 12),
     this.borderColor = AppColors.line,
     this.backgroundColor = Colors.white,
@@ -27,51 +25,61 @@ class ProtoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark = context.sfIsDark;
     final effectiveBackground = isDark
-        ? _darkCardBackground(backgroundColor)
+        ? darkVariant(backgroundColor)
         : backgroundColor;
-    final effectiveBorder = borderColor == AppColors.line && isDark
-        ? Colors.white.withValues(alpha: 0.14)
+    final effectiveBorder = isDark && borderColor.computeLuminance() > 0.5
+        ? AppColors.darkLine
         : borderColor;
 
     final card = Container(
       margin: margin,
       padding: padding,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: effectiveBackground,
         borderRadius: BorderRadius.circular(borderRadius),
         border: Border.all(color: effectiveBorder),
       ),
-      child: isDark
-          ? IconTheme.merge(
-              data: IconThemeData(color: Colors.white.withValues(alpha: 0.82)),
-              child: DefaultTextStyle.merge(
-                style: const TextStyle(color: Colors.white),
-                child: child,
-              ),
-            )
-          : child,
+      child: child,
     );
 
     if (onTap == null) return card;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(borderRadius),
-        onTap: onTap,
-        child: card,
+    return Padding(
+      padding: margin,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(borderRadius),
+          onTap: onTap,
+          child: Container(
+            padding: padding,
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: effectiveBackground,
+              borderRadius: BorderRadius.circular(borderRadius),
+              border: Border.all(color: effectiveBorder),
+            ),
+            child: child,
+          ),
+        ),
       ),
     );
   }
 
-  Color _darkCardBackground(Color color) {
-    if (color == Colors.white || color.computeLuminance() > 0.72) {
-      return const Color(0xFF0A4658);
+  /// Un fond clair (blanc ou pastel) devient une surface anthracite qui garde
+  /// une légère teinte de la couleur d'origine.
+  static Color darkVariant(Color color) {
+    if (color.computeLuminance() < 0.5) return color;
+    if (color == Colors.white || color.computeLuminance() > 0.9) {
+      return AppColors.darkSurface;
     }
-
-    return color;
+    return Color.alphaBlend(
+      color.withValues(alpha: 0.10),
+      AppColors.darkSurface,
+    );
   }
 }
 
@@ -84,20 +92,21 @@ class ProtoGradientCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(17),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: const RadialGradient(
-          center: Alignment(0.9, -0.8),
-          radius: 1.2,
-          colors: [Color(0x6684DCCF), AppColors.petrol],
-          stops: [0, 1],
+        borderRadius: BorderRadius.circular(22),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.petrol, Color(0xFF0E5A6E)],
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.petrol.withValues(alpha: 0.22),
-            blurRadius: 28,
-            offset: const Offset(0, 14),
+            color: AppColors.petrol.withValues(
+              alpha: context.sfIsDark ? 0 : 0.18,
+            ),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
@@ -114,14 +123,12 @@ class ProtoOverline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Text(
       text.toUpperCase(),
       style: TextStyle(
-        color: color == AppColors.muted && isDark ? Colors.white70 : color,
-        fontSize: 9,
-        fontWeight: FontWeight.w900,
+        color: color == AppColors.muted ? context.sfMuted : color,
+        fontSize: 11,
+        fontWeight: FontWeight.w800,
         letterSpacing: 0.8,
       ),
     );
@@ -142,10 +149,8 @@ class ProtoScreenTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 24, 18, 16),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
@@ -157,16 +162,16 @@ class ProtoScreenTitle extends StatelessWidget {
                   title,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w900,
-                    letterSpacing: -1.2,
-                    color: isDark ? Colors.white : AppColors.petrol,
+                    letterSpacing: -0.8,
+                    color: context.sfText,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 4),
                 Text(
                   subtitle,
                   style: TextStyle(
-                    color: isDark ? Colors.white70 : AppColors.muted,
-                    fontSize: 12,
+                    color: context.sfMuted,
+                    fontSize: 14,
                     height: 1.35,
                   ),
                 ),
@@ -194,21 +199,23 @@ class ProtoSectionHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Row(
       children: [
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (overline case final text?) ProtoOverline(text),
+              if (overline case final text?) ...[
+                ProtoOverline(text),
+                const SizedBox(height: 2),
+              ],
               Text(
                 title,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.4,
-                  color: isDark ? Colors.white : AppColors.petrol,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 17,
+                  letterSpacing: -0.3,
+                  color: context.sfText,
                 ),
               ),
             ],
@@ -225,7 +232,7 @@ class ProtoIconBox extends StatelessWidget {
     required this.icon,
     this.backgroundColor = AppColors.primarySoft,
     this.foregroundColor = AppColors.petrol,
-    this.size = 36,
+    this.size = 40,
     super.key,
   });
 
@@ -236,13 +243,17 @@ class ProtoIconBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark = context.sfIsDark;
     final effectiveBackground =
-        isDark && backgroundColor.computeLuminance() > 0.72
-        ? Colors.white.withValues(alpha: 0.14)
+        isDark && backgroundColor.computeLuminance() > 0.5
+        ? Color.alphaBlend(
+            backgroundColor.withValues(alpha: 0.16),
+            AppColors.darkSurfaceHigh,
+          )
         : backgroundColor;
-    final effectiveForeground = isDark && foregroundColor == AppColors.petrol
-        ? Colors.white
+    final effectiveForeground =
+        isDark && foregroundColor.computeLuminance() < 0.2
+        ? AppColors.darkText
         : foregroundColor;
 
     return Container(
@@ -250,9 +261,9 @@ class ProtoIconBox extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         color: effectiveBackground,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(size * 0.3),
       ),
-      child: Icon(icon, color: effectiveForeground, size: size * 0.52),
+      child: Icon(icon, color: effectiveForeground, size: size * 0.5),
     );
   }
 }
@@ -262,38 +273,113 @@ class ProtoChip extends StatelessWidget {
     required this.label,
     this.backgroundColor = AppColors.primarySoft,
     this.foregroundColor = AppColors.petrol,
+    this.icon,
     super.key,
   });
 
   final String label;
   final Color backgroundColor;
   final Color foregroundColor;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark = context.sfIsDark;
     final effectiveBackground =
-        isDark && backgroundColor.computeLuminance() > 0.72
-        ? Colors.white.withValues(alpha: 0.14)
+        isDark && backgroundColor.computeLuminance() > 0.5
+        ? AppColors.darkSurfaceHigh
         : backgroundColor;
-    final effectiveForeground = isDark && foregroundColor == AppColors.petrol
-        ? Colors.white
+    final effectiveForeground =
+        isDark && foregroundColor.computeLuminance() < 0.2
+        ? AppColors.darkText
         : foregroundColor;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
         color: effectiveBackground,
         borderRadius: BorderRadius.circular(99),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: effectiveForeground,
-          fontSize: 8,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 0.3,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 13, color: effectiveForeground),
+            const SizedBox(width: 4),
+          ],
+          Flexible(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: effectiveForeground,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Indique d'un coup d'œil si un élément est partagé avec la classe ou
+/// visible seulement par l'élève.
+class ProtoVisibilityChip extends StatelessWidget {
+  const ProtoVisibilityChip({required this.shared, super.key});
+
+  final bool shared;
+
+  @override
+  Widget build(BuildContext context) {
+    return ProtoChip(
+      icon: shared ? Icons.groups_2_outlined : Icons.lock_outline,
+      label: shared ? 'Classe' : 'Perso',
+      backgroundColor: shared ? context.sfSharedSoft : context.sfPersonalSoft,
+      foregroundColor: shared ? context.sfShared : context.sfPersonal,
+    );
+  }
+}
+
+/// Bandeau en tête des formulaires : rappelle qui verra ce qu'on crée.
+class ProtoVisibilityBanner extends StatelessWidget {
+  const ProtoVisibilityBanner({required this.shared, super.key});
+
+  final bool shared;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = shared ? context.sfShared : context.sfPersonal;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: shared ? context.sfSharedSoft : context.sfPersonalSoft,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            shared ? Icons.groups_2_outlined : Icons.lock_outline,
+            size: 18,
+            color: color,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              shared
+                  ? 'Partagé avec toute la classe'
+                  : 'Visible uniquement par toi',
+              style: TextStyle(
+                color: color,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -316,16 +402,16 @@ class ProtoActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      key: keyValue == null ? null : ValueKey(keyValue),
+      key: keyValue == null ? null : ValueKey<String>(keyValue!),
       tooltip: tooltip,
       style: IconButton.styleFrom(
-        backgroundColor: AppColors.petrol,
-        foregroundColor: Colors.white,
-        fixedSize: const Size(38, 38),
+        backgroundColor: context.sfAccent,
+        foregroundColor: context.sfOnAccent,
+        fixedSize: const Size(42, 42),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
       ),
       onPressed: onPressed,
-      icon: Icon(icon, size: 19),
+      icon: Icon(icon, size: 20),
     );
   }
 }
@@ -338,17 +424,11 @@ class ProtoMutedText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Text(
       text,
       maxLines: maxLines,
       overflow: maxLines == null ? null : TextOverflow.ellipsis,
-      style: TextStyle(
-        color: isDark ? Colors.white70 : AppColors.muted,
-        fontSize: 11,
-        height: 1.45,
-      ),
+      style: TextStyle(color: context.sfMuted, fontSize: 13, height: 1.4),
     );
   }
 }
@@ -378,6 +458,7 @@ class ProtoStateCard extends StatelessWidget {
     required this.message,
     this.actionLabel,
     this.onAction,
+    this.actionIcon = Icons.refresh,
     this.compact = false,
     super.key,
   });
@@ -387,44 +468,150 @@ class ProtoStateCard extends StatelessWidget {
   final String message;
   final String? actionLabel;
   final VoidCallback? onAction;
+  final IconData actionIcon;
   final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Padding(
-      padding: EdgeInsets.all(compact ? 18 : 24),
+      padding: EdgeInsets.all(compact ? 0 : 24),
       child: ProtoCard(
-        margin: EdgeInsets.zero,
-        padding: EdgeInsets.all(compact ? 16 : 18),
-        backgroundColor: isDark ? AppColors.petrol : const Color(0xFFF8FCFE),
+        margin: EdgeInsets.only(bottom: compact ? 12 : 0),
+        padding: EdgeInsets.all(compact ? 16 : 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ProtoIconBox(icon: icon, size: compact ? 46 : 54),
-            SizedBox(height: compact ? 12 : 15),
+            ProtoIconBox(icon: icon, size: compact ? 42 : 52),
+            SizedBox(height: compact ? 10 : 14),
             Text(
               title,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: isDark ? Colors.white : AppColors.petrol,
-                fontWeight: FontWeight.w900,
+                color: context.sfText,
+                fontWeight: FontWeight.w800,
                 letterSpacing: -0.3,
               ),
             ),
-            const SizedBox(height: 5),
-            ProtoMutedText(message),
+            const SizedBox(height: 4),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: context.sfMuted,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
             if (onAction != null && actionLabel != null) ...[
               const SizedBox(height: 14),
               FilledButton.icon(
                 onPressed: onAction,
-                icon: const Icon(Icons.refresh, size: 17),
+                icon: Icon(actionIcon, size: 18),
                 label: Text(actionLabel!),
               ),
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Ligne cliquable « libellé · valeur » des formulaires (date, heure…).
+/// Elle ferme le clavier avant d'ouvrir le sélecteur, sinon le champ texte
+/// précédent récupère le focus à la fermeture.
+class ProtoPickerField extends StatelessWidget {
+  const ProtoPickerField({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onTap,
+    this.keyValue,
+    super.key,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final VoidCallback onTap;
+  final String? keyValue;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: context.sfCard,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        key: keyValue == null ? null : ValueKey<String>(keyValue!),
+        borderRadius: BorderRadius.circular(14),
+        onTap: () {
+          FocusManager.instance.primaryFocus?.unfocus();
+          onTap();
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: context.sfLine),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: context.sfMuted),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(color: context.sfMuted, fontSize: 12),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      value,
+                      style: TextStyle(
+                        color: context.sfText,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.expand_more, color: context.sfChevron),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Titre de groupe dans un formulaire (« Matière », « Horaires »…).
+class ProtoFormLabel extends StatelessWidget {
+  const ProtoFormLabel(this.text, {this.trailing, super.key});
+
+  final String text;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, top: 4),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: context.sfText,
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          ?trailing,
+        ],
       ),
     );
   }

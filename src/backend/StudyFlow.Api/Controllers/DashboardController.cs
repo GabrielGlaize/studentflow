@@ -99,6 +99,7 @@ public sealed class DashboardController(
         var homework = await dbContext.HomeworkItems
             .AsNoTracking()
             .Include(x => x.ProgressItems.Where(progress => progress.UserId == userId))
+            .Include(x => x.Course).ThenInclude(course => course!.Subject)
             .Where(x => x.SchoolClassId == schoolClassId
                 && x.DeletedAt == null
                 && x.Deadline >= now)
@@ -201,6 +202,8 @@ public sealed class DashboardController(
         homework.Description,
         homework.Deadline,
         homework.CourseId,
+        homework.Course?.Subject.Name,
+        homework.Course?.Day,
         homework.ProgressItems.SingleOrDefault()?.IsDone ?? false,
         homework.ProgressItems.SingleOrDefault()?.NotificationsEnabled ?? true,
         homework.ProgressItems.SingleOrDefault()?.CompletedAt,

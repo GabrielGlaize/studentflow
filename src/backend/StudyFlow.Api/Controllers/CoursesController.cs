@@ -39,7 +39,7 @@ public sealed class CoursesController(
 
         var start = from ?? clock.Today.AddDays(-7);
         var end = to ?? clock.Today.AddDays(21);
-        if (end < start) return BadRequestProblem("La date de fin doit etre apres la date de debut.");
+        if (end < start) return BadRequestProblem("La date de fin doit être après la date de début.");
 
         var course = await dbContext.Courses
             .AsNoTracking()
@@ -104,6 +104,7 @@ public sealed class CoursesController(
         };
 
         dbContext.Courses.Add(course);
+        await LinkTeacherToSubjectAsync(course.SubjectId, course.TeacherId, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         await SaveRevisionAsync(user, ContributionAction.Created, course, cancellationToken);
@@ -111,6 +112,81 @@ public sealed class CoursesController(
         await dbContext.Entry(course).Reference(x => x.Teacher).LoadAsync(cancellationToken);
 
         return CreatedAtAction(nameof(GetById), new { id = course.Id }, ToResponse(course));
+    }
+
+    /// <summary>
+    /// Crée plusieurs cours d'un coup (plusieurs créneaux d'une même journée, ou un cours répété
+    /// chaque semaine). Tout est créé ou rien : un chevauchement annule l'ensemble.
+    /// </summary>
+    [HttpPost("batch")]
+    public async Task<ActionResult<IReadOnlyCollection<CourseResponse>>> CreateBatch(
+        CourseBatchRequest request,
+        CancellationToken cancellationToken)
+    {
+        var user = await CurrentUserAsync();
+        if (user?.SchoolClassId is null) return Forbid();
+        var classId = user.SchoolClassId.Value;
+
+        if (request.Courses.Count == 0) return BadRequestProblem("Ajoute au moins un créneau.");
+
+        var ordered = request.Courses.OrderBy(x => x.Day).ThenBy(x => x.StartsAt).ToArray();
+        foreach (var item in ordered)
+        {
+            var validationProblem = await ValidateCourseRequestAsync(
+                classId,
+                item.SubjectId,
+                item.TeacherId,
+                item.Day,
+                item.StartsAt,
+                item.EndsAt,
+                item.Room,
+                item.IsCancelled,
+                excludedCourseId: null,
+                cancellationToken);
+            if (validationProblem is not null) return validationProblem;
+        }
+
+        // Les créneaux envoyés ne doivent pas non plus se chevaucher entre eux.
+        var clash = ordered
+            .Where(x => !x.IsCancelled)
+            .GroupBy(x => x.Day)
+            .SelectMany(day => day.Zip(day.Skip(1)))
+            .FirstOrDefault(pair => pair.Second.StartsAt < pair.First.EndsAt);
+        if (clash != default)
+        {
+            return ConflictProblem(
+                "Deux créneaux se chevauchent.",
+                $"Le {clash.First.Day:dd/MM}, {clash.First.StartsAt:HH:mm}–{clash.First.EndsAt:HH:mm} chevauche {clash.Second.StartsAt:HH:mm}–{clash.Second.EndsAt:HH:mm}.");
+        }
+
+        var seriesId = ordered.Length > 1 ? Guid.NewGuid() : (Guid?)null;
+        var courses = ordered.Select(item => new Course
+        {
+            SchoolClassId = classId,
+            SeriesId = item.SeriesId ?? seriesId,
+            SubjectId = item.SubjectId,
+            TeacherId = item.TeacherId,
+            Day = item.Day,
+            EncryptedData = ProtectCourseData(item.StartsAt, item.EndsAt, item.Room),
+            IsCancelled = item.IsCancelled,
+            CreatedById = user.Id
+        }).ToList();
+
+        dbContext.Courses.AddRange(courses);
+        foreach (var pair in courses.Select(x => (x.SubjectId, x.TeacherId)).Distinct())
+        {
+            await LinkTeacherToSubjectAsync(pair.SubjectId, pair.TeacherId, cancellationToken);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        foreach (var course in courses)
+        {
+            await SaveRevisionAsync(user, ContributionAction.Created, course, cancellationToken);
+            await dbContext.Entry(course).Reference(x => x.Subject).LoadAsync(cancellationToken);
+            await dbContext.Entry(course).Reference(x => x.Teacher).LoadAsync(cancellationToken);
+        }
+
+        return Ok(courses.Select(ToResponse).ToArray());
     }
 
     [HttpPut("{id:guid}")]
@@ -134,7 +210,7 @@ public sealed class CoursesController(
         if (course.Version != request.Version)
         {
             return ConflictProblem(
-                "Le cours a deja ete modifie par quelqu'un d'autre.",
+                "Le cours a déjà été modifié par quelqu'un d'autre.",
                 "Rechargez le cours avant de le modifier.");
         }
 
@@ -161,6 +237,7 @@ public sealed class CoursesController(
         course.UpdatedById = user.Id;
         course.Version++;
 
+        await LinkTeacherToSubjectAsync(course.SubjectId, course.TeacherId, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         await SaveRevisionAsync(user, ContributionAction.Updated, course, cancellationToken);
         await dbContext.Entry(course).Reference(x => x.Subject).LoadAsync(cancellationToken);
@@ -252,7 +329,7 @@ public sealed class CoursesController(
             .Take(2)
             .ToListAsync(cancellationToken);
         if (lastRevisions.Count == 0) return NotFound();
-        if (lastRevisions.Count == 1) return ConflictProblem("Aucune modification a annuler sur ce cours.");
+        if (lastRevisions.Count == 1) return ConflictProblem("Aucune modification à annuler sur ce cours.");
 
         var previousRevision = lastRevisions[1];
         var snapshot = ReadRevisionSnapshot(previousRevision);
@@ -299,7 +376,7 @@ public sealed class CoursesController(
     {
         if (endsAt <= startsAt)
         {
-            return BadRequestProblem("L'heure de fin doit etre apres l'heure de debut.");
+            return BadRequestProblem("L'heure de fin doit être après l'heure de début.");
         }
 
         if (string.IsNullOrWhiteSpace(room))
@@ -310,24 +387,37 @@ public sealed class CoursesController(
         var matiereExists = await dbContext.Subjects.AnyAsync(
             x => x.Id == subjectId && x.SchoolClassId == schoolClassId && x.IsActive,
             cancellationToken);
-        if (!matiereExists) return BadRequestProblem("La matiere n'existe pas dans votre classe.");
+        if (!matiereExists) return BadRequestProblem("La matière n'existe pas dans votre classe.");
 
         if (teacherId is not null)
         {
             var teacherExists = await dbContext.Teachers.AnyAsync(
                 x => x.Id == teacherId && x.SchoolClassId == schoolClassId && x.IsActive,
                 cancellationToken);
-            if (!teacherExists) return BadRequestProblem("Le professeur n'existe pas dans votre classe.");
+            if (!teacherExists) return BadRequestProblem("L'intervenant n'existe pas dans votre classe.");
         }
 
         if (!isCancelled && await HasScheduleConflictAsync(schoolClassId, day, startsAt, endsAt, excludedCourseId, cancellationToken))
         {
             return ConflictProblem(
-                "Ce cours chevauche deja un autre cours.",
+                "Ce cours chevauche déjà un autre cours.",
                 "Corrigez l'horaire ou modifiez le cours existant.");
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Choisir un intervenant pour un cours le rattache à la matière : il sera proposé en premier
+    /// la prochaine fois qu'un élève ajoute un cours de cette matière.
+    /// </summary>
+    private async Task LinkTeacherToSubjectAsync(Guid subjectId, Guid? teacherId, CancellationToken cancellationToken)
+    {
+        if (teacherId is null) return;
+
+        var linked = dbContext.SubjectTeachers.Local.Any(x => x.SubjectId == subjectId && x.TeacherId == teacherId)
+            || await dbContext.SubjectTeachers.AnyAsync(x => x.SubjectId == subjectId && x.TeacherId == teacherId, cancellationToken);
+        if (!linked) dbContext.SubjectTeachers.Add(new SubjectTeacher { SubjectId = subjectId, TeacherId = teacherId.Value });
     }
 
     private async Task<bool> HasScheduleConflictAsync(

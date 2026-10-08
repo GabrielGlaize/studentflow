@@ -5,6 +5,14 @@ abstract interface class ClassResourceRepository {
 
   Future<ClassSubject> createSubject({
     required String name,
+    List<String> teacherIds = const [],
+    String? accessToken,
+  });
+
+  Future<ClassSubject> updateSubject({
+    required String subjectId,
+    required String name,
+    required List<String> teacherIds,
     String? accessToken,
   });
 
@@ -14,6 +22,15 @@ abstract interface class ClassResourceRepository {
 
   Future<ClassTeacher> createTeacher({
     required String displayName,
+    String? information,
+    List<String> subjectIds = const [],
+    String? accessToken,
+  });
+
+  Future<ClassTeacher> updateTeacher({
+    required String teacherId,
+    required String displayName,
+    required List<String> subjectIds,
     String? information,
     String? accessToken,
   });

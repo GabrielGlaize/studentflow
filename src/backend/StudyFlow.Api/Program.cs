@@ -173,6 +173,9 @@ static async Task ApplyDatabaseMigrationsAsync(IServiceProvider services)
 
 static void LoadLocalEnvironmentFile()
 {
+    // Les tests d'intégration ne doivent jamais reprendre les vraies clés du poste du développeur.
+    if (Environment.GetEnvironmentVariable("STUDYFLOW_IGNORE_DOTENV") == "1") return;
+
     var environmentFilePath = FindEnvironmentFile();
     if (environmentFilePath is null) return;
 

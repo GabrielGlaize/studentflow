@@ -86,8 +86,9 @@ class DemoAgendaRepository implements AgendaRepository {
       _updatedHomework['homework-1'] ??
           HomeworkItem(
             id: 'homework-1',
-            title: 'Rendre le dossier d’anglais',
-            description: 'Déposer le PDF sur Moodle.',
+            title: 'Exercices 3 à 5 page 42',
+            description: 'À rendre sur papier.',
+            subjectName: 'Mathématiques',
             deadline: now.add(const Duration(days: 1)),
             isDone: false,
             notificationsEnabled: true,
@@ -96,6 +97,7 @@ class DemoAgendaRepository implements AgendaRepository {
           HomeworkItem(
             id: 'homework-2',
             title: 'Préparer la présentation StudyFlow',
+            subjectName: 'Développement',
             deadline: now.add(const Duration(days: 3)),
             isDone: false,
             notificationsEnabled: true,
@@ -214,6 +216,8 @@ class DemoAgendaRepository implements AgendaRepository {
       description: _cleanOptional(request.description),
       deadline: request.deadline,
       courseId: request.courseId,
+      subjectName: request.subjectName,
+      courseDay: request.courseDay,
       isDone: false,
       notificationsEnabled: true,
     );
@@ -235,6 +239,8 @@ class DemoAgendaRepository implements AgendaRepository {
       description: _cleanOptional(request.description),
       deadline: request.deadline,
       courseId: request.courseId,
+      subjectName: request.subjectName,
+      courseDay: request.courseDay,
       isDone: false,
       notificationsEnabled: true,
     );

@@ -12,6 +12,13 @@ abstract interface class CourseRepository {
     String? accessToken,
   });
 
+  /// Crée plusieurs cours d'un coup (créneaux d'une même journée ou cours
+  /// répété chaque semaine). Tout est créé, ou rien en cas de chevauchement.
+  Future<List<CourseItem>> createCourses({
+    required List<CourseFormData> courses,
+    String? accessToken,
+  });
+
   Future<CourseItem> updateCourse({
     required String courseId,
     required CourseFormData data,

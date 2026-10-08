@@ -53,6 +53,10 @@ public sealed class ApiFactory(
     IReadOnlyDictionary<string, string?>? settings,
     Action<IServiceCollection>? configureServices) : WebApplicationFactory<Program>
 {
+    // Avant le premier démarrage de l'API : le fichier .env local (vraies clés Adzuna, etc.)
+    // ferait interroger les vrais services pendant les tests.
+    static ApiFactory() => Environment.SetEnvironmentVariable("STUDYFLOW_IGNORE_DOTENV", "1");
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");

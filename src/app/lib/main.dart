@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:studyflow_app/core/app_scope.dart';
 import 'package:studyflow_app/core/config/app_environment.dart';
 import 'package:studyflow_app/core/config/api_config.dart';
@@ -191,6 +192,10 @@ class _StudyFlowAppState extends State<StudyFlowApp> {
             theme: AppTheme.light,
             darkTheme: AppTheme.dark,
             themeMode: _settingsController.themeMode,
+            // Calendriers, sélecteurs d'heure et libellés système en français.
+            locale: const Locale('fr', 'FR'),
+            supportedLocales: const [Locale('fr', 'FR')],
+            localizationsDelegates: GlobalMaterialLocalizations.delegates,
             home: _sessionController.status == SessionStatus.checkingSession
                 ? const _SplashPage()
                 : _sessionController.isSignedIn

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:studyflow_app/core/app_scope.dart';
 import 'package:studyflow_app/core/theme/app_colors.dart';
 import 'package:studyflow_app/core/theme/prototype_widgets.dart';
-import 'package:studyflow_app/features/classes/domain/class_resource_models.dart';
+import 'package:studyflow_app/core/widgets/date_time_pickers.dart';
+import 'package:studyflow_app/features/agenda/presentation/homework_form_page.dart';
 import 'package:studyflow_app/features/schedule/domain/course_models.dart';
+import 'package:studyflow_app/features/schedule/presentation/course_form_page.dart';
 
 class SchedulePage extends StatefulWidget {
   const SchedulePage({super.key});
@@ -22,11 +24,7 @@ class _SchedulePageState extends State<SchedulePage> {
   void initState() {
     super.initState();
     final today = DateTime.now();
-    _weekStart = DateTime(
-      today.year,
-      today.month,
-      today.day,
-    ).subtract(Duration(days: today.weekday - 1));
+    _weekStart = StudyFlowDates.mondayOf(today);
     _selectedDay = DateTime(today.year, today.month, today.day);
   }
 
@@ -52,21 +50,10 @@ class _SchedulePageState extends State<SchedulePage> {
                 title: 'Planning',
                 subtitle: _weekLabel,
                 trailing: OutlinedButton(
-                  onPressed: _goToCurrentWeek,
+                  onPressed: isSelectedToday ? null : _goToCurrentWeek,
                   style: OutlinedButton.styleFrom(
-                    backgroundColor: isSelectedToday
-                        ? AppColors.petrol
-                        : Colors.transparent,
-                    foregroundColor: isSelectedToday
-                        ? Colors.white
-                        : Theme.of(context).brightness == Brightness.dark
-                        ? Colors.white.withValues(alpha: 0.88)
-                        : AppColors.petrol,
-                    side: BorderSide(
-                      color: isSelectedToday
-                          ? AppColors.petrol
-                          : AppColors.line,
-                    ),
+                    minimumSize: const Size(0, 40),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
                   ),
                   child: const Text('Aujourd’hui'),
                 ),
@@ -145,6 +132,8 @@ class _SchedulePageState extends State<SchedulePage> {
                                 onEditCourse: _openCourseForm,
                                 onDeleteCourse: _deleteCourse,
                                 onOpenHistory: _openCourseHistory,
+                                onDuplicateCourse: _duplicateCourse,
+                                onAddHomework: _addHomework,
                               ),
                             ),
                         ],
@@ -164,9 +153,9 @@ class _SchedulePageState extends State<SchedulePage> {
                   ? FloatingActionButton.extended(
                       key: const ValueKey('add-course-button'),
                       heroTag: 'add-course',
-                      backgroundColor: AppColors.petrol,
-                      foregroundColor: Colors.white,
-                      elevation: 8,
+                      backgroundColor: context.sfAccent,
+                      foregroundColor: context.sfOnAccent,
+                      elevation: 4,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(15),
                       ),
@@ -189,7 +178,7 @@ class _SchedulePageState extends State<SchedulePage> {
     }
 
     final accessToken = await appScope.sessionController.accessTokenForApi();
-    final weekEnd = _weekStart.add(const Duration(days: 6));
+    final weekEnd = StudyFlowDates.addDays(_weekStart, 6);
 
     return appScope.courseRepository.listCourses(
       from: _weekStart,
@@ -206,7 +195,7 @@ class _SchedulePageState extends State<SchedulePage> {
   }
 
   void _moveWeek(int direction) {
-    final nextWeekStart = _weekStart.add(Duration(days: direction * 7));
+    final nextWeekStart = StudyFlowDates.addDays(_weekStart, direction * 7);
     setState(() {
       _weekStart = nextWeekStart;
       _selectedDay = nextWeekStart;
@@ -223,32 +212,67 @@ class _SchedulePageState extends State<SchedulePage> {
   void _goToCurrentWeek() {
     final today = DateTime.now();
     setState(() {
-      _weekStart = DateTime(
-        today.year,
-        today.month,
-        today.day,
-      ).subtract(Duration(days: today.weekday - 1));
+      _weekStart = StudyFlowDates.mondayOf(today);
       _selectedDay = DateTime(today.year, today.month, today.day);
       _coursesFuture = _loadCourses();
     });
   }
 
   Future<void> _openCourseForm([CourseItem? course]) async {
-    final saved = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (context) => _CourseFormSheet(
-        weekStart: _weekStart,
-        initialDay: _selectedDay,
-        course: course,
+    final knownRooms = await _knownRooms();
+    if (!mounted) return;
+    final saved = await CourseFormPage.open(
+      context,
+      initialDay: _selectedDay,
+      course: course,
+      knownRooms: knownRooms,
+    );
+
+    if (saved == true && mounted) await _refresh();
+  }
+
+  /// Duplique un cours sur le créneau suivant du même jour (pause de 15 min),
+  /// le cas le plus fréquent quand une matière enchaîne plusieurs créneaux.
+  Future<void> _duplicateCourse(CourseItem course) async {
+    final start = course.endDateTime.add(const Duration(minutes: 15));
+    final end = start.add(course.endDateTime.difference(course.startDateTime));
+    final sameDay = end.day == course.day.day;
+    final knownRooms = await _knownRooms();
+    if (!mounted) return;
+    final saved = await CourseFormPage.open(
+      context,
+      initialDay: course.day,
+      knownRooms: knownRooms,
+      template: course.toFormData().copyWith(
+        startsAt: sameDay ? StudyFlowFormat.timeOf(start) : course.startsAt,
+        endsAt: sameDay ? StudyFlowFormat.timeOf(end) : course.endsAt,
+        day: sameDay ? course.day : StudyFlowDates.addDays(course.day, 7),
       ),
     );
 
     if (saved == true && mounted) await _refresh();
+  }
+
+  Future<void> _addHomework(CourseItem course) async {
+    final saved = await HomeworkFormPage.open(context, initialCourse: course);
+    if (saved == true && mounted) {
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Devoir ajouté à l’agenda de la classe.'),
+          ),
+        );
+    }
+  }
+
+  Future<List<String>> _knownRooms() async {
+    try {
+      final courses = await _coursesFuture;
+      return [...?courses?.map((course) => course.room)];
+    } on Exception {
+      return const [];
+    }
   }
 
   Future<void> _deleteCourse(CourseItem course) async {
@@ -319,7 +343,7 @@ class _SchedulePageState extends State<SchedulePage> {
   }
 
   String get _weekLabel {
-    final end = _weekStart.add(const Duration(days: 6));
+    final end = StudyFlowDates.addDays(_weekStart, 6);
     return 'Semaine du ${_formatDay(_weekStart)} au ${_formatDay(end)}';
   }
 }
@@ -358,7 +382,7 @@ class _WeekPicker extends StatelessWidget {
   Widget build(BuildContext context) {
     final days = List.generate(
       5,
-      (index) => weekStart.add(Duration(days: index)),
+      (index) => StudyFlowDates.addDays(weekStart, index),
     );
     final today = DateTime.now();
 
@@ -417,37 +441,23 @@ class _DayPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final names = ['LUN', 'MAR', 'MER', 'JEU', 'VEN'];
     final label = names[(day.weekday - 1).clamp(0, 4)];
-    final inactiveText = isDark
-        ? Colors.white.withValues(alpha: 0.88)
-        : context.sfText;
-    final inactiveMuted = isDark
-        ? Colors.white.withValues(alpha: 0.68)
-        : context.sfMuted;
+    final inactiveText = context.sfText;
+    final inactiveMuted = context.sfMuted;
+    final activeText = context.sfOnAccent;
 
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: onTap,
       child: Container(
-        width: 52,
-        height: 58,
+        width: 54,
+        height: 62,
         decoration: BoxDecoration(
-          color: isActive ? AppColors.petrol : Colors.transparent,
+          color: isActive ? context.sfAccent : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
           border: isToday && !isActive
-              ? Border.all(color: context.sfLine)
-              : null,
-          boxShadow: isActive
-              ? [
-                  BoxShadow(
-                    color: (isDark ? Colors.black : AppColors.petrol)
-                        .withValues(alpha: 0.22),
-                    blurRadius: 14,
-                    offset: const Offset(0, 7),
-                  ),
-                ]
+              ? Border.all(color: context.sfAccent, width: 1.4)
               : null,
         ),
         child: Column(
@@ -456,26 +466,28 @@ class _DayPill extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                color: isActive ? Colors.white70 : inactiveMuted,
-                fontSize: 8,
-                fontWeight: FontWeight.w900,
+                color: isActive ? activeText : inactiveMuted,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
               ),
             ),
             const SizedBox(height: 5),
             Text(
               '${day.day}',
               style: TextStyle(
-                color: isActive ? Colors.white : inactiveText,
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
+                color: isActive ? activeText : inactiveText,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
               ),
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 4),
             Container(
               width: 4,
               height: 4,
               decoration: BoxDecoration(
-                color: isActive ? Colors.white : inactiveText,
+                color: isToday
+                    ? (isActive ? activeText : context.sfAccent)
+                    : Colors.transparent,
                 shape: BoxShape.circle,
               ),
             ),
@@ -504,7 +516,7 @@ class _DaySummary extends StatelessWidget {
                 : '$courseCount cours ce jour',
           ),
         ),
-        const ProtoMutedText('Modifiable par la classe'),
+        const ProtoVisibilityChip(shared: true),
       ],
     );
   }
@@ -528,16 +540,7 @@ class _PlanningViewSwitch extends StatelessWidget {
       ],
       selected: {showWholeWeek},
       onSelectionChanged: (selection) => onChanged(selection.first),
-      style: SegmentedButton.styleFrom(
-        backgroundColor: context.sfCard,
-        selectedBackgroundColor: Theme.of(context).brightness == Brightness.dark
-            ? AppColors.mint
-            : AppColors.petrol,
-        selectedForegroundColor: Theme.of(context).brightness == Brightness.dark
-            ? AppColors.petrol
-            : Colors.white,
-        foregroundColor: context.sfText,
-      ),
+      showSelectedIcon: false,
     );
   }
 }
@@ -549,6 +552,8 @@ class _DayTimeline extends StatelessWidget {
     required this.onEditCourse,
     required this.onDeleteCourse,
     required this.onOpenHistory,
+    required this.onDuplicateCourse,
+    required this.onAddHomework,
   });
 
   final DateTime day;
@@ -556,6 +561,8 @@ class _DayTimeline extends StatelessWidget {
   final ValueChanged<CourseItem> onEditCourse;
   final ValueChanged<CourseItem> onDeleteCourse;
   final ValueChanged<CourseItem> onOpenHistory;
+  final ValueChanged<CourseItem> onDuplicateCourse;
+  final ValueChanged<CourseItem> onAddHomework;
 
   @override
   Widget build(BuildContext context) {
@@ -582,6 +589,8 @@ class _DayTimeline extends StatelessWidget {
               onEdit: () => onEditCourse(entry.value),
               onDelete: () => onDeleteCourse(entry.value),
               onOpenHistory: () => onOpenHistory(entry.value),
+              onDuplicate: () => onDuplicateCourse(entry.value),
+              onAddHomework: () => onAddHomework(entry.value),
             ),
           ),
         ],
@@ -597,6 +606,8 @@ class _TimelineCourseCard extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onOpenHistory,
+    required this.onDuplicate,
+    required this.onAddHomework,
   });
 
   final CourseItem course;
@@ -604,23 +615,19 @@ class _TimelineCourseCard extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onOpenHistory;
+  final VoidCallback onDuplicate;
+  final VoidCallback onAddHomework;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDark = context.sfIsDark;
     final accent = course.isCancelled
         ? AppColors.rose
         : isDark
         ? _darkAccentColor
         : _accentColor;
     final cardBackground = course.isCancelled
-        ? isDark
-              ? const Color(0xFF4B3340)
-              : AppColors.roseSoft
-        : isDark
-        ? const Color(0xFF0F5365)
-        : paletteIndex == 0
-        ? const Color(0xFFF8FCFE)
+        ? AppColors.roseSoft
         : Colors.white;
 
     return Padding(
@@ -629,7 +636,7 @@ class _TimelineCourseCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 44,
+            width: 46,
             child: Padding(
               padding: const EdgeInsets.only(top: 13),
               child: Column(
@@ -638,29 +645,27 @@ class _TimelineCourseCard extends StatelessWidget {
                   Text(
                     course.startsAt,
                     style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
                       color: context.sfText,
                     ),
                   ),
                   const SizedBox(height: 3),
                   Text(
                     course.endsAt,
-                    style: TextStyle(fontSize: 9, color: context.sfMuted),
+                    style: TextStyle(fontSize: 12, color: context.sfMuted),
                   ),
                 ],
               ),
             ),
           ),
-          const SizedBox(width: 18),
+          const SizedBox(width: 12),
           Expanded(
             child: ProtoCard(
               onTap: onEdit,
               padding: const EdgeInsets.fromLTRB(13, 13, 8, 13),
-              borderColor: isDark
-                  ? Colors.white.withValues(alpha: 0.16)
-                  : course.isCancelled
-                  ? const Color(0xFFD9BDC3)
+              borderColor: course.isCancelled
+                  ? const Color(0xFFE3CDD2)
                   : AppColors.line,
               backgroundColor: cardBackground,
               child: IntrinsicHeight(
@@ -695,8 +700,8 @@ class _TimelineCourseCard extends StatelessWidget {
                                   course.isCancelled ? 'ANNULÉ' : 'COURS',
                                   style: TextStyle(
                                     color: accent,
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.w900,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
                                     letterSpacing: 0.8,
                                   ),
                                 ),
@@ -709,6 +714,10 @@ class _TimelineCourseCard extends StatelessWidget {
                                   switch (action) {
                                     case _CourseAction.edit:
                                       onEdit();
+                                    case _CourseAction.addHomework:
+                                      onAddHomework();
+                                    case _CourseAction.duplicate:
+                                      onDuplicate();
                                     case _CourseAction.history:
                                       onOpenHistory();
                                     case _CourseAction.delete:
@@ -717,16 +726,39 @@ class _TimelineCourseCard extends StatelessWidget {
                                 },
                                 itemBuilder: (context) => const [
                                   PopupMenuItem(
+                                    value: _CourseAction.addHomework,
+                                    child: ListTile(
+                                      leading: Icon(Icons.assignment_add),
+                                      title: Text('Ajouter un devoir'),
+                                    ),
+                                  ),
+                                  PopupMenuItem(
                                     value: _CourseAction.edit,
-                                    child: Text('Modifier'),
+                                    child: ListTile(
+                                      leading: Icon(Icons.edit_outlined),
+                                      title: Text('Modifier'),
+                                    ),
+                                  ),
+                                  PopupMenuItem(
+                                    value: _CourseAction.duplicate,
+                                    child: ListTile(
+                                      leading: Icon(Icons.copy_all_outlined),
+                                      title: Text('Dupliquer'),
+                                    ),
                                   ),
                                   PopupMenuItem(
                                     value: _CourseAction.history,
-                                    child: Text('Historique'),
+                                    child: ListTile(
+                                      leading: Icon(Icons.history_outlined),
+                                      title: Text('Historique'),
+                                    ),
                                   ),
                                   PopupMenuItem(
                                     value: _CourseAction.delete,
-                                    child: Text('Supprimer'),
+                                    child: ListTile(
+                                      leading: Icon(Icons.delete_outline),
+                                      title: Text('Supprimer'),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -736,8 +768,8 @@ class _TimelineCourseCard extends StatelessWidget {
                             course.subjectName,
                             style: TextStyle(
                               color: context.sfText,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w900,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
                               decoration: course.isCancelled
                                   ? TextDecoration.lineThrough
                                   : null,
@@ -757,10 +789,6 @@ class _TimelineCourseCard extends StatelessWidget {
                                   icon: Icons.person_outline,
                                   text: course.teacherName!,
                                 ),
-                              const _TinyDetail(
-                                icon: Icons.edit_outlined,
-                                text: 'éditable',
-                              ),
                             ],
                           ),
                         ],
@@ -787,7 +815,7 @@ class _TimelineCourseCard extends StatelessWidget {
   }
 }
 
-enum _CourseAction { edit, history, delete }
+enum _CourseAction { addHomework, edit, duplicate, history, delete }
 
 class _TinyDetail extends StatelessWidget {
   const _TinyDetail({required this.icon, required this.text});
@@ -800,9 +828,9 @@ class _TinyDetail extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: context.sfMuted),
+        Icon(icon, size: 16, color: context.sfMuted),
         const SizedBox(width: 4),
-        Text(text, style: TextStyle(color: context.sfMuted, fontSize: 9)),
+        Text(text, style: TextStyle(color: context.sfMuted, fontSize: 13)),
       ],
     );
   }
@@ -962,7 +990,7 @@ class _CourseRevisionTile extends StatelessWidget {
                   '${_revisionActionLabel(revision.action)} · v${revision.version}',
                   style: TextStyle(
                     color: context.sfText,
-                    fontSize: 11,
+                    fontSize: 14,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -977,386 +1005,6 @@ class _CourseRevisionTile extends StatelessWidget {
       ),
     );
   }
-}
-
-class _CourseFormSheet extends StatefulWidget {
-  const _CourseFormSheet({
-    required this.weekStart,
-    required this.initialDay,
-    this.course,
-  });
-
-  final DateTime weekStart;
-  final DateTime initialDay;
-  final CourseItem? course;
-
-  @override
-  State<_CourseFormSheet> createState() => _CourseFormSheetState();
-}
-
-class _CourseFormSheetState extends State<_CourseFormSheet> {
-  final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _subjectController;
-  late final TextEditingController _teacherController;
-  late final TextEditingController _dayController;
-  late final TextEditingController _startsAtController;
-  late final TextEditingController _endsAtController;
-  late final TextEditingController _roomController;
-  bool _isCancelled = false;
-  bool _isSaving = false;
-  Future<_CourseResourceChoices>? _resourceChoicesFuture;
-  String? _errorMessage;
-
-  @override
-  void initState() {
-    super.initState();
-    final course = widget.course;
-    final initialDay = course?.day ?? widget.initialDay;
-
-    _subjectController = TextEditingController(text: course?.subjectName ?? '');
-    _teacherController = TextEditingController(text: course?.teacherName ?? '');
-    _dayController = TextEditingController(text: _dateOnly(initialDay));
-    _startsAtController = TextEditingController(
-      text: course?.startsAt ?? '09:00',
-    );
-    _endsAtController = TextEditingController(text: course?.endsAt ?? '10:00');
-    _roomController = TextEditingController(text: course?.room ?? '');
-    _isCancelled = course?.isCancelled ?? false;
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _resourceChoicesFuture ??= _loadResourceChoices();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isEditing = widget.course != null;
-
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 18,
-        right: 18,
-        top: 18,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + 18,
-      ),
-      child: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const ProtoIconBox(icon: Icons.edit_calendar_outlined),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ProtoSectionHeading(
-                      overline: 'Planning collectif',
-                      title: isEditing
-                          ? 'Modifier le cours'
-                          : 'Ajouter un cours',
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              FutureBuilder<_CourseResourceChoices>(
-                future: _resourceChoicesFuture,
-                builder: (context, snapshot) {
-                  final choices = snapshot.data;
-                  if (snapshot.connectionState != ConnectionState.done) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8),
-                      child: LinearProgressIndicator(minHeight: 3),
-                    );
-                  }
-
-                  if (snapshot.hasError || choices == null) {
-                    return Column(
-                      children: [
-                        TextFormField(
-                          controller: _subjectController,
-                          decoration: const InputDecoration(
-                            labelText: 'Matière',
-                            prefixIcon: Icon(Icons.menu_book_outlined),
-                          ),
-                          validator: _required,
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _teacherController,
-                          decoration: const InputDecoration(
-                            labelText: 'Professeur optionnel',
-                            prefixIcon: Icon(Icons.person_outline),
-                          ),
-                        ),
-                      ],
-                    );
-                  }
-
-                  return Column(
-                    children: [
-                      DropdownButtonFormField<String>(
-                        initialValue: _dropdownValue(
-                          _subjectController.text,
-                          choices.subjectNames,
-                        ),
-                        decoration: const InputDecoration(
-                          labelText: 'Matière',
-                          prefixIcon: Icon(Icons.menu_book_outlined),
-                        ),
-                        items: choices.subjectNames
-                            .map(
-                              (name) => DropdownMenuItem(
-                                value: name,
-                                child: Text(name),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (value) {
-                          _subjectController.text = value ?? '';
-                        },
-                        validator: (value) => (value ?? '').trim().isEmpty
-                            ? 'Choisis une matière.'
-                            : null,
-                      ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        initialValue: _teacherController.text.trim().isEmpty
-                            ? ''
-                            : _dropdownValue(
-                                _teacherController.text,
-                                choices.teacherNames,
-                              ),
-                        decoration: const InputDecoration(
-                          labelText: 'Professeur optionnel',
-                          prefixIcon: Icon(Icons.person_outline),
-                        ),
-                        items: [
-                          const DropdownMenuItem(
-                            value: '',
-                            child: Text('Aucun professeur'),
-                          ),
-                          ...choices.teacherNames.map(
-                            (name) => DropdownMenuItem(
-                              value: name,
-                              child: Text(name),
-                            ),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          _teacherController.text = value ?? '';
-                        },
-                      ),
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _dayController,
-                decoration: const InputDecoration(
-                  labelText: 'Date AAAA-MM-JJ',
-                  prefixIcon: Icon(Icons.calendar_today_outlined),
-                ),
-                validator: _dateValidator,
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _startsAtController,
-                      decoration: const InputDecoration(labelText: 'Début'),
-                      validator: _timeValidator,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _endsAtController,
-                      decoration: const InputDecoration(labelText: 'Fin'),
-                      validator: _timeValidator,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _roomController,
-                decoration: const InputDecoration(
-                  labelText: 'Salle',
-                  prefixIcon: Icon(Icons.meeting_room_outlined),
-                ),
-                validator: _required,
-              ),
-              const SizedBox(height: 10),
-              ProtoCard(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 13,
-                  vertical: 8,
-                ),
-                child: SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: _isCancelled,
-                  onChanged: (value) => setState(() => _isCancelled = value),
-                  title: const Text(
-                    'Cours annulé',
-                    style: TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  subtitle: const Text('Visible tout de suite par la classe.'),
-                ),
-              ),
-              if (_errorMessage != null) ...[
-                const SizedBox(height: 10),
-                Text(
-                  _errorMessage!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ],
-              const SizedBox(height: 2),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _isSaving
-                          ? null
-                          : () => Navigator.pop(context),
-                      child: const Text('Annuler'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: _isSaving ? null : _save,
-                      child: Text(
-                        _isSaving ? 'Enregistrement...' : 'Enregistrer',
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() {
-      _isSaving = true;
-      _errorMessage = null;
-    });
-    final appScope = AppScope.of(context);
-    final accessToken = await appScope.sessionController.accessTokenForApi();
-    final data = CourseFormData(
-      subjectName: _subjectController.text,
-      teacherName: _cleanOptional(_teacherController.text),
-      day: DateTime.parse(_dayController.text),
-      startsAt: _startsAtController.text,
-      endsAt: _endsAtController.text,
-      room: _roomController.text,
-      isCancelled: _isCancelled,
-      version: widget.course?.version,
-    );
-
-    try {
-      final course = widget.course;
-      if (course == null) {
-        await appScope.courseRepository.createCourse(
-          data: data,
-          accessToken: accessToken,
-        );
-      } else {
-        await appScope.courseRepository.updateCourse(
-          courseId: course.id,
-          data: data,
-          accessToken: accessToken,
-        );
-      }
-
-      if (mounted) Navigator.pop(context, true);
-    } on Exception catch (error) {
-      if (!mounted) return;
-      setState(() => _errorMessage = error.toString());
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
-  }
-
-  Future<_CourseResourceChoices> _loadResourceChoices() async {
-    final appScope = AppScope.of(context);
-    final accessToken = await appScope.sessionController.accessTokenForApi();
-    final subjects = await appScope.classResourceRepository.listSubjects(
-      accessToken: accessToken,
-    );
-    final teachers = await appScope.classResourceRepository.listTeachers(
-      accessToken: accessToken,
-    );
-
-    return _CourseResourceChoices(
-      subjects: subjects.where((subject) => subject.isActive).toList(),
-      teachers: teachers.where((teacher) => teacher.isActive).toList(),
-    );
-  }
-
-  String? _required(String? value) {
-    return (value ?? '').trim().isEmpty ? 'Champ obligatoire.' : null;
-  }
-
-  String? _dateValidator(String? value) {
-    if (_required(value) != null) return _required(value);
-    return DateTime.tryParse(value!) == null ? 'Date invalide.' : null;
-  }
-
-  String? _timeValidator(String? value) {
-    if (_required(value) != null) return _required(value);
-    final regex = RegExp(r'^\d{2}:\d{2}$');
-    return regex.hasMatch(value!) ? null : 'Heure invalide.';
-  }
-
-  String? _cleanOptional(String value) {
-    final cleaned = value.trim();
-    return cleaned.isEmpty ? null : cleaned;
-  }
-
-  String? _dropdownValue(String value, List<String> options) {
-    final cleaned = value.trim();
-    if (cleaned.isEmpty) return null;
-    return options.contains(cleaned) ? cleaned : null;
-  }
-
-  @override
-  void dispose() {
-    _subjectController.dispose();
-    _teacherController.dispose();
-    _dayController.dispose();
-    _startsAtController.dispose();
-    _endsAtController.dispose();
-    _roomController.dispose();
-    super.dispose();
-  }
-}
-
-class _CourseResourceChoices {
-  const _CourseResourceChoices({
-    required this.subjects,
-    required this.teachers,
-  });
-
-  final List<ClassSubject> subjects;
-  final List<ClassTeacher> teachers;
-
-  List<String> get subjectNames => subjects.map((item) => item.name).toList();
-
-  List<String> get teacherNames =>
-      teachers.map((item) => item.displayName).toList();
 }
 
 class _EmptySchedule extends StatelessWidget {
@@ -1407,12 +1055,6 @@ class _ScheduleError extends StatelessWidget {
 
 String _formatDay(DateTime day) {
   return '${day.day.toString().padLeft(2, '0')}/${day.month.toString().padLeft(2, '0')}';
-}
-
-String _dateOnly(DateTime day) {
-  final month = day.month.toString().padLeft(2, '0');
-  final date = day.day.toString().padLeft(2, '0');
-  return '${day.year}-$month-$date';
 }
 
 bool _sameDate(DateTime first, DateTime second) {

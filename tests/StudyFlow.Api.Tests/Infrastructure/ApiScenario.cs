@@ -78,6 +78,19 @@ public static class ApiScenario
         return await response.ReadSuccessAsync<SubjectResponse>();
     }
 
+    public static async Task<CourseResponse> CreateCourseAsync(
+        this WebApplicationFactory<Program> factory,
+        AuthResponse session,
+        Guid subjectId,
+        DateOnly? day = null,
+        TimeOnly? startsAt = null)
+    {
+        var start = startsAt ?? new TimeOnly(8, 0);
+        var response = await factory.As(session).PostAsJsonAsync("/api/v1/courses", new CourseRequest(
+            subjectId, null, day ?? DateOnly.FromDateTime(DateTime.UtcNow.AddDays(2)), start, start.AddHours(1), "B204"));
+        return await response.ReadSuccessAsync<CourseResponse>();
+    }
+
     public static async Task<T> ReadSuccessAsync<T>(this HttpResponseMessage response)
     {
         var body = await response.Content.ReadAsStringAsync();

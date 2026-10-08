@@ -654,7 +654,7 @@ class _ApplicationDocumentLine extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: context.sfText,
-                      fontSize: 11,
+                      fontSize: 13,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -991,7 +991,7 @@ class _FavoriteOfferLine extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: context.sfText,
-                      fontSize: 11,
+                      fontSize: 13,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -1003,7 +1003,7 @@ class _FavoriteOfferLine extends StatelessWidget {
                     ].join(' · '),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: context.sfMuted, fontSize: 9),
+                    style: TextStyle(color: context.sfMuted, fontSize: 12),
                   ),
                 ],
               ),
@@ -1136,14 +1136,14 @@ class _CommunityMessageCard extends StatelessWidget {
                   message.authorName,
                   style: TextStyle(
                     color: context.sfText,
-                    fontSize: 10,
+                    fontSize: 13,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
               ),
               Text(
                 _shortDate(message.createdAt),
-                style: TextStyle(color: context.sfMuted, fontSize: 8),
+                style: TextStyle(color: context.sfMuted, fontSize: 11),
               ),
             ],
           ),
@@ -1162,7 +1162,7 @@ class _CommunityMessageCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: AppColors.green,
-                  fontSize: 9,
+                  fontSize: 12,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -1351,7 +1351,7 @@ class _OpportunityCard extends StatelessWidget {
                         if (opportunity.distanceKm != null)
                           '${opportunity.distanceKm!.toStringAsFixed(1)} km',
                       ].join(' · '),
-                      style: TextStyle(color: context.sfMuted, fontSize: 10),
+                      style: TextStyle(color: context.sfMuted, fontSize: 13),
                     ),
                   ],
                 ),

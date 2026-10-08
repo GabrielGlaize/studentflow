@@ -27,16 +27,27 @@ class HttpCourseRepository implements CourseRepository {
     required CourseFormData data,
     String? accessToken,
   }) async {
-    final subjectId = await _resolveSubjectId(data.subjectName, accessToken);
-    final teacherId = await _resolveTeacherId(data.teacherName, accessToken);
-
     final json = await _apiClient.postJson(
       '/api/v1/courses',
-      body: _courseBody(data, subjectId: subjectId, teacherId: teacherId),
+      body: _courseBody(data),
       accessToken: accessToken,
     );
 
     return CourseItem.fromJson(json);
+  }
+
+  @override
+  Future<List<CourseItem>> createCourses({
+    required List<CourseFormData> courses,
+    String? accessToken,
+  }) async {
+    final json = await _apiClient.postJsonList(
+      '/api/v1/courses/batch',
+      body: {'courses': courses.map(_courseBody).toList()},
+      accessToken: accessToken,
+    );
+
+    return json.map(CourseItem.fromJson).toList(growable: false);
   }
 
   @override
@@ -45,15 +56,9 @@ class HttpCourseRepository implements CourseRepository {
     required CourseFormData data,
     String? accessToken,
   }) async {
-    final subjectId = await _resolveSubjectId(data.subjectName, accessToken);
-    final teacherId = await _resolveTeacherId(data.teacherName, accessToken);
-
     final json = await _apiClient.putJson(
       '/api/v1/courses/$courseId',
-      body: {
-        ..._courseBody(data, subjectId: subjectId, teacherId: teacherId),
-        'version': data.version ?? 1,
-      },
+      body: {..._courseBody(data), 'version': data.version ?? 1},
       accessToken: accessToken,
     );
 
@@ -93,66 +98,10 @@ class HttpCourseRepository implements CourseRepository {
     return CourseItem.fromJson(json);
   }
 
-  Future<String> _resolveSubjectId(
-    String subjectName,
-    String? accessToken,
-  ) async {
-    final cleanedName = subjectName.trim();
-    final subjects = await _apiClient.getJsonList(
-      '/api/v1/class-resources/subjects',
-      accessToken: accessToken,
-    );
-
-    for (final subject in subjects) {
-      if ((subject['name'] as String).toLowerCase() ==
-          cleanedName.toLowerCase()) {
-        return subject['id'] as String;
-      }
-    }
-
-    final created = await _apiClient.postJson(
-      '/api/v1/class-resources/subjects',
-      body: {'name': cleanedName},
-      accessToken: accessToken,
-    );
-    return created['id'] as String;
-  }
-
-  Future<String?> _resolveTeacherId(
-    String? teacherName,
-    String? accessToken,
-  ) async {
-    final cleanedName = teacherName?.trim();
-    if (cleanedName == null || cleanedName.isEmpty) return null;
-
-    final teachers = await _apiClient.getJsonList(
-      '/api/v1/class-resources/teachers',
-      accessToken: accessToken,
-    );
-
-    for (final teacher in teachers) {
-      if ((teacher['displayName'] as String).toLowerCase() ==
-          cleanedName.toLowerCase()) {
-        return teacher['id'] as String;
-      }
-    }
-
-    final created = await _apiClient.postJson(
-      '/api/v1/class-resources/teachers',
-      body: {'displayName': cleanedName, 'information': null},
-      accessToken: accessToken,
-    );
-    return created['id'] as String;
-  }
-
-  Map<String, Object?> _courseBody(
-    CourseFormData data, {
-    required String subjectId,
-    required String? teacherId,
-  }) {
+  Map<String, Object?> _courseBody(CourseFormData data) {
     return {
-      'subjectId': subjectId,
-      'teacherId': teacherId,
+      'subjectId': data.subjectId,
+      'teacherId': data.teacherId,
       'day': _dateOnly(data.day),
       'startsAt': _timeOnly(data.startsAt),
       'endsAt': _timeOnly(data.endsAt),

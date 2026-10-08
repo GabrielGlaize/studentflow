@@ -1,93 +1,120 @@
 part of 'profile_page.dart';
 
+/// Carte étudiante : une simple photo, copiée dans le stockage de l'app et
+/// affichée en plein écran sans quitter StudyFlow.
 class _StudentCardSection extends StatelessWidget {
   const _StudentCardSection({
     required this.document,
-    required this.isDelegate,
     required this.onImport,
     required this.onOpen,
     required this.onDelete,
   });
 
   final CompanyDocument? document;
-  final bool isDelegate;
   final VoidCallback onImport;
   final VoidCallback? onOpen;
   final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
-    final hasCard = document != null;
+    final card = document;
+
+    if (card == null) {
+      return ProtoCard(
+        onTap: onImport,
+        child: Row(
+          children: [
+            ProtoIconBox(
+              icon: Icons.add_photo_alternate_outlined,
+              backgroundColor: context.sfPersonalSoft,
+              foregroundColor: context.sfPersonal,
+              size: 48,
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Ajouter ma carte étudiante',
+                    style: TextStyle(
+                      color: context.sfText,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  const ProtoMutedText(
+                    'Choisis une photo : elle reste sur ton téléphone, prête à montrer.',
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: context.sfChevron),
+          ],
+        ),
+      );
+    }
 
     return ProtoCard(
-      borderColor: hasCard ? AppColors.mint : AppColors.line,
-      backgroundColor: hasCard ? const Color(0xFFEFFFFB) : Colors.white,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ProtoIconBox(
-            icon: hasCard ? Icons.badge_outlined : Icons.add_photo_alternate,
-            backgroundColor: hasCard ? AppColors.mint : AppColors.primarySoft,
-            foregroundColor: AppColors.petrol,
-            size: 45,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ProtoOverline(isDelegate ? 'Accès rapide' : 'Carte étudiante'),
-                const SizedBox(height: 3),
-                Text(
-                  hasCard
-                      ? 'Carte étudiante enregistrée'
-                      : 'Importer ma carte étudiante',
+          Row(
+            children: [
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  'Carte étudiante',
                   style: TextStyle(
                     color: context.sfText,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 4),
-                ProtoMutedText(
-                  hasCard
-                      ? [
-                          if (document!.fileName != null) document!.fileName!,
-                          if (document!.link != null) document!.link!,
-                          if (document!.note != null) document!.note!,
-                        ].where((value) => value.trim().isNotEmpty).join(' · ')
-                      : 'Ajoute une photo, un lien Drive ou une note pour la retrouver vite.',
-                  maxLines: 2,
+              ),
+              const ProtoVisibilityChip(shared: false),
+            ],
+          ),
+          const SizedBox(height: 10),
+          GestureDetector(
+            key: const ValueKey('student-card-thumbnail'),
+            onTap: onOpen,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: AspectRatio(
+                aspectRatio: 1.586, // format carte bancaire
+                child: _StudentCardImage(
+                  storedPath: card.filePath,
+                  fit: BoxFit.cover,
                 ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: [
-                    if (hasCard)
-                      FilledButton.icon(
-                        onPressed: onOpen,
-                        icon: const Icon(Icons.visibility_outlined, size: 16),
-                        label: const Text('Voir'),
-                      ),
-                    OutlinedButton.icon(
-                      onPressed: onImport,
-                      icon: Icon(
-                        hasCard ? Icons.edit_outlined : Icons.upload_outlined,
-                        size: 16,
-                      ),
-                      label: Text(hasCard ? 'Modifier' : 'Importer'),
-                    ),
-                    if (hasCard && onDelete != null)
-                      TextButton.icon(
-                        onPressed: onDelete,
-                        icon: const Icon(Icons.delete_outline, size: 16),
-                        label: const Text('Retirer'),
-                      ),
-                  ],
-                ),
-              ],
+              ),
             ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: onOpen,
+                  icon: const Icon(Icons.open_in_full, size: 18),
+                  label: const Text('Afficher'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.outlined(
+                tooltip: 'Remplacer la photo',
+                onPressed: onImport,
+                icon: const Icon(Icons.photo_library_outlined),
+              ),
+              const SizedBox(width: 4),
+              IconButton.outlined(
+                tooltip: 'Retirer la carte',
+                onPressed: onDelete,
+                icon: const Icon(Icons.delete_outline),
+              ),
+            ],
           ),
         ],
       ),
@@ -95,134 +122,127 @@ class _StudentCardSection extends StatelessWidget {
   }
 }
 
-class _StudentCardImportSheet extends StatefulWidget {
-  const _StudentCardImportSheet();
+class _StudentCardImage extends StatefulWidget {
+  const _StudentCardImage({required this.storedPath, required this.fit});
+
+  final String? storedPath;
+  final BoxFit fit;
 
   @override
-  State<_StudentCardImportSheet> createState() =>
-      _StudentCardImportSheetState();
+  State<_StudentCardImage> createState() => _StudentCardImageState();
 }
 
-class _StudentCardImportSheetState extends State<_StudentCardImportSheet> {
-  final _formKey = GlobalKey<FormState>();
-  final _linkController = TextEditingController();
-  final _noteController = TextEditingController();
-  PlatformFile? _selectedFile;
+class _StudentCardImageState extends State<_StudentCardImage> {
+  late Future<File?> _file = StudentCardStore.resolve(widget.storedPath);
+
+  @override
+  void didUpdateWidget(covariant _StudentCardImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.storedPath != widget.storedPath) {
+      _file = StudentCardStore.resolve(widget.storedPath);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 20,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + 20,
+    return FutureBuilder<File?>(
+      future: _file,
+      builder: (context, snapshot) {
+        final file = snapshot.data;
+        if (file == null) {
+          return ColoredBox(
+            color: context.sfSoftCard,
+            child: Center(
+              child: snapshot.connectionState == ConnectionState.done
+                  ? const ProtoMutedText('Photo introuvable : remplace-la.')
+                  : const CircularProgressIndicator(),
+            ),
+          );
+        }
+        return Image.file(file, fit: widget.fit);
+      },
+    );
+  }
+}
+
+/// Plein écran avec zoom au pincement, pour montrer la carte à l'accueil.
+class _StudentCardViewer extends StatelessWidget {
+  const _StudentCardViewer({required this.storedPath});
+
+  final String? storedPath;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: const Text('Carte étudiante'),
+        titleTextStyle: const TextStyle(
+          color: Colors.white,
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+        ),
       ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const ProtoSectionHeading(
-              overline: 'Profil',
-              title: 'Carte étudiante',
+      body: SafeArea(
+        child: InteractiveViewer(
+          maxScale: 5,
+          child: Center(
+            child: _StudentCardImage(
+              storedPath: storedPath,
+              fit: BoxFit.contain,
             ),
-            const SizedBox(height: 14),
-            TextFormField(
-              controller: _linkController,
-              decoration: const InputDecoration(
-                labelText: 'Lien ou emplacement optionnel',
-                prefixIcon: Icon(Icons.link_outlined),
-              ),
-              keyboardType: TextInputType.url,
-            ),
-            const SizedBox(height: 10),
-            OutlinedButton.icon(
-              onPressed: _pickStudentCard,
-              icon: const Icon(Icons.add_photo_alternate_outlined),
-              label: Text(
-                _selectedFile == null
-                    ? 'Importer photo ou fichier'
-                    : 'Fichier : ${_selectedFile!.name}',
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _noteController,
-              decoration: const InputDecoration(
-                labelText: 'Note optionnelle',
-                prefixIcon: Icon(Icons.notes_outlined),
-              ),
-              minLines: 1,
-              maxLines: 3,
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Annuler'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: _save,
-                    child: const Text('Enregistrer'),
-                  ),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
+}
 
-  void _save() {
-    if (!_formKey.currentState!.validate()) return;
+/// Copie la photo choisie dans le dossier de l'app : le fichier renvoyé par le
+/// sélecteur est temporaire et disparaît. On enregistre un chemin relatif, car
+/// le dossier de l'app change de chemin absolu à chaque mise à jour iOS.
+abstract final class StudentCardStore {
+  static const _folder = 'student-card';
 
-    final controller = AppScope.of(context).companyDocumentsController;
-    for (final document in controller.documents) {
-      if (document.scope == 'student-card') {
-        controller.deleteDocument(document.id);
-      }
-    }
-    controller.addDocument(
-      title: 'Carte étudiante',
-      kind: 'Carte étudiante',
-      scope: 'student-card',
-      link: _linkController.text,
-      note: _noteController.text,
-      fileName: _selectedFile?.name,
-      filePath: _selectedFile?.path,
-      fileSizeBytes: _selectedFile?.size,
-    );
-
-    Navigator.pop(context);
-  }
-
-  Future<void> _pickStudentCard() async {
+  static Future<String?> importPhoto() async {
     final result = await FilePicker.platform.pickFiles(
       allowMultiple: false,
-      withData: false,
       type: FileType.image,
     );
-    final files = result?.files;
-    final file = files == null || files.isEmpty ? null : files.first;
-    if (file == null || !mounted) return;
-    setState(() {
-      _selectedFile = file;
-    });
+    final picked = result?.files.firstOrNull;
+    final sourcePath = picked?.path;
+    if (picked == null || sourcePath == null) return null;
+
+    final directory = Directory(
+      '${(await getApplicationDocumentsDirectory()).path}/$_folder',
+    );
+    await directory.create(recursive: true);
+    final extension = picked.extension?.toLowerCase() ?? 'jpg';
+    final relativePath =
+        '$_folder/carte-${DateTime.now().millisecondsSinceEpoch}.$extension';
+    await File(
+      sourcePath,
+    ).copy('${(await getApplicationDocumentsDirectory()).path}/$relativePath');
+    return relativePath;
   }
 
-  @override
-  void dispose() {
-    _linkController.dispose();
-    _noteController.dispose();
-    super.dispose();
+  static Future<File?> resolve(String? storedPath) async {
+    final path = storedPath?.trim();
+    if (path == null || path.isEmpty) return null;
+
+    final file = path.startsWith('/')
+        ? File(path)
+        : File('${(await getApplicationDocumentsDirectory()).path}/$path');
+    return await file.exists() ? file : null;
+  }
+
+  static Future<void> delete(String? storedPath) async {
+    try {
+      await (await resolve(storedPath))?.delete();
+    } on FileSystemException {
+      // Le fichier a déjà disparu : rien à faire.
+    }
   }
 }

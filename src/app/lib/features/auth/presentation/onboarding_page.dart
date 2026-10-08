@@ -164,7 +164,7 @@ class _ChoiceCard extends StatelessWidget {
                   'Continuer →',
                   style: TextStyle(
                     color: context.sfText,
-                    fontSize: 9,
+                    fontSize: 12,
                     fontWeight: FontWeight.w900,
                   ),
                 ),

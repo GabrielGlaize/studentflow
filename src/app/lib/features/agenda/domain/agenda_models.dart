@@ -7,6 +7,8 @@ class HomeworkItem {
     required this.notificationsEnabled,
     this.description,
     this.courseId,
+    this.subjectName,
+    this.courseDay,
   });
 
   final String id;
@@ -14,6 +16,10 @@ class HomeworkItem {
   final String? description;
   final DateTime deadline;
   final String? courseId;
+
+  /// Matière du cours lié, pour afficher « Mathématiques » sur le devoir.
+  final String? subjectName;
+  final DateTime? courseDay;
   final bool isDone;
   final bool notificationsEnabled;
 
@@ -24,6 +30,10 @@ class HomeworkItem {
       description: json['description'] as String?,
       deadline: DateTime.parse(json['deadline'] as String),
       courseId: json['courseId'] as String?,
+      subjectName: json['subjectName'] as String?,
+      courseDay: json['courseDay'] == null
+          ? null
+          : DateTime.parse(json['courseDay'] as String),
       isDone: json['isDone'] as bool? ?? false,
       notificationsEnabled: json['notificationsEnabled'] as bool? ?? true,
     );
@@ -35,6 +45,8 @@ class HomeworkItem {
       description: description,
       deadline: deadline,
       courseId: courseId,
+      subjectName: subjectName,
+      courseDay: courseDay,
     );
   }
 }
@@ -45,12 +57,18 @@ class CreateHomeworkRequest {
     required this.deadline,
     this.description,
     this.courseId,
+    this.subjectName,
+    this.courseDay,
   });
 
   final String title;
   final String? description;
   final DateTime deadline;
   final String? courseId;
+
+  /// Affichage seulement (mode démo) : le serveur les déduit du cours lié.
+  final String? subjectName;
+  final DateTime? courseDay;
 
   Map<String, Object?> toJson() {
     return {

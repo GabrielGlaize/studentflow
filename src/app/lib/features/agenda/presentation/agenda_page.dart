@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:studyflow_app/core/app_scope.dart';
 import 'package:studyflow_app/core/theme/app_colors.dart';
 import 'package:studyflow_app/core/theme/prototype_widgets.dart';
+import 'package:studyflow_app/core/widgets/date_time_pickers.dart';
 import 'package:studyflow_app/features/agenda/domain/agenda_models.dart';
+import 'package:studyflow_app/features/agenda/presentation/homework_form_page.dart';
 
 class AgendaPage extends StatefulWidget {
   const AgendaPage({this.initialCategory = 'school', super.key});
@@ -51,150 +53,175 @@ class _AgendaPageState extends State<AgendaPage> {
     }
 
     return SafeArea(
-      child: Column(
+      child: Stack(
         children: [
-          ProtoScreenTitle(
-            title: 'Agenda et tâches',
-            subtitle: hasCompany
-                ? 'Sépare le scolaire et ton espace carrière.'
-                : 'Sépare le scolaire et ta recherche d’alternance.',
-            trailing: ProtoActionButton(
-              icon: Icons.add,
-              tooltip: 'Ajouter',
-              onPressed: _openCreateMenu,
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
-            child: Column(
-              children: [
-                _WorkspaceSwitch(
-                  selected: _category,
-                  hasCompany: hasCompany,
-                  onChanged: (value) {
-                    setState(() {
-                      _category = value;
-                      _agendaFuture = _loadAgenda();
-                    });
-                  },
-                ),
-                const SizedBox(height: 12),
-                Row(
+          Column(
+            children: [
+              ProtoScreenTitle(
+                title: 'Agenda',
+                subtitle: hasCompany
+                    ? 'Devoirs de la classe et organisation perso.'
+                    : 'Devoirs de la classe et recherche d’alternance.',
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
+                child: Column(
                   children: [
-                    Expanded(
-                      child: Wrap(
-                        spacing: 7,
-                        children: [
-                          _FilterPill(
-                            label: 'À faire',
-                            selected: !_includeDone,
-                            onTap: () {
-                              setState(() {
-                                _includeDone = false;
-                                _agendaFuture = _loadAgenda();
-                              });
-                            },
-                          ),
-                          _FilterPill(
-                            label: 'Terminées',
-                            selected: _includeDone,
-                            onTap: () {
-                              setState(() {
-                                _includeDone = true;
-                                _agendaFuture = _loadAgenda();
-                              });
-                            },
-                          ),
-                        ],
-                      ),
+                    _WorkspaceSwitch(
+                      selected: _category,
+                      hasCompany: hasCompany,
+                      onChanged: (value) {
+                        setState(() {
+                          _category = value;
+                          _agendaFuture = _loadAgenda();
+                        });
+                      },
                     ),
-                    OutlinedButton.icon(
-                      onPressed: _openCreateMenu,
-                      icon: const Icon(Icons.add, size: 17),
-                      label: const Text('Ajouter'),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Wrap(
+                            spacing: 8,
+                            children: [
+                              _FilterPill(
+                                label: 'À faire',
+                                selected: !_includeDone,
+                                onTap: () {
+                                  setState(() {
+                                    _includeDone = false;
+                                    _agendaFuture = _loadAgenda();
+                                  });
+                                },
+                              ),
+                              _FilterPill(
+                                label: 'Terminées',
+                                selected: _includeDone,
+                                onTap: () {
+                                  setState(() {
+                                    _includeDone = true;
+                                    _agendaFuture = _loadAgenda();
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const _VisibilityLegend(),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: FutureBuilder<AgendaSummary>(
-              future: _agendaFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState != ConnectionState.done) {
-                  return const ProtoPageLoader(label: 'Agenda');
-                }
+              ),
+              Expanded(
+                child: FutureBuilder<AgendaSummary>(
+                  future: _agendaFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState != ConnectionState.done) {
+                      return const ProtoPageLoader(label: 'Agenda');
+                    }
 
-                if (snapshot.hasError) {
-                  return _AgendaError(onRetry: _refresh);
-                }
+                    if (snapshot.hasError) {
+                      return _AgendaError(onRetry: _refresh);
+                    }
 
-                final agenda = snapshot.requireData;
-                return RefreshIndicator(
-                  onRefresh: _refresh,
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(18, 4, 18, 112),
-                    children: [
-                      if (_category == 'school') ...[
-                        _SectionTitle(
-                          title: 'Devoirs de classe',
-                          count: agenda.homework.length,
-                          color: AppColors.rose,
-                        ),
-                        if (agenda.homework.isEmpty)
-                          const _EmptyCard(text: 'Aucun devoir à venir.')
-                        else
-                          ...agenda.homework.map(
-                            (item) => _HomeworkCard(
-                              homework: item,
-                              onEdit: () => _openHomeworkSheet(item),
-                              onDelete: () => _confirmDeleteHomework(item),
+                    final agenda = snapshot.requireData;
+                    return RefreshIndicator(
+                      onRefresh: _refresh,
+                      child: ListView(
+                        padding: const EdgeInsets.fromLTRB(18, 4, 18, 112),
+                        children: [
+                          if (_category == 'school') ...[
+                            _SectionTitle(
+                              title: 'Devoirs de la classe',
+                              count: agenda.homework.length,
+                              shared: true,
                             ),
+                            if (agenda.homework.isEmpty)
+                              const _EmptyCard(
+                                text: 'Aucun devoir à venir',
+                                message:
+                                    'Ajoute un devoir depuis ce bouton ou depuis un cours du planning.',
+                              )
+                            else
+                              ...agenda.homework.map(
+                                (item) => _HomeworkCard(
+                                  homework: item,
+                                  onEdit: () => _openHomeworkSheet(item),
+                                  onDelete: () => _confirmDeleteHomework(item),
+                                ),
+                              ),
+                            const SizedBox(height: 16),
+                          ],
+                          _SectionTitle(
+                            title: _eventSectionTitle,
+                            count: agenda.events.length,
+                            shared: false,
                           ),
-                        const SizedBox(height: 16),
-                      ],
-                      _SectionTitle(
-                        title: _eventSectionTitle,
-                        count: agenda.events.length,
-                        color: _categoryColor,
+                          if (agenda.events.isEmpty)
+                            const _EmptyCard(
+                              text: 'Aucun événement prévu',
+                              message:
+                                  'Rendez-vous, entretien, révision : visible uniquement par toi.',
+                            )
+                          else
+                            ...agenda.events.map(
+                              (item) => _PersonalEventCard(
+                                event: item,
+                                color: _categoryColor,
+                                onEdit: () => _openEventSheet(item),
+                                onDelete: () => _confirmDeleteEvent(item),
+                              ),
+                            ),
+                          const SizedBox(height: 16),
+                          _SectionTitle(
+                            title: 'Mes tâches',
+                            count: agenda.tasks.length,
+                            shared: false,
+                          ),
+                          if (agenda.tasks.isEmpty)
+                            const _EmptyCard(
+                              text: 'Aucune tâche',
+                              message:
+                                  'Tes tâches restent visibles uniquement par toi.',
+                            )
+                          else
+                            ...agenda.tasks.map(
+                              (item) => _TaskCard(
+                                task: item,
+                                color: _categoryColor,
+                                onOpenDetails: () => _openTaskDetails(item),
+                                onToggleDone: () =>
+                                    _setTaskDone(item, isDone: !item.isDone),
+                                onDelete: () => _confirmDeleteTask(item),
+                              ),
+                            ),
+                        ],
                       ),
-                      if (agenda.events.isEmpty)
-                        const _EmptyCard(
-                          text: 'Aucun événement personnel prévu.',
-                        )
-                      else
-                        ...agenda.events.map(
-                          (item) => _PersonalEventCard(
-                            event: item,
-                            color: _categoryColor,
-                            onEdit: () => _openEventSheet(item),
-                            onDelete: () => _confirmDeleteEvent(item),
-                          ),
-                        ),
-                      const SizedBox(height: 16),
-                      _SectionTitle(
-                        title: 'Mes tâches',
-                        count: agenda.tasks.length,
-                        color: _categoryColor,
-                      ),
-                      if (agenda.tasks.isEmpty)
-                        const _EmptyCard(text: 'Aucune tâche dans cet espace.')
-                      else
-                        ...agenda.tasks.map(
-                          (item) => _TaskCard(
-                            task: item,
-                            color: _categoryColor,
-                            onOpenDetails: () => _openTaskDetails(item),
-                            onToggleDone: () =>
-                                _setTaskDone(item, isDone: !item.isDone),
-                            onDelete: () => _confirmDeleteTask(item),
-                          ),
-                        ),
-                    ],
-                  ),
-                );
-              },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 16,
+            child: Center(
+              child: FloatingActionButton.extended(
+                key: const ValueKey('agenda-add-button'),
+                heroTag: 'agenda-add',
+                backgroundColor: context.sfAccent,
+                foregroundColor: context.sfOnAccent,
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                onPressed: _openCreateMenu,
+                icon: const Icon(Icons.add),
+                label: const Text('Ajouter'),
+              ),
             ),
           ),
         ],
@@ -212,9 +239,9 @@ class _AgendaPageState extends State<AgendaPage> {
 
   String get _eventSectionTitle {
     return switch (_category) {
-      'company' => 'Planning entreprise',
-      'apprenticeship' => 'Planning alternance',
-      _ => 'Planning école',
+      'company' => 'Mes rendez-vous entreprise',
+      'apprenticeship' => 'Mes rendez-vous alternance',
+      _ => 'Mes événements',
     };
   }
 
@@ -321,15 +348,7 @@ class _AgendaPageState extends State<AgendaPage> {
   }
 
   Future<void> _openHomeworkSheet([HomeworkItem? homework]) async {
-    final saved = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (context) => _HomeworkFormSheet(homework: homework),
-    );
+    final saved = await HomeworkFormPage.open(context, homework: homework);
 
     if (saved == true && mounted) {
       await _refresh();
@@ -471,51 +490,63 @@ class _CreateAgendaMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isSchool = category == 'school';
-    final workspaceName = switch (category) {
-      'company' => 'entreprise',
-      'apprenticeship' => 'alternance',
-      _ => 'école',
+    final eventTitle = switch (category) {
+      'company' => 'Rendez-vous entreprise',
+      'apprenticeship' => 'Rendez-vous alternance',
+      _ => 'Événement',
     };
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
+    return SafeArea(
       child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const ProtoSectionHeading(
-              overline: 'Agenda',
-              title: 'Que veux-tu ajouter ?',
+            Text(
+              'Que veux-tu ajouter ?',
+              style: TextStyle(
+                color: context.sfText,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-            const SizedBox(height: 14),
-            if (isSchool)
+            if (isSchool) ...[
+              const SizedBox(height: 16),
+              const _CreateMenuGroupTitle(shared: true),
               _CreateMenuTile(
+                key: const ValueKey('create-homework'),
+                shared: true,
                 icon: Icons.assignment_outlined,
-                title: 'Devoir de classe',
-                subtitle: 'Visible par tous les élèves approuvés.',
+                title: 'Devoir',
+                subtitle: 'Rattaché à un cours, visible par toute la classe.',
                 onTap: () =>
                     Navigator.pop(context, _AgendaCreateAction.homework),
               ),
+            ],
+            const SizedBox(height: 16),
+            const _CreateMenuGroupTitle(shared: false),
             _CreateMenuTile(
-              icon: Icons.event_available_outlined,
-              title: 'Événement $workspaceName',
-              subtitle: 'Entretien, relance, rendez-vous ou moment important.',
-              onTap: () => Navigator.pop(context, _AgendaCreateAction.event),
-            ),
-            _CreateMenuTile(
-              icon: Icons.checklist_outlined,
-              title: 'Tâche $workspaceName',
-              subtitle: 'Visible uniquement dans cet espace.',
+              key: const ValueKey('create-task'),
+              shared: false,
+              icon: Icons.check_circle_outline,
+              title: 'Tâche',
+              subtitle: 'Une chose à faire, avec ou sans échéance.',
               onTap: () => Navigator.pop(context, _AgendaCreateAction.task),
             ),
+            _CreateMenuTile(
+              key: const ValueKey('create-event'),
+              shared: false,
+              icon: Icons.event_available_outlined,
+              title: eventTitle,
+              subtitle: 'Un moment daté : entretien, révision, rendez-vous.',
+              onTap: () => Navigator.pop(context, _AgendaCreateAction.event),
+            ),
             if (!isSchool)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
+              const Padding(
+                padding: EdgeInsets.only(top: 4),
                 child: ProtoMutedText(
-                  hasCompany
-                      ? 'Les devoirs de classe restent dans l’espace École.'
-                      : 'Les devoirs de classe restent dans l’espace École.',
+                  'Les devoirs de la classe se créent depuis l’espace École.',
                 ),
               ),
           ],
@@ -525,14 +556,50 @@ class _CreateAgendaMenu extends StatelessWidget {
   }
 }
 
+class _CreateMenuGroupTitle extends StatelessWidget {
+  const _CreateMenuGroupTitle({required this.shared});
+
+  final bool shared;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = shared ? context.sfShared : context.sfPersonal;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Icon(
+            shared ? Icons.groups_2_outlined : Icons.lock_outline,
+            size: 16,
+            color: color,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            shared ? 'POUR TOUTE LA CLASSE' : 'RIEN QUE POUR MOI',
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.6,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _CreateMenuTile extends StatelessWidget {
   const _CreateMenuTile({
+    required this.shared,
     required this.icon,
     required this.title,
     required this.subtitle,
     required this.onTap,
+    super.key,
   });
 
+  final bool shared;
   final IconData icon;
   final String title;
   final String subtitle;
@@ -540,11 +607,19 @@ class _CreateMenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = shared ? context.sfShared : context.sfPersonal;
     return ProtoCard(
       onTap: onTap,
+      margin: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          ProtoIconBox(icon: icon),
+          ProtoIconBox(
+            icon: icon,
+            backgroundColor: shared
+                ? context.sfSharedSoft
+                : context.sfPersonalSoft,
+            foregroundColor: color,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -554,11 +629,11 @@ class _CreateMenuTile extends StatelessWidget {
                   title,
                   style: TextStyle(
                     color: context.sfText,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 ProtoMutedText(subtitle),
               ],
             ),
@@ -566,6 +641,23 @@ class _CreateMenuTile extends StatelessWidget {
           Icon(Icons.chevron_right, color: context.sfChevron),
         ],
       ),
+    );
+  }
+}
+
+/// Rappel discret du code couleur : bleu = classe, vert = perso.
+class _VisibilityLegend extends StatelessWidget {
+  const _VisibilityLegend();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ProtoVisibilityChip(shared: true),
+        SizedBox(width: 6),
+        ProtoVisibilityChip(shared: false),
+      ],
     );
   }
 }
@@ -586,8 +678,9 @@ class _WorkspaceSwitch extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
-        color: const Color(0xFFDFE9EF),
-        borderRadius: BorderRadius.circular(19),
+        color: context.sfSoftCard,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.sfLine),
       ),
       child: Row(
         children: [
@@ -636,38 +729,40 @@ class _WorkspaceButton extends StatelessWidget {
         onTap: () => onChanged(value),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
-          constraints: const BoxConstraints(minHeight: 58),
+          constraints: const BoxConstraints(minHeight: 46),
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           decoration: BoxDecoration(
-            color: isActive ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(15),
-            boxShadow: isActive
+            color: isActive ? context.sfCard : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: isActive && !context.sfIsDark
                 ? [
                     BoxShadow(
                       color: AppColors.petrol.withValues(alpha: 0.08),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
                     ),
                   ]
                 : null,
           ),
-          child: Column(
+          child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 icon,
                 size: 18,
-                color: isActive ? AppColors.petrol : AppColors.muted,
+                color: isActive ? context.sfAccent : context.sfMuted,
               ),
-              const SizedBox(height: 4),
-              Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: isActive ? AppColors.petrol : AppColors.muted,
-                  fontSize: 9,
-                  fontWeight: FontWeight.w900,
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: isActive ? context.sfText : context.sfMuted,
+                    fontSize: 15,
+                    fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -691,17 +786,11 @@ class _FilterPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ActionChip(
+    return ChoiceChip(
       label: Text(label),
-      onPressed: onTap,
-      backgroundColor: selected ? AppColors.petrol : Colors.white,
-      labelStyle: TextStyle(
-        color: selected ? Colors.white : AppColors.muted,
-        fontWeight: FontWeight.w800,
-        fontSize: 10,
-      ),
-      side: BorderSide(color: selected ? AppColors.petrol : AppColors.line),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
+      selected: selected,
+      showCheckmark: false,
+      onSelected: (_) => onTap(),
     );
   }
 }
@@ -812,15 +901,15 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   bool _notificationsEnabled = false;
+  DateTime? _deadline;
   bool _isSaving = false;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(
-        left: 18,
-        right: 18,
-        top: 18,
+        left: 20,
+        right: 20,
         bottom: MediaQuery.viewInsetsOf(context).bottom + 18,
       ),
       child: Form(
@@ -830,18 +919,16 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
-                children: [
-                  ProtoIconBox(icon: Icons.add_task_outlined),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: ProtoSectionHeading(
-                      overline: 'Organisation',
-                      title: 'Nouvelle tâche',
-                    ),
-                  ),
-                ],
+              Text(
+                'Nouvelle tâche',
+                style: TextStyle(
+                  color: context.sfText,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
+              const SizedBox(height: 12),
+              const ProtoVisibilityBanner(shared: false),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _titleController,
@@ -865,22 +952,46 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                 minLines: 1,
                 maxLines: 3,
               ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: ProtoPickerField(
+                      icon: Icons.event_outlined,
+                      label: 'Échéance (optionnel)',
+                      value: _deadline == null
+                          ? 'Aucune'
+                          : '${StudyFlowFormat.shortDay(_deadline!)} · ${StudyFlowFormat.timeOf(_deadline!)}',
+                      onTap: _pickDeadline,
+                    ),
+                  ),
+                  if (_deadline != null)
+                    IconButton(
+                      tooltip: 'Retirer l’échéance',
+                      onPressed: () => setState(() {
+                        _deadline = null;
+                        _notificationsEnabled = false;
+                      }),
+                      icon: const Icon(Icons.close),
+                    ),
+                ],
+              ),
               const SizedBox(height: 10),
               ProtoCard(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 13,
-                  vertical: 8,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: _notificationsEnabled,
-                  onChanged: (value) =>
-                      setState(() => _notificationsEnabled = value),
-                  title: const Text(
-                    'Activer le rappel',
-                    style: TextStyle(fontWeight: FontWeight.w800),
+                  onChanged: _deadline == null
+                      ? null
+                      : (value) =>
+                            setState(() => _notificationsEnabled = value),
+                  title: const Text('Me le rappeler'),
+                  subtitle: Text(
+                    _deadline == null
+                        ? 'Ajoute une échéance pour recevoir un rappel.'
+                        : 'Une notification avant l’échéance.',
                   ),
-                  subtitle: const Text('Utile pour les rendus importants.'),
                 ),
               ),
               Row(
@@ -923,6 +1034,7 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
           title: _titleController.text.trim(),
           description: _cleanOptional(_descriptionController.text),
           category: widget.category,
+          deadline: _deadline,
           notificationsEnabled: _notificationsEnabled,
         ),
       );
@@ -931,6 +1043,37 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
+  }
+
+  Future<void> _pickDeadline() async {
+    final initial =
+        _deadline ??
+        DateTime.now()
+            .add(const Duration(days: 1))
+            .copyWith(hour: 18, minute: 0);
+    final day = await StudyFlowPickers.pickDate(
+      context,
+      initialDate: initial,
+      firstDate: DateUtils.dateOnly(DateTime.now()),
+      helpText: 'Échéance',
+    );
+    if (day == null || !mounted) return;
+    final time = await StudyFlowPickers.pickTime(
+      context,
+      initialTime: TimeOfDay.fromDateTime(initial),
+      title: 'Heure limite',
+    );
+    if (!mounted) return;
+    final picked = time ?? TimeOfDay.fromDateTime(initial);
+    setState(() {
+      _deadline = DateTime(
+        day.year,
+        day.month,
+        day.day,
+        picked.hour,
+        picked.minute,
+      );
+    });
   }
 
   String? _cleanOptional(String value) {
@@ -988,9 +1131,8 @@ class _PersonalEventFormSheetState extends State<_PersonalEventFormSheet> {
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(
-        left: 18,
-        right: 18,
-        top: 18,
+        left: 20,
+        right: 20,
         bottom: MediaQuery.viewInsetsOf(context).bottom + 18,
       ),
       child: Form(
@@ -1000,20 +1142,18 @@ class _PersonalEventFormSheetState extends State<_PersonalEventFormSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  const ProtoIconBox(icon: Icons.event_available_outlined),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ProtoSectionHeading(
-                      overline: _eventOverline(widget.category),
-                      title: _isEditing
-                          ? 'Modifier l’événement'
-                          : 'Nouvel événement',
-                    ),
-                  ),
-                ],
+              ProtoOverline(_eventOverline(widget.category)),
+              const SizedBox(height: 2),
+              Text(
+                _isEditing ? 'Modifier l’événement' : 'Nouvel événement',
+                style: TextStyle(
+                  color: context.sfText,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
+              const SizedBox(height: 12),
+              const ProtoVisibilityBanner(shared: false),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _titleController,
@@ -1046,51 +1186,44 @@ class _PersonalEventFormSheetState extends State<_PersonalEventFormSheet> {
                 maxLines: 3,
               ),
               const SizedBox(height: 12),
-              ProtoCard(
-                margin: EdgeInsets.zero,
-                child: Column(
-                  children: [
-                    _PickerLine(
-                      icon: Icons.calendar_month_outlined,
-                      title: 'Date',
-                      value: _shortDateLabel(_day),
-                      onTap: _pickDay,
-                    ),
-                    const Divider(height: 1, color: AppColors.line),
-                    _PickerLine(
+              ProtoPickerField(
+                icon: Icons.calendar_today_outlined,
+                label: 'Date',
+                value: StudyFlowFormat.longDay(_day),
+                onTap: _pickDay,
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: ProtoPickerField(
                       icon: Icons.schedule_outlined,
-                      title: 'Début',
+                      label: 'Début',
                       value: _formatTime(_startsAt),
                       onTap: () => _pickTime(isStart: true),
                     ),
-                    const Divider(height: 1, color: AppColors.line),
-                    _PickerLine(
-                      icon: Icons.timer_outlined,
-                      title: 'Fin',
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ProtoPickerField(
+                      icon: Icons.schedule,
+                      label: 'Fin',
                       value: _formatTime(_endsAt),
                       onTap: () => _pickTime(isStart: false),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
               const SizedBox(height: 10),
               ProtoCard(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 13,
-                  vertical: 8,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: _notificationsEnabled,
                   onChanged: (value) =>
                       setState(() => _notificationsEnabled = value),
-                  title: const Text(
-                    'Activer le rappel',
-                    style: TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  subtitle: const Text(
-                    'Pratique pour les entretiens, relances ou rendez-vous.',
-                  ),
+                  title: const Text('Me le rappeler'),
+                  subtitle: const Text('Une notification avant le début.'),
                 ),
               ),
               Row(
@@ -1122,11 +1255,10 @@ class _PersonalEventFormSheetState extends State<_PersonalEventFormSheet> {
   }
 
   Future<void> _pickDay() async {
-    final picked = await showDatePicker(
-      context: context,
+    final picked = await StudyFlowPickers.pickDate(
+      context,
       initialDate: _day,
-      firstDate: DateTime.now().subtract(const Duration(days: 30)),
-      lastDate: DateTime.now().add(const Duration(days: 730)),
+      helpText: 'Date de l’événement',
     );
 
     if (picked == null) return;
@@ -1134,18 +1266,19 @@ class _PersonalEventFormSheetState extends State<_PersonalEventFormSheet> {
   }
 
   Future<void> _pickTime({required bool isStart}) async {
-    final picked = await showTimePicker(
-      context: context,
+    final picked = await StudyFlowPickers.pickTime(
+      context,
       initialTime: isStart ? _startsAt : _endsAt,
+      title: isStart ? 'Début' : 'Fin',
     );
 
     if (picked == null) return;
     setState(() {
       if (isStart) {
+        // Décaler le début garde la même durée.
+        final duration = _minutes(_endsAt) - _minutes(_startsAt);
         _startsAt = picked;
-        if (_minutes(_endsAt) <= _minutes(_startsAt)) {
-          _endsAt = _addMinutes(_startsAt, 60);
-        }
+        _endsAt = _addMinutes(picked, duration > 0 ? duration : 60);
       } else {
         _endsAt = picked;
       }
@@ -1230,299 +1363,56 @@ class _PersonalEventFormSheetState extends State<_PersonalEventFormSheet> {
   }
 }
 
-class _PickerLine extends StatelessWidget {
-  const _PickerLine({
-    required this.icon,
-    required this.title,
-    required this.value,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String value;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(icon, color: context.sfIcon),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: context.sfText,
-          fontSize: 11,
-          fontWeight: FontWeight.w900,
-        ),
-      ),
-      trailing: TextButton(onPressed: onTap, child: Text(value)),
-      onTap: onTap,
-    );
-  }
-}
-
-class _HomeworkFormSheet extends StatefulWidget {
-  const _HomeworkFormSheet({this.homework});
-
-  final HomeworkItem? homework;
-
-  @override
-  State<_HomeworkFormSheet> createState() => _HomeworkFormSheetState();
-}
-
-class _HomeworkFormSheetState extends State<_HomeworkFormSheet> {
-  final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
-  final _descriptionController = TextEditingController();
-  late DateTime _deadline;
-  bool _isSaving = false;
-
-  bool get _isEditing => widget.homework != null;
-
-  @override
-  void initState() {
-    super.initState();
-    final homework = widget.homework;
-    _titleController.text = homework?.title ?? '';
-    _descriptionController.text = homework?.description ?? '';
-    _deadline =
-        homework?.deadline ?? DateTime.now().add(const Duration(days: 1));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 18,
-        right: 18,
-        top: 18,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + 18,
-      ),
-      child: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const ProtoIconBox(icon: Icons.assignment_outlined),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ProtoSectionHeading(
-                      overline: 'Classe',
-                      title: _isEditing
-                          ? 'Modifier le devoir'
-                          : 'Nouveau devoir',
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Titre',
-                  prefixIcon: Icon(Icons.title),
-                ),
-                validator: (value) {
-                  return (value ?? '').trim().isEmpty
-                      ? 'Le titre est obligatoire.'
-                      : null;
-                },
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _descriptionController,
-                decoration: const InputDecoration(
-                  labelText: 'Description optionnelle',
-                  prefixIcon: Icon(Icons.notes_outlined),
-                ),
-                minLines: 1,
-                maxLines: 3,
-              ),
-              const SizedBox(height: 12),
-              ProtoCard(
-                margin: EdgeInsets.zero,
-                child: Row(
-                  children: [
-                    const ProtoIconBox(
-                      icon: Icons.event_outlined,
-                      backgroundColor: AppColors.roseSoft,
-                      foregroundColor: AppColors.rose,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Échéance',
-                            style: TextStyle(
-                              color: context.sfText,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          ProtoMutedText(_deadlineLabel(_deadline)),
-                        ],
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: _pickDeadline,
-                      child: const Text('Changer'),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _isSaving
-                          ? null
-                          : () => Navigator.pop(context),
-                      child: const Text('Annuler'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: _isSaving ? null : _save,
-                      child: Text(
-                        _isSaving ? 'Enregistrement...' : 'Enregistrer',
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _pickDeadline() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _deadline,
-      firstDate: DateTime.now().subtract(const Duration(days: 30)),
-      lastDate: DateTime.now().add(const Duration(days: 730)),
-    );
-
-    if (picked == null) return;
-    setState(() {
-      _deadline = DateTime(picked.year, picked.month, picked.day, 18);
-    });
-  }
-
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isSaving = true);
-    final appScope = AppScope.of(context);
-    final accessToken = await appScope.sessionController.accessTokenForApi();
-    final request = CreateHomeworkRequest(
-      title: _titleController.text.trim(),
-      description: _cleanOptional(_descriptionController.text),
-      deadline: _deadline,
-      courseId: widget.homework?.courseId,
-    );
-
-    try {
-      if (widget.homework == null) {
-        await appScope.agendaRepository.createHomework(
-          request: request,
-          accessToken: accessToken,
-        );
-      } else {
-        await appScope.agendaRepository.updateHomework(
-          homeworkId: widget.homework!.id,
-          request: request,
-          accessToken: accessToken,
-        );
-      }
-
-      if (mounted) Navigator.pop(context, true);
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
-  }
-
-  String? _cleanOptional(String value) {
-    final cleaned = value.trim();
-    return cleaned.isEmpty ? null : cleaned;
-  }
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    super.dispose();
-  }
-}
-
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle({
     required this.title,
     required this.count,
-    required this.color,
+    required this.shared,
   });
 
   final String title;
   final int count;
-  final Color color;
+  final bool shared;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = shared ? context.sfShared : context.sfPersonal;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+      padding: const EdgeInsets.fromLTRB(2, 4, 2, 10),
       child: Row(
         children: [
-          Container(
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          Icon(
+            shared ? Icons.groups_2_outlined : Icons.lock_outline,
+            size: 18,
+            color: color,
           ),
-          const SizedBox(width: 7),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
               title,
               style: TextStyle(
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w800,
                 color: context.sfText,
-                fontSize: 14,
+                fontSize: 17,
               ),
             ),
           ),
           Container(
-            constraints: const BoxConstraints(minWidth: 22),
-            height: 22,
+            constraints: const BoxConstraints(minWidth: 26),
+            height: 24,
             alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 6),
             decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.12)
-                  : const Color(0xFFE1EBF0),
+              color: shared ? context.sfSharedSoft : context.sfPersonalSoft,
               borderRadius: BorderRadius.circular(8),
-              border: isDark
-                  ? Border.all(color: Colors.white.withValues(alpha: 0.14))
-                  : null,
             ),
             child: Text(
               '$count',
               style: TextStyle(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.82)
-                    : context.sfMuted,
-                fontSize: 9,
-                fontWeight: FontWeight.w900,
+                color: color,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
@@ -1545,27 +1435,25 @@ class _HomeworkCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final urgent = _isUrgent(homework.deadline);
+    final courseDay = homework.courseDay;
+
     return _AgendaItemShell(
-      color: AppColors.rose,
-      backgroundColor: _isUrgent(homework.deadline)
-          ? AppColors.roseSoft
-          : Colors.white,
-      leading: _DateTile(date: homework.deadline, color: AppColors.roseSoft),
-      label: 'COLLECTIF',
+      onTap: onEdit,
+      shared: true,
+      leading: _DateTile(date: homework.deadline, urgent: urgent),
+      label: homework.subjectName,
       title: homework.title,
-      subtitle:
-          '${_deadlineLabel(homework.deadline)}'
-          '${homework.description == null ? '' : ' · ${homework.description}'}',
-      trailing: Icon(
-        homework.notificationsEnabled
-            ? Icons.notifications_active_outlined
-            : Icons.notifications_off_outlined,
-        size: 18,
-        color: context.sfChevron,
-      ),
+      subtitle: [
+        _deadlineLabel(homework.deadline),
+        if (courseDay != null)
+          'cours du ${StudyFlowFormat.shortDay(courseDay)}',
+        ?homework.description,
+      ].join(' · '),
       isDone: homework.isDone,
       menu: PopupMenuButton<_HomeworkAction>(
         tooltip: 'Actions devoir',
+        icon: Icon(Icons.more_vert, color: context.sfChevron),
         onSelected: (action) {
           switch (action) {
             case _HomeworkAction.edit:
@@ -1586,7 +1474,7 @@ class _HomeworkCard extends StatelessWidget {
   }
 
   bool _isUrgent(DateTime deadline) {
-    return deadline.difference(DateTime.now()).inDays <= 1;
+    return deadline.difference(DateTime.now()).inHours <= 24;
   }
 }
 
@@ -1608,24 +1496,19 @@ class _PersonalEventCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _AgendaItemShell(
-      color: color,
-      backgroundColor: color.withValues(alpha: 0.08),
-      leading: _DateTile(date: event.day, color: AppColors.greenSoft),
+      onTap: onEdit,
+      shared: false,
+      leading: _DateTile(date: event.day),
       label: _eventCategoryLabel(event.category),
       title: event.title,
-      subtitle:
-          '${_eventTimeLabel(event)}'
-          '${event.location == null ? '' : ' · ${event.location}'}'
-          '${event.notes == null ? '' : ' · ${event.notes}'}',
-      trailing: Icon(
-        event.notificationsEnabled
-            ? Icons.notifications_active_outlined
-            : Icons.notifications_off_outlined,
-        size: 18,
-        color: context.sfChevron,
-      ),
+      subtitle: [
+        _eventTimeLabel(event),
+        ?event.location,
+        ?event.notes,
+      ].join(' · '),
       menu: PopupMenuButton<_PersonalEventAction>(
         tooltip: 'Actions événement',
+        icon: Icon(Icons.more_vert, color: context.sfChevron),
         onSelected: (action) {
           switch (action) {
             case _PersonalEventAction.edit:
@@ -1668,40 +1551,49 @@ class _TaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final accent = context.sfPersonal;
+
     return _AgendaItemShell(
       onTap: onOpenDetails,
-      color: color,
+      shared: false,
       leading: InkWell(
         onTap: onToggleDone,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(10),
         child: Container(
           key: ValueKey('task-done-${task.id}'),
-          width: 22,
-          height: 22,
-          margin: const EdgeInsets.only(top: 3),
-          decoration: BoxDecoration(
-            color: task.isDone ? AppColors.green : context.sfCard,
-            borderRadius: BorderRadius.circular(7),
-            border: Border.all(
-              color: task.isDone ? AppColors.green : AppColors.blueGray,
-              width: 2,
+          width: 46,
+          height: 46,
+          alignment: Alignment.center,
+          child: Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: task.isDone ? accent : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: task.isDone ? accent : context.sfMuted,
+                width: 2,
+              ),
             ),
+            child: task.isDone
+                ? Icon(Icons.check, color: context.sfOnAccent, size: 17)
+                : null,
           ),
-          child: task.isDone
-              ? const Icon(Icons.check, color: Colors.white, size: 14)
-              : null,
         ),
       ),
       label: _taskCategoryLabel(task.category),
       title: task.title,
-      subtitle:
-          '${task.deadline == null ? 'Sans échéance' : _deadlineLabel(task.deadline!)}'
-          '${task.description == null ? '' : ' · ${task.description}'}',
-      trailing: IconButton(
+      subtitle: [
+        task.deadline == null
+            ? 'Sans échéance'
+            : _deadlineLabel(task.deadline!),
+        ?task.description,
+      ].join(' · '),
+      menu: IconButton(
         key: ValueKey('task-delete-${task.id}'),
         tooltip: 'Supprimer',
         onPressed: onDelete,
-        icon: const Icon(Icons.more_horiz),
+        icon: const Icon(Icons.delete_outline),
         color: context.sfChevron,
       ),
       isDone: task.isDone,
@@ -1712,97 +1604,119 @@ class _TaskCard extends StatelessWidget {
 class _AgendaItemShell extends StatelessWidget {
   const _AgendaItemShell({
     required this.leading,
-    required this.label,
     required this.title,
     required this.subtitle,
-    required this.trailing,
-    required this.color,
-    this.backgroundColor = Colors.white,
+    required this.shared,
+    required this.menu,
+    this.label,
     this.isDone = false,
     this.onTap,
-    this.menu,
   });
 
   final Widget leading;
-  final String label;
+  final String? label;
   final String title;
   final String subtitle;
-  final Widget trailing;
-  final Color color;
-  final Color backgroundColor;
+  final bool shared;
   final bool isDone;
   final VoidCallback? onTap;
-  final Widget? menu;
+  final Widget menu;
 
   @override
   Widget build(BuildContext context) {
+    final color = shared ? context.sfShared : context.sfPersonal;
+
     return ProtoCard(
       onTap: onTap,
-      backgroundColor: backgroundColor,
-      padding: const EdgeInsets.fromLTRB(10, 13, 8, 13),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          leading,
-          const SizedBox(width: 10),
-          Expanded(
-            child: Opacity(
-              opacity: isDone ? 0.55 : 1,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      ProtoChip(
-                        label: label,
-                        backgroundColor: color.withValues(alpha: 0.14),
-                        foregroundColor: color,
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: EdgeInsets.zero,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Liseré de couleur : bleu pour la classe, vert pour le perso.
+            Container(width: 4, color: color),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(10, 12, 4, 12),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    leading,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Opacity(
+                        opacity: isDone ? 0.55 : 1,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 4,
+                              children: [
+                                ProtoVisibilityChip(shared: shared),
+                                if (label case final text?)
+                                  ProtoChip(
+                                    label: text,
+                                    backgroundColor: context.sfSoftCard,
+                                    foregroundColor: context.sfText,
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              title,
+                              style: TextStyle(
+                                color: context.sfText,
+                                fontSize: 16,
+                                height: 1.3,
+                                fontWeight: FontWeight.w700,
+                                decoration: isDone
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            ProtoMutedText(subtitle, maxLines: 2),
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 7),
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: context.sfText,
-                      fontSize: 12,
-                      height: 1.3,
-                      fontWeight: FontWeight.w900,
-                      decoration: isDone ? TextDecoration.lineThrough : null,
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  ProtoMutedText(subtitle, maxLines: 2),
-                ],
+                    menu,
+                  ],
+                ),
               ),
             ),
-          ),
-          menu ?? trailing,
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
 class _DateTile extends StatelessWidget {
-  const _DateTile({required this.date, required this.color});
+  const _DateTile({required this.date, this.urgent = false});
 
   final DateTime date;
-  final Color color;
+  final bool urgent;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark && color.computeLuminance() > 0.72
-        ? AppColors.petrolDark
+    final background = urgent
+        ? (context.sfIsDark
+              ? AppColors.rose.withValues(alpha: 0.22)
+              : AppColors.roseSoft)
+        : context.sfSoftCard;
+    final textColor = urgent && !context.sfIsDark
+        ? const Color(0xFF8D5C66)
         : context.sfText;
 
     return Container(
-      width: 45,
-      height: 51,
+      width: 46,
+      height: 50,
       decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(13),
+        color: background,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1811,8 +1725,8 @@ class _DateTile extends StatelessWidget {
             '${date.day}'.padLeft(2, '0'),
             style: TextStyle(
               color: textColor,
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
               height: 1,
             ),
           ),
@@ -1820,9 +1734,9 @@ class _DateTile extends StatelessWidget {
           Text(
             _monthLabel(date),
             style: TextStyle(
-              color: textColor.withValues(alpha: 0.78),
-              fontSize: 8,
-              fontWeight: FontWeight.w900,
+              color: textColor.withValues(alpha: 0.75),
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ],
@@ -1832,16 +1746,17 @@ class _DateTile extends StatelessWidget {
 }
 
 class _EmptyCard extends StatelessWidget {
-  const _EmptyCard({required this.text});
+  const _EmptyCard({required this.text, required this.message});
 
   final String text;
+  final String message;
 
   @override
   Widget build(BuildContext context) {
     return ProtoStateCard(
       icon: Icons.inbox_outlined,
       title: text,
-      message: 'Ajoute un élément quand tu veux reprendre le fil.',
+      message: message,
       compact: true,
     );
   }
@@ -1914,18 +1829,18 @@ String _monthLabel(DateTime date) {
   return months[date.month - 1];
 }
 
-String _taskCategoryLabel(String category) {
+String? _taskCategoryLabel(String category) {
   return switch (category) {
-    'company' => 'ENTREPRISE',
-    'apprenticeship' => 'ALTERNANCE',
-    _ => 'PERSONNEL',
+    'company' => 'Entreprise',
+    'apprenticeship' => 'Alternance',
+    _ => null,
   };
 }
 
-String _eventCategoryLabel(String category) {
+String? _eventCategoryLabel(String category) {
   return switch (category) {
-    'company' => 'RENDEZ-VOUS ENTREPRISE',
-    'apprenticeship' => 'PLANNING ALTERNANCE',
-    _ => 'ÉVÉNEMENT PERSO',
+    'company' => 'Entreprise',
+    'apprenticeship' => 'Alternance',
+    _ => null,
   };
 }

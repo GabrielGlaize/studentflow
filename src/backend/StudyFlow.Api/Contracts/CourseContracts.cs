@@ -12,6 +12,9 @@ public sealed record CourseRequest(
     bool IsCancelled = false,
     Guid? SeriesId = null);
 
+public sealed record CourseBatchRequest(
+    [MaxLength(120, ErrorMessage = "120 cours maximum en une fois.")] IReadOnlyCollection<CourseRequest> Courses);
+
 public sealed record CourseUpdateRequest(
     Guid SubjectId,
     Guid? TeacherId,

@@ -390,7 +390,7 @@ class _CompanyMetric extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: metricText,
-              fontSize: 11,
+              fontSize: 13,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -401,7 +401,7 @@ class _CompanyMetric extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: metricMuted,
-              fontSize: 8,
+              fontSize: 11,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -561,7 +561,7 @@ class _DocumentTile extends StatelessWidget {
                     document.title,
                     style: TextStyle(
                       color: context.sfText,
-                      fontSize: 10,
+                      fontSize: 13,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -840,7 +840,7 @@ class _ContactTile extends StatelessWidget {
                   contact.name,
                   style: TextStyle(
                     color: context.sfText,
-                    fontSize: 10,
+                    fontSize: 13,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -1017,7 +1017,7 @@ class _CompanyActionCard extends StatelessWidget {
                   title,
                   style: TextStyle(
                     color: context.sfText,
-                    fontSize: 11,
+                    fontSize: 13,
                     fontWeight: FontWeight.w900,
                   ),
                 ),

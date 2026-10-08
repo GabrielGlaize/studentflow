@@ -85,7 +85,7 @@ class _LoginPageState extends State<LoginPage> {
                           'Connexion',
                           style: TextStyle(
                             color: AppColors.petrol,
-                            fontSize: 10,
+                            fontSize: 13,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
@@ -104,7 +104,7 @@ class _LoginPageState extends State<LoginPage> {
                                 color: isDark
                                     ? Colors.white70
                                     : AppColors.muted,
-                                fontSize: 10,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
@@ -214,7 +214,7 @@ class _LoginPageState extends State<LoginPage> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: context.sfText,
-                      fontSize: 10,
+                      fontSize: 13,
                       fontWeight: FontWeight.w700,
                       height: 1.4,
                     ),
@@ -403,7 +403,7 @@ class _PasswordResetSheetState extends State<_PasswordResetSheet> {
                     style: TextStyle(
                       color: context.sfText,
                       fontWeight: FontWeight.w700,
-                      fontSize: 11,
+                      fontSize: 13,
                     ),
                   ),
                 ),

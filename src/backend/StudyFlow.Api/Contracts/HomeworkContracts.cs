@@ -24,6 +24,8 @@ public sealed record HomeworkResponse(
     string? Description,
     DateTimeOffset Deadline,
     Guid? CourseId,
+    string? SubjectName,
+    DateOnly? CourseDay,
     bool IsDone,
     bool NotificationsEnabled,
     DateTimeOffset? CompletedAt,
