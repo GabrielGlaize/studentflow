@@ -161,6 +161,16 @@ abstract final class StudyFlowFormat {
     return '${weekday[0].toUpperCase()}${weekday.substring(1)} ${day.day} ${_months[day.month - 1]}';
   }
 
+  /// « Octobre 2026 ».
+  static String monthYear(DateTime day) {
+    final month = _months[day.month - 1];
+    return '${month[0].toUpperCase()}${month.substring(1)} ${day.year}';
+  }
+
+  /// « lun. », « mar. »…
+  static String weekdayShort(DateTime day) =>
+      '${_weekdays[day.weekday - 1].substring(0, 3)}.';
+
   /// « lun. 12/10 ».
   static String shortDay(DateTime day) {
     final weekday = _weekdays[day.weekday - 1].substring(0, 3);

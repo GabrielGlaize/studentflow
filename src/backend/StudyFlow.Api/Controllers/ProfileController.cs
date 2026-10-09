@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using StudyFlow.Api.Contracts;
+using StudyFlow.Application.Time;
 using StudyFlow.Domain.Notifications;
 using StudyFlow.Domain.Users;
 using StudyFlow.Infrastructure.Identity;
@@ -15,7 +16,8 @@ namespace StudyFlow.Api.Controllers;
 [Route("api/v1/profile")]
 public sealed class ProfileController(
     UserManager<ApplicationUser> userManager,
-    StudyFlowDbContext dbContext) : StudyFlowControllerBase(userManager)
+    StudyFlowDbContext dbContext,
+    ISchoolClock clock) : StudyFlowControllerBase(userManager)
 {
     private static readonly int[] AllowedCourseReminderMinutes = [0, 5, 10, 15, 30, 60];
 
@@ -88,10 +90,7 @@ public sealed class ProfileController(
         }
 
         var settings = await GetOrCreateNotificationSettingsAsync(user.Id, cancellationToken);
-        settings.CoursesEnabled = request.CoursesEnabled;
-        settings.HomeworkEnabled = request.HomeworkEnabled;
-        settings.ApprenticeshipsEnabled = request.ApprenticeshipsEnabled;
-        settings.CourseReminderMinutes = request.CourseReminderMinutes;
+        NotificationSettingsMapper.Apply(settings, request, clock.UtcNow);
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return Ok(ToNotificationSettingsResponse(settings));
@@ -163,11 +162,8 @@ public sealed class ProfileController(
         settings.CompanyName,
         settings.ProfessionalMode.ToString().ToLowerInvariant());
 
-    private static NotificationSettingsResponse ToNotificationSettingsResponse(NotificationPreference settings) => new(
-        settings.CoursesEnabled,
-        settings.HomeworkEnabled,
-        settings.ApprenticeshipsEnabled,
-        settings.CourseReminderMinutes);
+    private NotificationSettingsResponse ToNotificationSettingsResponse(NotificationPreference settings) =>
+        NotificationSettingsMapper.ToResponse(settings, clock.UtcNow);
 
     private static string? CleanOptional(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();

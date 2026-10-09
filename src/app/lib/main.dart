@@ -35,6 +35,8 @@ import 'package:studyflow_app/features/company/application/company_documents_con
 import 'package:studyflow_app/features/dashboard/data/dashboard_repository.dart';
 import 'package:studyflow_app/features/dashboard/data/demo_dashboard_repository.dart';
 import 'package:studyflow_app/features/dashboard/data/http_dashboard_repository.dart';
+import 'package:studyflow_app/features/notes/data/daily_note_repository.dart';
+import 'package:studyflow_app/features/notes/application/daily_notes_controller.dart';
 import 'package:studyflow_app/features/exams/data/demo_exam_repository.dart';
 import 'package:studyflow_app/features/exams/data/exam_repository.dart';
 import 'package:studyflow_app/features/exams/data/http_exam_repository.dart';
@@ -110,6 +112,7 @@ class _StudyFlowAppState extends State<StudyFlowApp>
   late final AppSettingsController _settingsController;
   late final CompanyContactsController _companyContactsController;
   late final CompanyDocumentsController _companyDocumentsController;
+  late final DailyNotesController _dailyNotesController;
   late final LocalNotificationScheduler _notificationScheduler;
 
   // Un seul client HTTP partagé, créé une fois : avant, chaque reconstruction
@@ -150,6 +153,17 @@ class _StudyFlowAppState extends State<StudyFlowApp>
     );
     _apiClient = ApiClient(baseUrl: ApiConfig.baseUrlFor(widget.environment))
       ..onAccessTokenRejected = _sessionController.renewRejectedAccessToken;
+    final demoNotes = _useDemoRepository(_useDemoAuthOverride);
+    _dailyNotesController = DailyNotesController(
+      // Mode démo : carnet en mémoire et sans serveur, comme la session.
+      storage: demoNotes ? MemoryDailyNotesStorage() : FileDailyNotesStorage(),
+      repository: demoNotes
+          ? null
+          : HttpDailyNoteRepository(apiClient: _apiClient),
+      accessToken: _sessionController.accessTokenForApi,
+    );
+    // Heure du rappel du soir : réglée dans les paramètres.
+    _settingsController.addListener(_applyNoteReminderTime);
     _agendaRepository = _buildAgendaRepository();
     _classAnnouncementRepository = _buildClassAnnouncementRepository();
     _apprenticeshipRepository = _buildApprenticeshipRepository();
@@ -177,6 +191,10 @@ class _StudyFlowAppState extends State<StudyFlowApp>
       agendaRepository: _agendaRepository,
       scheduler: _notificationScheduler,
       deliveredByPush: () => _pushNotifications.isRegistered,
+      localReminders: () => [
+        if (_settingsController.dailyNoteReminderEnabled)
+          ?_dailyNotesController.eveningReminder(DateTime.now()),
+      ],
       autoSync: !_useDemoRepository(_useDemoAgendaOverride),
     );
     // Connexion, déconnexion ou changement de compte : on reprogramme.
@@ -187,6 +205,7 @@ class _StudyFlowAppState extends State<StudyFlowApp>
     unawaited(_settingsController.restore());
     unawaited(_companyContactsController.restore());
     unawaited(_companyDocumentsController.restore());
+    unawaited(_dailyNotesController.restore());
   }
 
   @override
@@ -204,6 +223,7 @@ class _StudyFlowAppState extends State<StudyFlowApp>
           classResourceRepository: _classResourceRepository,
           companyContactsController: _companyContactsController,
           companyDocumentsController: _companyDocumentsController,
+          dailyNotesController: _dailyNotesController,
           dashboardRepository: _dashboardRepository,
           appPreferencesRepository: _appPreferencesRepository,
           notificationPreferencesRepository: _notificationPreferencesRepository,
@@ -235,7 +255,10 @@ class _StudyFlowAppState extends State<StudyFlowApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     // Au retour dans l'app, la classe a pu ajouter ou déplacer des cours.
-    if (state == AppLifecycleState.resumed) _reminderSync.requestSync();
+    if (state != AppLifecycleState.resumed) return;
+    _reminderSync.requestSync();
+    // Notes écrites sur un autre appareil, ou restées en attente hors ligne.
+    unawaited(_dailyNotesController.sync());
   }
 
   void _syncRemindersOnSessionChange() {
@@ -246,16 +269,25 @@ class _StudyFlowAppState extends State<StudyFlowApp>
     }
     _syncedUserId = userId;
     _reminderSync.requestSync();
+    // Le carnet suit le compte : vidé à la déconnexion, synchronisé ensuite.
+    unawaited(_dailyNotesController.attachUser(userId));
+  }
+
+  void _applyNoteReminderTime() {
+    _dailyNotesController.reviewMinutes =
+        _settingsController.dailyNoteReminderMinutes;
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _sessionController.removeListener(_syncRemindersOnSessionChange);
+    _settingsController.removeListener(_applyNoteReminderTime);
     _sessionController.dispose();
     _settingsController.dispose();
     _companyContactsController.dispose();
     _companyDocumentsController.dispose();
+    _dailyNotesController.dispose();
     if (_notificationScheduler is ChangeNotifier) {
       (_notificationScheduler as ChangeNotifier).dispose();
     }

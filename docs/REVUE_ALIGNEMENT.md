@@ -19,7 +19,7 @@ Ce document sert de garde-fou entre trois sources :
 - Le Web public Alternances peut appeler l’API publique puis utiliser un fallback de démonstration si le backend n’est pas disponible.
 - Les notifications locales natives sont branchées côté Flutter pour les rappels calculés.
 - Le backend d’alternance peut agréger La Bonne Alternance, Adzuna et France Travail selon les clés configurées.
-- Le lancement iPhone est automatisé par `scripts/run_iphone_developer.sh` pour éviter les erreurs récurrentes de codesign liées aux attributs macOS.
+- Le lancement iPhone est automatisé par `scripts/install_app.sh` pour éviter les erreurs récurrentes de codesign liées aux attributs macOS.
 - La sécurité backend est alignée avec les remarques de revue : DataProtection persistée, clés locales dans `.env`, CORS limité, rate limiting auth, headers HTTP et mot de passe avec caractère spécial.
 - La palette, les cartes arrondies, les états vides, les badges et les chargements utilisent la direction artistique du prototype HTML.
 

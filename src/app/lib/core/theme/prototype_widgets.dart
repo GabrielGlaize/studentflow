@@ -170,8 +170,12 @@ class ProtoScreenTitle extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
+                // Deux lignes au plus : avec un bouton à droite (ou un grand
+                // texte d'accessibilité), l'en-tête ne mange pas l'écran.
                 Text(
                   subtitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: context.sfMuted,
                     fontSize: 14,

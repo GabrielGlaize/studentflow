@@ -7,7 +7,11 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:studyflow_app/core/app_scope.dart';
 import 'package:studyflow_app/core/theme/app_colors.dart';
+import 'package:studyflow_app/core/settings/app_settings_controller.dart';
+import 'package:studyflow_app/core/settings/quiet_hours.dart';
 import 'package:studyflow_app/core/theme/prototype_widgets.dart';
+import 'package:studyflow_app/core/widgets/date_time_pickers.dart';
+import 'package:studyflow_app/core/widgets/image_crop_page.dart';
 import 'package:studyflow_app/features/classes/domain/class_models.dart';
 import 'package:studyflow_app/features/classes/presentation/class_resources_page.dart';
 import 'package:studyflow_app/features/classes/domain/class_resource_models.dart';
@@ -23,6 +27,7 @@ part 'profile_student_card.dart';
 part 'profile_class_management.dart';
 part 'profile_class_sheets.dart';
 part 'profile_class_resources.dart';
+part 'profile_settings_page.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -52,13 +57,26 @@ class ProfilePage extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(18, 24, 18, 112),
             children: [
-              Text(
-                'Profil et réglages',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: isDark ? Colors.white : AppColors.petrol,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -1.2,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Profil',
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            color: isDark ? Colors.white : AppColors.petrol,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -1.2,
+                          ),
+                    ),
+                  ),
+                  IconButton.filledTonal(
+                    key: const ValueKey('open-settings-button'),
+                    tooltip: 'Paramètres',
+                    onPressed: () => ProfileSettingsPage.open(context),
+                    icon: const Icon(Icons.settings_outlined),
+                  ),
+                ],
               ),
               const SizedBox(height: 14),
               _ProfileCard(
@@ -75,153 +93,17 @@ class ProfilePage extends StatelessWidget {
                 onDelete: studentCardId == null
                     ? null
                     : () => _deleteStudentCard(context, studentCard!),
+                onRecrop: studentCardId == null
+                    ? null
+                    : () => _recropStudentCard(context, studentCard!),
               ),
               const _AppPreferencesLoader(),
               const _NotificationPreferencesLoader(),
               _ClassManagementSection(isDelegate: user?.isDelegate == true),
               const SizedBox(height: 4),
-              const _SettingsGroupTitle(title: 'Préférences'),
-              _SettingsGroup(
-                children: [
-                  _SwitchSettingLine(
-                    icon: Icons.notifications_active_outlined,
-                    iconColor: AppColors.sky,
-                    title: 'Notifications de cours',
-                    subtitle: 'Recevoir les rappels avant les cours.',
-                    value: settingsController.courseNotificationsEnabled,
-                    onChanged: (value) {
-                      settingsController.setCourseNotificationsEnabled(value);
-                      _syncNotificationPreferences(context);
-                    },
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 6, 14, 14),
-                    child: DropdownButtonFormField<int>(
-                      initialValue: settingsController.courseReminderMinutes,
-                      decoration: const InputDecoration(
-                        labelText: 'Rappel avant un cours',
-                        prefixIcon: Icon(Icons.schedule_outlined),
-                      ),
-                      items: const [
-                        DropdownMenuItem(value: 0, child: Text('À l’heure')),
-                        DropdownMenuItem(value: 5, child: Text('5 minutes')),
-                        DropdownMenuItem(value: 10, child: Text('10 minutes')),
-                        DropdownMenuItem(value: 15, child: Text('15 minutes')),
-                        DropdownMenuItem(value: 30, child: Text('30 minutes')),
-                        DropdownMenuItem(value: 60, child: Text('1 heure')),
-                      ],
-                      onChanged: settingsController.courseNotificationsEnabled
-                          ? (value) {
-                              if (value == null) return;
-                              settingsController.setCourseReminderMinutes(
-                                value,
-                              );
-                              _syncNotificationPreferences(context);
-                            }
-                          : null,
-                    ),
-                  ),
-                  _SwitchSettingLine(
-                    icon: Icons.assignment_outlined,
-                    iconColor: AppColors.mint,
-                    title: 'Notifications de devoirs',
-                    subtitle: 'Recevoir les rappels avant les rendus.',
-                    value: settingsController.homeworkNotificationsEnabled,
-                    onChanged: (value) {
-                      settingsController.setHomeworkNotificationsEnabled(value);
-                      _syncNotificationPreferences(context);
-                    },
-                  ),
-                  if (!settingsController.hasCompany)
-                    _SwitchSettingLine(
-                      icon: Icons.business_center_outlined,
-                      iconColor: AppColors.greenSoft,
-                      title: 'Notifications alternance',
-                      subtitle: 'Recevoir les rappels liés à ta recherche.',
-                      value:
-                          settingsController.apprenticeshipNotificationsEnabled,
-                      onChanged: (value) {
-                        settingsController
-                            .setApprenticeshipNotificationsEnabled(value);
-                        _syncNotificationPreferences(context);
-                      },
-                    ),
-                  _SwitchSettingLine(
-                    key: const ValueKey('has-company-switch-line'),
-                    switchKey: const ValueKey('has-company-switch'),
-                    icon: Icons.work_outline,
-                    iconColor: AppColors.greenSoft,
-                    title: 'J’ai une entreprise',
-                    subtitle:
-                        'Transforme l’onglet Alternance en espace Entreprise.',
-                    value: settingsController.hasCompany,
-                    onChanged: (value) {
-                      settingsController.setHasCompany(value);
-                      _syncAppPreferences(context);
-                    },
-                  ),
-                ],
-              ),
-              const _ScheduledRemindersCard(),
-              const SizedBox(height: 12),
-              const _SettingsGroupTitle(title: 'Application'),
-              _SettingsGroup(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-                    child: DropdownButtonFormField<ThemeMode>(
-                      initialValue: settingsController.themeMode,
-                      decoration: const InputDecoration(
-                        labelText: 'Apparence',
-                        prefixIcon: Icon(Icons.contrast),
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: ThemeMode.system,
-                          child: Text('Système'),
-                        ),
-                        DropdownMenuItem(
-                          value: ThemeMode.light,
-                          child: Text('Clair'),
-                        ),
-                        DropdownMenuItem(
-                          value: ThemeMode.dark,
-                          child: Text('Sombre'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        if (value == null) return;
-                        settingsController.setThemeMode(value);
-                        _syncAppPreferences(context);
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF8D5C66),
-                  backgroundColor: AppColors.roseSoft,
-                  side: const BorderSide(color: Color(0xFFD9BDC3)),
-                  minimumSize: const Size.fromHeight(46),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                ),
-                onPressed: sessionController.logout,
-                icon: const Icon(Icons.logout),
-                label: const Text('Se déconnecter'),
-              ),
-              const SizedBox(height: 8),
-              TextButton.icon(
-                style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFFB35C68),
-                  minimumSize: const Size.fromHeight(42),
-                ),
-                onPressed: () => _confirmDeleteAccount(context),
-                icon: const Icon(Icons.delete_forever_outlined),
-                label: const Text('Supprimer mon compte'),
+              _SettingsEntry(
+                onOpen: () => ProfileSettingsPage.open(context),
+                quietHours: settingsController.quietHours,
               ),
               const SizedBox(height: 12),
               Text(
@@ -240,10 +122,9 @@ class ProfilePage extends StatelessWidget {
     BuildContext context,
     CompanyDocument? previous,
   ) async {
-    final controller = AppScope.of(context).companyDocumentsController;
     final String? relativePath;
     try {
-      relativePath = await StudentCardStore.importPhoto();
+      relativePath = await StudentCardStore.importPhoto(context);
     } on Exception {
       if (context.mounted) {
         ScaffoldMessenger.of(context)
@@ -254,11 +135,28 @@ class ProfilePage extends StatelessWidget {
       }
       return;
     }
-    if (relativePath == null) return;
+    if (relativePath == null || !context.mounted) return;
+    _replaceStudentCard(context, previous, relativePath);
+  }
 
+  Future<void> _recropStudentCard(
+    BuildContext context,
+    CompanyDocument card,
+  ) async {
+    final relativePath = await StudentCardStore.recrop(context, card.filePath);
+    if (relativePath == null || !context.mounted) return;
+    _replaceStudentCard(context, card, relativePath);
+  }
+
+  void _replaceStudentCard(
+    BuildContext context,
+    CompanyDocument? previous,
+    String relativePath,
+  ) {
+    final controller = AppScope.of(context).companyDocumentsController;
     if (previous != null) {
       controller.deleteDocument(previous.id);
-      await StudentCardStore.delete(previous.filePath);
+      unawaited(StudentCardStore.delete(previous.filePath));
     }
     controller.addDocument(
       title: 'Carte étudiante',
@@ -319,44 +217,45 @@ class ProfilePage extends StatelessWidget {
       ),
     );
   }
+}
 
-  Future<void> _confirmDeleteAccount(BuildContext context) async {
-    final shouldDelete = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Supprimer le compte ?'),
-        content: const Text(
-          'Ton compte sera désactivé et tu seras déconnecté. Cette action est réservée aux tests pour l’instant.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Annuler'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFB35C68),
-            ),
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Supprimer'),
-          ),
-        ],
+Future<void> _confirmDeleteAccount(BuildContext context) async {
+  final shouldDelete = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('Supprimer le compte ?'),
+      content: const Text(
+        'Ton compte sera désactivé et tu seras déconnecté. Cette action est réservée aux tests pour l’instant.',
       ),
-    );
-    if (shouldDelete != true || !context.mounted) return;
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, false),
+          child: const Text('Annuler'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFFB35C68),
+          ),
+          onPressed: () => Navigator.pop(dialogContext, true),
+          child: const Text('Supprimer'),
+        ),
+      ],
+    ),
+  );
+  if (shouldDelete != true || !context.mounted) return;
 
-    try {
-      await AppScope.of(context).sessionController.deleteAccount();
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context)
-        ..clearSnackBars()
-        ..showSnackBar(const SnackBar(content: Text('Compte supprimé.')));
-    } on Exception catch (error) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context)
-        ..clearSnackBars()
-        ..showSnackBar(SnackBar(content: Text(error.toString())));
-    }
+  final sessionController = AppScope.of(context).sessionController;
+  final messenger = ScaffoldMessenger.of(context);
+  Navigator.of(context).popUntil((route) => route.isFirst);
+  try {
+    await sessionController.deleteAccount();
+    messenger
+      ..clearSnackBars()
+      ..showSnackBar(const SnackBar(content: Text('Compte supprimé.')));
+  } on Exception catch (error) {
+    messenger
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(content: Text(error.toString())));
   }
 }
 

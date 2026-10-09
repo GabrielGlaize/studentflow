@@ -44,8 +44,12 @@ class ReminderPlanner {
           .map(_eventReminder),
     ];
 
+    // Ne pas déranger : rien pendant la plage calme ni pendant une pause.
     return reminders
         .where((reminder) => reminder.scheduledAt.isAfter(referenceTime))
+        .where(
+          (reminder) => !settings.quietHours.isQuietAt(reminder.scheduledAt),
+        )
         .toList()
       ..sort((left, right) => left.scheduledAt.compareTo(right.scheduledAt));
   }

@@ -53,6 +53,7 @@ public sealed class AccountDeletionService(
         // Données strictement personnelles : elles disparaissent avec le compte.
         await dbContext.PersonalTasks.Where(x => x.UserId == userId).ExecuteDeleteAsync(cancellationToken);
         await dbContext.PersonalEvents.Where(x => x.UserId == userId).ExecuteDeleteAsync(cancellationToken);
+        await dbContext.DailyNotes.Where(x => x.UserId == userId).ExecuteDeleteAsync(cancellationToken);
         await dbContext.HomeworkProgressItems.IgnoreQueryFilters().Where(x => x.UserId == userId).ExecuteDeleteAsync(cancellationToken);
         await dbContext.ApprenticeshipSearches.Where(x => x.UserId == userId).ExecuteDeleteAsync(cancellationToken);
         await dbContext.FavoriteOffers.Where(x => x.UserId == userId).ExecuteDeleteAsync(cancellationToken);

@@ -40,6 +40,7 @@ void main() {
       title: ' Dossier StudyFlow ',
       description: ' Rendre le PDF ',
       deadline: DateTime.utc(2026, 6, 30, 18),
+      isEvaluation: true,
     );
 
     expect(request.toJson(), {
@@ -47,6 +48,7 @@ void main() {
       'description': 'Rendre le PDF',
       'deadline': '2026-06-30T18:00:00.000Z',
       'courseId': null,
+      'isEvaluation': true,
     });
   });
 }

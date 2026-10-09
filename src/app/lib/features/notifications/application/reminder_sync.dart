@@ -26,8 +26,10 @@ class ReminderSync {
     required AgendaRepository agendaRepository,
     required LocalNotificationScheduler scheduler,
     required bool Function() deliveredByPush,
+    List<ScheduledReminder> Function()? localReminders,
     this.autoSync = true,
-  }) : _sessionController = sessionController,
+  }) : _localReminders = localReminders ?? _none,
+       _sessionController = sessionController,
        _settingsController = settingsController,
        _courseRepository = courseRepository,
        _agendaRepository = agendaRepository,
@@ -43,6 +45,12 @@ class ReminderSync {
   final AgendaRepository _agendaRepository;
   final LocalNotificationScheduler _scheduler;
   final bool Function() _deliveredByPush;
+
+  /// Rappels propres au téléphone (note du soir), programmés même quand les
+  /// autres arrivent par push.
+  final List<ScheduledReminder> Function() _localReminders;
+
+  static List<ScheduledReminder> _none() => const [];
 
   /// Désactivé en mode démo : rien à programmer pour de faux comptes.
   final bool autoSync;
@@ -87,8 +95,15 @@ class ReminderSync {
     }
 
     final reminders = await plan();
-    await _scheduler.replaceAll(deliveredByPush ? const [] : reminders);
-    return reminders;
+    final now = DateTime.now();
+    final quietHours = _settingsController.quietHours;
+    final local = _localReminders()
+        .where((reminder) => reminder.scheduledAt.isAfter(now))
+        .where((reminder) => !quietHours.isQuietAt(reminder.scheduledAt))
+        .toList();
+    await _scheduler.replaceAll([if (!deliveredByPush) ...reminders, ...local]);
+    return [...reminders, ...local]
+      ..sort((left, right) => left.scheduledAt.compareTo(right.scheduledAt));
   }
 
   Future<List<ScheduledReminder>> plan() async {

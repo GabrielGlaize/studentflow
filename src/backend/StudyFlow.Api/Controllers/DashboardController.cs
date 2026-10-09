@@ -219,7 +219,8 @@ public sealed class DashboardController(
         homework.ProgressItems.SingleOrDefault()?.CompletedAt,
         homework.CreatedAt,
         homework.UpdatedAt,
-        homework.ProgressItems.SingleOrDefault()?.ReminderMinutesBefore ?? ReminderDefaults.HomeworkMinutes);
+        homework.ProgressItems.SingleOrDefault()?.ReminderMinutesBefore ?? ReminderDefaults.HomeworkMinutes,
+        homework.IsEvaluation);
 
     private static PersonalTaskResponse ToPersonalTaskResponse(PersonalTask task) => new(
         task.Id,

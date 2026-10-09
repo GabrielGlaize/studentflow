@@ -8,10 +8,12 @@ class _StudentCardSection extends StatelessWidget {
     required this.onImport,
     required this.onOpen,
     required this.onDelete,
+    required this.onRecrop,
   });
 
   final CompanyDocument? document;
   final VoidCallback onImport;
+  final VoidCallback? onRecrop;
   final VoidCallback? onOpen;
   final VoidCallback? onDelete;
 
@@ -45,7 +47,7 @@ class _StudentCardSection extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   const ProtoMutedText(
-                    'Choisis une photo : elle reste sur ton téléphone, prête à montrer.',
+                    'Choisis une photo et cadre-la : elle reste sur ton téléphone, prête à montrer.',
                   ),
                 ],
               ),
@@ -103,6 +105,13 @@ class _StudentCardSection extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
+              IconButton.outlined(
+                key: const ValueKey('student-card-recrop'),
+                tooltip: 'Recadrer',
+                onPressed: onRecrop,
+                icon: const Icon(Icons.crop),
+              ),
+              const SizedBox(width: 4),
               IconButton.outlined(
                 tooltip: 'Remplacer la photo',
                 onPressed: onImport,
@@ -179,7 +188,7 @@ class _StudentCardViewer extends StatelessWidget {
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
         title: const Text('Carte étudiante'),
-        titleTextStyle: const TextStyle(
+        titleTextStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
           color: Colors.white,
           fontSize: 18,
           fontWeight: FontWeight.w700,
@@ -206,26 +215,62 @@ class _StudentCardViewer extends StatelessWidget {
 abstract final class StudentCardStore {
   static const _folder = 'student-card';
 
-  static Future<String?> importPhoto() async {
+  /// Choisit une photo, la fait recadrer au format carte puis l'enregistre.
+  /// L'original est gardé à côté pour pouvoir recadrer plus tard sans perte.
+  static Future<String?> importPhoto(BuildContext context) async {
     final result = await FilePicker.platform.pickFiles(
       allowMultiple: false,
       type: FileType.image,
     );
-    final picked = result?.files.firstOrNull;
-    final sourcePath = picked?.path;
-    if (picked == null || sourcePath == null) return null;
+    final sourcePath = result?.files.firstOrNull?.path;
+    if (sourcePath == null || !context.mounted) return null;
 
-    final directory = Directory(
-      '${(await getApplicationDocumentsDirectory()).path}/$_folder',
+    final original = await File(sourcePath).readAsBytes();
+    if (!context.mounted) return null;
+    return _cropAndStore(context, original);
+  }
+
+  /// Recadre à nouveau la carte, à partir de la photo d'origine si elle existe.
+  static Future<String?> recrop(
+    BuildContext context,
+    String? storedPath,
+  ) async {
+    final source =
+        await resolve(_originalPathOf(storedPath)) ?? await resolve(storedPath);
+    if (source == null || !context.mounted) return null;
+
+    final original = await source.readAsBytes();
+    if (!context.mounted) return null;
+    return _cropAndStore(context, original);
+  }
+
+  static Future<String?> _cropAndStore(
+    BuildContext context,
+    Uint8List original,
+  ) async {
+    final cropped = await ImageCropPage.open(
+      context,
+      bytes: original,
+      title: 'Cadrer la carte',
     );
-    await directory.create(recursive: true);
-    final extension = picked.extension?.toLowerCase() ?? 'jpg';
+    if (cropped == null) return null;
+
+    final root = (await getApplicationDocumentsDirectory()).path;
+    await Directory('$root/$_folder').create(recursive: true);
     final relativePath =
-        '$_folder/carte-${DateTime.now().millisecondsSinceEpoch}.$extension';
+        '$_folder/carte-${DateTime.now().millisecondsSinceEpoch}.png';
+    await File('$root/$relativePath').writeAsBytes(cropped, flush: true);
     await File(
-      sourcePath,
-    ).copy('${(await getApplicationDocumentsDirectory()).path}/$relativePath');
+      '$root/${_originalPathOf(relativePath)}',
+    ).writeAsBytes(original, flush: true);
     return relativePath;
+  }
+
+  /// « carte-123.png » → « carte-123-original » (format d'origine conservé).
+  static String? _originalPathOf(String? storedPath) {
+    final path = storedPath?.trim();
+    if (path == null || path.isEmpty || !path.endsWith('.png')) return null;
+    return '${path.substring(0, path.length - 4)}-original';
   }
 
   static Future<File?> resolve(String? storedPath) async {
@@ -239,10 +284,12 @@ abstract final class StudentCardStore {
   }
 
   static Future<void> delete(String? storedPath) async {
-    try {
-      await (await resolve(storedPath))?.delete();
-    } on FileSystemException {
-      // Le fichier a déjà disparu : rien à faire.
+    for (final path in [storedPath, _originalPathOf(storedPath)]) {
+      try {
+        await (await resolve(path))?.delete();
+      } on FileSystemException {
+        // Le fichier a déjà disparu : rien à faire.
+      }
     }
   }
 }

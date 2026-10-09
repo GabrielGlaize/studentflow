@@ -72,6 +72,7 @@ class DemoDashboardRepository implements DashboardRepository {
         HomeworkSummary(
           id: 'demo-homework-1',
           title: 'Rendre le dossier d’anglais',
+          subjectName: 'Anglais',
           deadline: now.add(const Duration(days: 1)),
           isDone: false,
           notificationsEnabled: true,
@@ -79,7 +80,17 @@ class DemoDashboardRepository implements DashboardRepository {
         HomeworkSummary(
           id: 'demo-homework-2',
           title: 'Préparer la présentation StudyFlow',
+          subjectName: 'Développement',
           deadline: now.add(const Duration(days: 3)),
+          isDone: false,
+          notificationsEnabled: true,
+        ),
+        HomeworkSummary(
+          id: 'demo-homework-3',
+          title: 'Contrôle sur les bases de données',
+          subjectName: 'SQL',
+          isEvaluation: true,
+          deadline: now.add(const Duration(days: 5)),
           isDone: false,
           notificationsEnabled: true,
         ),

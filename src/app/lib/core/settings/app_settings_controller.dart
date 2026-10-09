@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:studyflow_app/core/settings/quiet_hours.dart';
 
 /// Stores user-facing application preferences.
 ///
@@ -21,6 +22,10 @@ class AppSettingsController extends ChangeNotifier {
   bool _homeworkNotificationsEnabled = true;
   bool _apprenticeshipNotificationsEnabled = true;
   int _courseReminderMinutes = 5;
+  QuietHours _quietHours = const QuietHours();
+  bool _dailyNotesEnabled = true;
+  bool _dailyNoteReminderEnabled = true;
+  int _dailyNoteReminderMinutes = 19 * 60;
 
   ThemeMode get themeMode => _themeMode;
   bool get hasCompany => _hasCompany;
@@ -30,6 +35,17 @@ class AppSettingsController extends ChangeNotifier {
   bool get apprenticeshipNotificationsEnabled =>
       _apprenticeshipNotificationsEnabled;
   int get courseReminderMinutes => _courseReminderMinutes;
+  QuietHours get quietHours => _quietHours;
+
+  /// Coin note de l'accueil (facultatif, propre à ce téléphone).
+  bool get dailyNotesEnabled => _dailyNotesEnabled;
+
+  /// Rappel du soir pour relire la note du jour.
+  bool get dailyNoteReminderEnabled =>
+      _dailyNotesEnabled && _dailyNoteReminderEnabled;
+
+  /// Heure du rappel du soir, en minutes depuis minuit.
+  int get dailyNoteReminderMinutes => _dailyNoteReminderMinutes;
   AppSettings get currentSettings => _currentSettings();
 
   Future<void> restore() async {
@@ -44,6 +60,10 @@ class AppSettingsController extends ChangeNotifier {
     _apprenticeshipNotificationsEnabled =
         settings.apprenticeshipNotificationsEnabled;
     _courseReminderMinutes = settings.courseReminderMinutes;
+    _quietHours = settings.quietHours;
+    _dailyNotesEnabled = settings.dailyNotesEnabled;
+    _dailyNoteReminderEnabled = settings.dailyNoteReminderEnabled;
+    _dailyNoteReminderMinutes = settings.dailyNoteReminderMinutes;
     notifyListeners();
   }
 
@@ -117,16 +137,50 @@ class AppSettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setDailyNotesEnabled(bool value) {
+    if (_dailyNotesEnabled == value) return;
+
+    _dailyNotesEnabled = value;
+    _save();
+    notifyListeners();
+  }
+
+  void setDailyNoteReminderEnabled(bool value) {
+    if (_dailyNoteReminderEnabled == value) return;
+
+    _dailyNoteReminderEnabled = value;
+    _save();
+    notifyListeners();
+  }
+
+  void setDailyNoteReminderMinutes(int value) {
+    if (_dailyNoteReminderMinutes == value) return;
+
+    _dailyNoteReminderMinutes = value;
+    _save();
+    notifyListeners();
+  }
+
+  void setQuietHours(QuietHours value) {
+    if (_quietHours == value) return;
+
+    _quietHours = value;
+    _save();
+    notifyListeners();
+  }
+
   void applyNotificationPreferences({
     required bool coursesEnabled,
     required bool homeworkEnabled,
     required bool apprenticeshipsEnabled,
     required int courseReminderMinutes,
+    QuietHours? quietHours,
   }) {
     _courseNotificationsEnabled = coursesEnabled;
     _homeworkNotificationsEnabled = homeworkEnabled;
     _apprenticeshipNotificationsEnabled = apprenticeshipsEnabled;
     _courseReminderMinutes = courseReminderMinutes;
+    if (quietHours != null) _quietHours = quietHours;
     _save();
     notifyListeners();
   }
@@ -144,6 +198,10 @@ class AppSettingsController extends ChangeNotifier {
       homeworkNotificationsEnabled: _homeworkNotificationsEnabled,
       apprenticeshipNotificationsEnabled: _apprenticeshipNotificationsEnabled,
       courseReminderMinutes: _courseReminderMinutes,
+      quietHours: _quietHours,
+      dailyNotesEnabled: _dailyNotesEnabled,
+      dailyNoteReminderEnabled: _dailyNoteReminderEnabled,
+      dailyNoteReminderMinutes: _dailyNoteReminderMinutes,
     );
   }
 
@@ -162,6 +220,10 @@ class AppSettings {
     required this.homeworkNotificationsEnabled,
     this.apprenticeshipNotificationsEnabled = true,
     this.courseReminderMinutes = 5,
+    this.quietHours = const QuietHours(),
+    this.dailyNotesEnabled = true,
+    this.dailyNoteReminderEnabled = true,
+    this.dailyNoteReminderMinutes = 19 * 60,
   });
 
   final ThemeMode themeMode;
@@ -171,6 +233,10 @@ class AppSettings {
   final bool homeworkNotificationsEnabled;
   final bool apprenticeshipNotificationsEnabled;
   final int courseReminderMinutes;
+  final QuietHours quietHours;
+  final bool dailyNotesEnabled;
+  final bool dailyNoteReminderEnabled;
+  final int dailyNoteReminderMinutes;
 
   factory AppSettings.fromJson(Map<String, Object?> json) {
     return AppSettings(
@@ -184,6 +250,12 @@ class AppSettings {
       apprenticeshipNotificationsEnabled:
           json['apprenticeshipNotificationsEnabled'] as bool? ?? true,
       courseReminderMinutes: json['courseReminderMinutes'] as int? ?? 5,
+      quietHours: QuietHours.fromJson(json),
+      dailyNotesEnabled: json['dailyNotesEnabled'] as bool? ?? true,
+      dailyNoteReminderEnabled:
+          json['dailyNoteReminderEnabled'] as bool? ?? true,
+      dailyNoteReminderMinutes:
+          (json['dailyNoteReminderMinutes'] as num?)?.toInt() ?? 19 * 60,
     );
   }
 
@@ -196,6 +268,10 @@ class AppSettings {
       'homeworkNotificationsEnabled': homeworkNotificationsEnabled,
       'apprenticeshipNotificationsEnabled': apprenticeshipNotificationsEnabled,
       'courseReminderMinutes': courseReminderMinutes,
+      ...quietHours.toJson(),
+      'dailyNotesEnabled': dailyNotesEnabled,
+      'dailyNoteReminderEnabled': dailyNoteReminderEnabled,
+      'dailyNoteReminderMinutes': dailyNoteReminderMinutes,
     };
   }
 

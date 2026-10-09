@@ -60,6 +60,15 @@ public sealed class NotificationDispatchWorker(
         var windowStart = now.AddMinutes(-Math.Clamp(workerOptions.LookBehindMinutes, 0, 1440));
         var windowEnd = now;
 
+        // Élèves en plage calme ou en pause : leurs rappels de ce tour ne partent pas.
+        var quietUserIds = (await dbContext.NotificationPreferences
+                .AsNoTracking()
+                .Where(x => x.QuietHoursEnabled || x.MutedUntil > now)
+                .ToListAsync(cancellationToken))
+            .Where(x => x.IsQuietAt(now, clock.TimeZone))
+            .Select(x => x.UserId)
+            .ToHashSet();
+
         var classIds = await dbContext.SchoolClasses
             .AsNoTracking()
             .Where(x => x.IsActive)
@@ -69,13 +78,14 @@ public sealed class NotificationDispatchWorker(
         foreach (var classId in classIds)
         {
             var reminders = await planner.PlanClassRemindersAsync(classId, windowStart, windowEnd, cancellationToken);
-            foreach (var reminder in reminders)
+            foreach (var reminder in reminders.Where(x => !quietUserIds.Contains(x.UserId)))
             {
                 await DispatchOnceAsync(dbContext, sender, reminder, cancellationToken);
             }
         }
 
-        foreach (var reminder in await planner.PlanPersonalRemindersAsync(windowStart, windowEnd, cancellationToken))
+        var personalReminders = await planner.PlanPersonalRemindersAsync(windowStart, windowEnd, cancellationToken);
+        foreach (var reminder in personalReminders.Where(x => !quietUserIds.Contains(x.UserId)))
         {
             await DispatchOnceAsync(dbContext, sender, reminder, cancellationToken);
         }

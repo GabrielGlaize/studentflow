@@ -159,7 +159,7 @@ void main() {
     await tester.tap(find.text('Profil'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Profil et réglages'), findsOneWidget);
+    expect(find.byKey(const ValueKey('open-settings-button')), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Gestion de classe'),
       180,
@@ -177,6 +177,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Lina Moreau'), findsNothing);
 
+    // Les réglages ont leur propre page, ouverte depuis le bas du profil.
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('settings-entry')),
+      180,
+      scrollable: find.byType(Scrollable).first,
+      maxScrolls: 20,
+    );
+    await tester.ensureVisible(find.byKey(const ValueKey('settings-entry')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('settings-entry')));
+    await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('has-company-switch-line')),
       180,
@@ -192,6 +203,9 @@ void main() {
     expect(find.text('J’ai une entreprise'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('has-company-switch-line')));
+    await tester.pumpAndSettle();
+    // pageBack() cherche l'info-bulle anglaise « Back » ; l'app est en français.
+    await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
 
     expect(find.text('Entreprise'), findsWidgets);
@@ -244,13 +258,29 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('add-company-document-button')));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(EditableText).at(0), 'Contrat signé');
     await tester.enterText(
-      find.byType(EditableText).at(2),
+      find.byKey(const ValueKey('document-title-field')),
+      'Contrat signé',
+    );
+    // Type personnalisé, retenu pour les prochains documents.
+    await tester.tap(find.byKey(const ValueKey('document-kind-add')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('document-kind-field')),
+      'Badge',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('document-link-field')),
       'https://drive.example/contrat',
     );
-    await tester.tap(find.widgetWithText(FilledButton, 'Ajouter'));
+    await tester.ensureVisible(
+      find.byKey(const ValueKey('document-save-button')),
+    );
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('document-save-button')));
+    await tester.pumpAndSettle();
+    // Le type personnalisé apparaît dans le détail du document.
+    expect(find.textContaining('Badge · https://drive'), findsOneWidget);
 
     expect(find.text('Contrat signé'), findsOneWidget);
     expect(
@@ -288,7 +318,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Profil et réglages'), findsOneWidget);
+    expect(find.byKey(const ValueKey('open-settings-button')), findsOneWidget);
   });
 
   testWidgets('un visiteur cherche une alternance sans compte', (tester) async {

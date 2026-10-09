@@ -161,13 +161,13 @@ Sur le Mac, branche l'iPhone puis installe une version release :
 
 ```bash
 cd /Users/gab/Documents/studentflow
-./scripts/run_iphone_developer.sh --clean --release --api-url=http://IP_DU_NAS:5028
+./scripts/install_app.sh --clean --release --api-url=http://IP_DU_NAS:5028
 ```
 
 Exemple :
 
 ```bash
-./scripts/run_iphone_developer.sh --clean --release --api-url=http://192.168.1.50:5028
+./scripts/install_app.sh --clean --release --api-url=http://192.168.1.50:5028
 ```
 
 Quand Flutter a fini, détache la session avec :
@@ -206,7 +206,7 @@ Puis installe l'app avec :
 
 ```bash
 cd /Users/gab/Documents/studentflow
-./scripts/run_iphone_developer.sh --clean --release --api-url=https://studyflow.ton-domaine.example
+./scripts/install_app.sh --clean --release --api-url=https://studyflow.ton-domaine.example
 ```
 
 HTTPS est préférable si tu veux utiliser l'app hors Wi-Fi local ou éviter les

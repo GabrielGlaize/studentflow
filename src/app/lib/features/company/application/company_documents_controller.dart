@@ -64,16 +64,77 @@ class CompanyDocumentsController extends ChangeNotifier {
 
   final CompanyDocumentsStorage _storage;
   static const int maxDocuments = 80;
+  static const int maxCustomKinds = 20;
+
+  /// Types proposés d'office pour un document d'alternance.
+  static const baseKinds = [
+    'Contrat',
+    'Convention',
+    'Avenant',
+    'Fiche de paie',
+    'Attestation',
+    'Évaluation',
+    'Mutuelle',
+    'Note de frais',
+  ];
+
   final List<CompanyDocument> _documents = [];
+  final List<String> _customKinds = [];
 
   List<CompanyDocument> get documents => List.unmodifiable(_documents);
 
+  /// Types personnalisés, créés par l'élève et proposés à nouveau ensuite.
+  List<String> get customKinds => List.unmodifiable(_customKinds);
+
+  /// Tous les types à proposer : ceux de base puis les personnalisés.
+  List<String> get kinds => [...baseKinds, ..._customKinds];
+
   Future<void> restore() async {
     final savedDocuments = await _storage.read();
+    final savedKinds = await _storage.readKinds();
     _documents
       ..clear()
       ..addAll(savedDocuments);
+    _customKinds
+      ..clear()
+      ..addAll(savedKinds);
+    // Documents enregistrés avant les types de base : leur type libre devient
+    // un type personnalisé, pour rester proposé.
+    for (final document in savedDocuments) {
+      if (document.scope == 'company') _rememberKind(document.kind);
+    }
     notifyListeners();
+  }
+
+  /// Ajoute un type personnalisé (sans doublon, casse ignorée). Renvoie le
+  /// libellé retenu, éventuellement celui d'un type existant.
+  String addCustomKind(String value) {
+    final cleaned = value.trim();
+    final existing = kinds.where(
+      (kind) => kind.toLowerCase() == cleaned.toLowerCase(),
+    );
+    if (existing.isNotEmpty) return existing.first;
+
+    _rememberKind(cleaned);
+    _saveKinds();
+    notifyListeners();
+    return cleaned;
+  }
+
+  void removeCustomKind(String value) {
+    if (!_customKinds.remove(value)) return;
+    _saveKinds();
+    notifyListeners();
+  }
+
+  void _rememberKind(String value) {
+    final cleaned = value.trim();
+    if (cleaned.isEmpty ||
+        kinds.any((kind) => kind.toLowerCase() == cleaned.toLowerCase())) {
+      return;
+    }
+    _customKinds.add(cleaned);
+    if (_customKinds.length > maxCustomKinds) _customKinds.removeAt(0);
   }
 
   void addDocument({
@@ -117,6 +178,10 @@ class CompanyDocumentsController extends ChangeNotifier {
     unawaited(_storage.save(_documents));
   }
 
+  void _saveKinds() {
+    unawaited(_storage.saveKinds(_customKinds));
+  }
+
   String? _cleanOptional(String? value) {
     final cleaned = value?.trim();
     if (cleaned == null || cleaned.isEmpty) return null;
@@ -128,6 +193,10 @@ abstract interface class CompanyDocumentsStorage {
   Future<List<CompanyDocument>> read();
 
   Future<void> save(List<CompanyDocument> documents);
+
+  Future<List<String>> readKinds();
+
+  Future<void> saveKinds(List<String> kinds);
 }
 
 class SecureCompanyDocumentsStorage implements CompanyDocumentsStorage {
@@ -135,6 +204,7 @@ class SecureCompanyDocumentsStorage implements CompanyDocumentsStorage {
     : _storage = storage ?? const FlutterSecureStorage();
 
   static const _documentsKey = 'studyflow.company.documents';
+  static const _kindsKey = 'studyflow.company.document-kinds';
 
   final FlutterSecureStorage _storage;
 
@@ -159,10 +229,33 @@ class SecureCompanyDocumentsStorage implements CompanyDocumentsStorage {
         .toList();
     return _storage.write(key: _documentsKey, value: jsonEncode(jsonDocuments));
   }
+
+  @override
+  Future<List<String>> readKinds() async {
+    final raw = await _storage.read(key: _kindsKey);
+    if (raw == null) return const [];
+    final decoded = jsonDecode(raw);
+    if (decoded is! List<Object?>) return const [];
+    return decoded.whereType<String>().toList(growable: false);
+  }
+
+  @override
+  Future<void> saveKinds(List<String> kinds) {
+    return _storage.write(key: _kindsKey, value: jsonEncode(kinds));
+  }
 }
 
 class MemoryCompanyDocumentsStorage implements CompanyDocumentsStorage {
   List<CompanyDocument> _documents = const [];
+  List<String> _kinds = const [];
+
+  @override
+  Future<List<String>> readKinds() async => _kinds;
+
+  @override
+  Future<void> saveKinds(List<String> kinds) async {
+    _kinds = List.unmodifiable(kinds);
+  }
 
   @override
   Future<List<CompanyDocument>> read() async => _documents;

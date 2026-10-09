@@ -20,14 +20,16 @@ dotnet run --project src/backend/StudyFlow.Api \
   --urls http://0.0.0.0:5028
 ```
 
-App iPhone avec le script automatisé :
+App sur un appareil iOS ou Android branché au Mac, avec le script automatisé :
 
 ```bash
 cd /Users/gab/Documents/studentflow
-./scripts/run_iphone_developer.sh
+./scripts/install_app.sh                  # menu : choisir l’appareil
+./scripts/install_app.sh --list           # lister les appareils iOS/Android
+./scripts/install_app.sh --device=ipad    # ID exact ou partie du nom
 ```
 
-Le script copie le projet dans `/Users/gab/Developer/studentflow`, nettoie les attributs macOS qui peuvent casser le codesign iOS, trouve l’IP locale du Mac et lance Flutter avec la bonne URL backend.
+Le script liste les iPhone, iPad et appareils Android détectés par Flutter et demande sur lequel installer (choix automatique s’il n’y en a qu’un). Il copie le projet dans `/Users/gab/Developer/studentflow`, nettoie les attributs macOS qui peuvent casser le codesign iOS et lance Flutter avec l’API du NAS (`https://studyflow-dev.duckdns.org`, modifiable via `STUDYFLOW_NAS_API_URL`). Avec `--local-mac`, l’app utilise le backend du Mac : IP locale du Mac pour un appareil physique, `10.0.2.2` pour l’émulateur Android, `localhost` pour le simulateur iOS.
 
 Pour lancer l’app sur n’importe quelle cible Flutter, utilise le script
 universel :
@@ -43,13 +45,13 @@ universel :
 Pour installer une version autonome sur iPhone pendant la durée du provisioning gratuit Apple, utilise le mode release :
 
 ```bash
-./scripts/run_iphone_developer.sh --clean --release
+./scripts/install_app.sh --clean --release
 ```
 
 Pour que l’app reste utile Mac éteint, fais tourner l’API sur un NAS ou serveur local et installe l’app avec son URL :
 
 ```bash
-./scripts/run_iphone_developer.sh --clean --release --api-url=http://IP_DU_NAS:5028
+./scripts/install_app.sh --clean --release --api-url=http://IP_DU_NAS:5028
 ```
 
 Le guide NAS complet est dans [`docs/NAS_DEPLOIEMENT.md`](./docs/NAS_DEPLOIEMENT.md).
@@ -65,7 +67,7 @@ Pour lancer StudyFlow sur un iPhone physique :
 5. Depuis la racine du projet, lance :
 
 ```bash
-./scripts/run_iphone_developer.sh
+./scripts/install_app.sh
 ```
 
 Si Xcode bloque la signature Apple :
@@ -88,7 +90,7 @@ Remplace `192.168.1.42` par l’adresse IP locale de ton Mac.
 Pour un usage iPhone débranché, préfère le mode release :
 
 ```bash
-./scripts/run_iphone_developer.sh --clean --release
+./scripts/install_app.sh --clean --release
 ```
 
 ## Stack

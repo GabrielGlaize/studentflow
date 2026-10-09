@@ -51,10 +51,7 @@ public sealed class NotificationsController(
         if (validationProblem is not null) return validationProblem;
 
         var settings = await GetOrCreateNotificationSettingsAsync(user.Id, cancellationToken);
-        settings.CoursesEnabled = request.CoursesEnabled;
-        settings.HomeworkEnabled = request.HomeworkEnabled;
-        settings.ApprenticeshipsEnabled = request.ApprenticeshipsEnabled;
-        settings.CourseReminderMinutes = request.CourseReminderMinutes;
+        NotificationSettingsMapper.Apply(settings, request, clock.UtcNow);
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return Ok(ToNotificationSettingsResponse(settings));
@@ -179,11 +176,8 @@ public sealed class NotificationsController(
             _ => null
         };
 
-    private static NotificationSettingsResponse ToNotificationSettingsResponse(NotificationPreference settings) => new(
-        settings.CoursesEnabled,
-        settings.HomeworkEnabled,
-        settings.ApprenticeshipsEnabled,
-        settings.CourseReminderMinutes);
+    private NotificationSettingsResponse ToNotificationSettingsResponse(NotificationPreference settings) =>
+        NotificationSettingsMapper.ToResponse(settings, clock.UtcNow);
 
     private NotificationDeviceResponse ToDeviceResponse(NotificationDevice device)
     {

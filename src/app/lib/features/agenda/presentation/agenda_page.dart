@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:studyflow_app/core/app_scope.dart';
 import 'package:studyflow_app/core/theme/app_colors.dart';
@@ -5,7 +7,10 @@ import 'package:studyflow_app/core/theme/prototype_widgets.dart';
 import 'package:studyflow_app/core/widgets/date_time_pickers.dart';
 import 'package:studyflow_app/core/widgets/reminder_picker.dart';
 import 'package:studyflow_app/features/agenda/domain/agenda_models.dart';
+import 'package:studyflow_app/features/agenda/presentation/agenda_calendar_view.dart';
 import 'package:studyflow_app/features/agenda/presentation/homework_form_page.dart';
+import 'package:studyflow_app/features/exams/domain/exam_models.dart';
+import 'package:studyflow_app/features/exams/presentation/exams_page.dart';
 
 class AgendaPage extends StatefulWidget {
   const AgendaPage({this.initialCategory = 'school', super.key});
@@ -16,21 +21,32 @@ class AgendaPage extends StatefulWidget {
   State<AgendaPage> createState() => _AgendaPageState();
 }
 
+enum _AgendaMode { list, calendar }
+
 class _AgendaPageState extends State<AgendaPage> {
   late String _category;
   bool _includeDone = false;
-  Future<AgendaSummary>? _agendaFuture;
+  _AgendaMode _mode = _AgendaMode.list;
+  final Map<String, Future<AgendaSummary>> _futures = {};
+  Future<List<AgendaSummary>>? _calendarFuture;
+
+  /// Partiels de la classe, montrés comme évaluations dans le calendrier.
+  List<ExamSession> _examSessions = const [];
+  late PageController _workspaceController;
 
   @override
   void initState() {
     super.initState();
     _category = widget.initialCategory;
+    _workspaceController = PageController(
+      initialPage: _category == 'school' ? 0 : 1,
+    );
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _agendaFuture ??= _loadAgenda();
+  void dispose() {
+    _workspaceController.dispose();
+    super.dispose();
   }
 
   @override
@@ -38,20 +54,21 @@ class _AgendaPageState extends State<AgendaPage> {
     super.didUpdateWidget(oldWidget);
     if (widget.initialCategory == oldWidget.initialCategory) return;
 
-    setState(() {
-      _category = widget.initialCategory;
-      _agendaFuture = _loadAgenda();
-    });
+    _mode = _AgendaMode.list;
+    _showWorkspace(widget.initialCategory, animate: false);
   }
+
+  bool get _hasCompany => AppScope.of(context).settingsController.hasCompany;
+
+  /// Deuxième espace : « Entreprise » avec une entreprise, sinon « Alternance ».
+  String get _careerCategory => _hasCompany ? 'company' : 'apprenticeship';
+
+  List<String> get _workspaces => ['school', _careerCategory];
 
   @override
   Widget build(BuildContext context) {
-    final hasCompany = AppScope.of(context).settingsController.hasCompany;
-    if (hasCompany && _category == 'apprenticeship') {
-      _category = 'company';
-    } else if (!hasCompany && _category == 'company') {
-      _category = 'apprenticeship';
-    }
+    final hasCompany = _hasCompany;
+    if (_category != 'school') _category = _careerCategory;
 
     return SafeArea(
       child: Stack(
@@ -60,153 +77,67 @@ class _AgendaPageState extends State<AgendaPage> {
             children: [
               ProtoScreenTitle(
                 title: 'Agenda',
-                subtitle: hasCompany
+                subtitle: _mode == _AgendaMode.calendar
+                    ? 'École et ${hasCompany ? 'entreprise' : 'alternance'} réunies.'
+                    : hasCompany
                     ? 'Devoirs de la classe et organisation perso.'
                     : 'Devoirs de la classe et recherche d’alternance.',
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
-                child: Column(
-                  children: [
-                    _WorkspaceSwitch(
-                      selected: _category,
-                      hasCompany: hasCompany,
-                      onChanged: (value) {
-                        setState(() {
-                          _category = value;
-                          _agendaFuture = _loadAgenda();
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Wrap(
-                            spacing: 8,
-                            children: [
-                              _FilterPill(
-                                label: 'À faire',
-                                selected: !_includeDone,
-                                onTap: () {
-                                  setState(() {
-                                    _includeDone = false;
-                                    _agendaFuture = _loadAgenda();
-                                  });
-                                },
-                              ),
-                              _FilterPill(
-                                label: 'Terminées',
-                                selected: _includeDone,
-                                onTap: () {
-                                  setState(() {
-                                    _includeDone = true;
-                                    _agendaFuture = _loadAgenda();
-                                  });
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                        const _VisibilityLegend(),
-                      ],
-                    ),
-                  ],
+                trailing: _AgendaModeSwitch(
+                  mode: _mode,
+                  onChanged: (mode) => setState(() => _mode = mode),
                 ),
               ),
-              Expanded(
-                child: FutureBuilder<AgendaSummary>(
-                  future: _agendaFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState != ConnectionState.done) {
-                      return const ProtoPageLoader(label: 'Agenda');
-                    }
-
-                    if (snapshot.hasError) {
-                      return _AgendaError(onRetry: _refresh);
-                    }
-
-                    final agenda = snapshot.requireData;
-                    return RefreshIndicator(
-                      onRefresh: _refresh,
-                      child: ListView(
-                        padding: const EdgeInsets.fromLTRB(18, 4, 18, 112),
+              if (_mode == _AgendaMode.list) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 0, 18, 12),
+                  child: Column(
+                    children: [
+                      _WorkspaceSwitch(
+                        selected: _category,
+                        hasCompany: hasCompany,
+                        onChanged: _showWorkspace,
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
                         children: [
-                          if (_category == 'school') ...[
-                            _SectionTitle(
-                              title: 'Devoirs de la classe',
-                              count: agenda.homework.length,
-                              shared: true,
-                            ),
-                            if (agenda.homework.isEmpty)
-                              const _EmptyCard(
-                                text: 'Aucun devoir à venir',
-                                message:
-                                    'Ajoute un devoir depuis ce bouton ou depuis un cours du planning.',
-                              )
-                            else
-                              ...agenda.homework.map(
-                                (item) => _HomeworkCard(
-                                  homework: item,
-                                  onEdit: () => _openHomeworkSheet(item),
-                                  onDelete: () => _confirmDeleteHomework(item),
-                                  onToggleDone: () =>
-                                      _setHomeworkDone(item, !item.isDone),
-                                  onEditReminder: () =>
-                                      _editHomeworkReminder(item),
+                          Expanded(
+                            child: Wrap(
+                              spacing: 8,
+                              children: [
+                                _FilterPill(
+                                  label: 'À faire',
+                                  selected: !_includeDone,
+                                  onTap: () => _setIncludeDone(false),
                                 ),
-                              ),
-                            const SizedBox(height: 16),
-                          ],
-                          _SectionTitle(
-                            title: _eventSectionTitle,
-                            count: agenda.events.length,
-                            shared: false,
-                          ),
-                          if (agenda.events.isEmpty)
-                            const _EmptyCard(
-                              text: 'Aucun événement prévu',
-                              message:
-                                  'Rendez-vous, entretien, révision : visible uniquement par toi.',
-                            )
-                          else
-                            ...agenda.events.map(
-                              (item) => _PersonalEventCard(
-                                event: item,
-                                color: _categoryColor,
-                                onEdit: () => _openEventSheet(item),
-                                onDelete: () => _confirmDeleteEvent(item),
-                              ),
+                                _FilterPill(
+                                  label: 'Terminées',
+                                  selected: _includeDone,
+                                  onTap: () => _setIncludeDone(true),
+                                ),
+                              ],
                             ),
-                          const SizedBox(height: 16),
-                          _SectionTitle(
-                            title: 'Mes tâches',
-                            count: agenda.tasks.length,
-                            shared: false,
                           ),
-                          if (agenda.tasks.isEmpty)
-                            const _EmptyCard(
-                              text: 'Aucune tâche',
-                              message:
-                                  'Tes tâches restent visibles uniquement par toi.',
-                            )
-                          else
-                            ...agenda.tasks.map(
-                              (item) => _TaskCard(
-                                task: item,
-                                color: _categoryColor,
-                                onOpenDetails: () => _openTaskDetails(item),
-                                onToggleDone: () =>
-                                    _setTaskDone(item, isDone: !item.isDone),
-                                onDelete: () => _confirmDeleteTask(item),
-                              ),
-                            ),
+                          const _VisibilityLegend(),
                         ],
                       ),
-                    );
-                  },
+                    ],
+                  ),
                 ),
-              ),
+                Expanded(
+                  // On balaie d'un espace à l'autre, comme dans le planning.
+                  child: PageView(
+                    key: const ValueKey('agenda-workspace-pager'),
+                    controller: _workspaceController,
+                    onPageChanged: (index) =>
+                        setState(() => _category = _workspaces[index]),
+                    children: [
+                      for (final category in _workspaces)
+                        _buildWorkspacePage(category),
+                    ],
+                  ),
+                ),
+              ] else
+                Expanded(child: _buildCalendar()),
             ],
           ),
           Positioned(
@@ -234,16 +165,384 @@ class _AgendaPageState extends State<AgendaPage> {
     );
   }
 
-  Color get _categoryColor {
-    return switch (_category) {
+  void _showWorkspace(String category, {bool animate = true}) {
+    final index = category == 'school' ? 0 : 1;
+    setState(() => _category = category == 'school' ? 'school' : category);
+    if (!_workspaceController.hasClients) {
+      _workspaceController.dispose();
+      _workspaceController = PageController(initialPage: index);
+      return;
+    }
+    if (animate) {
+      _workspaceController.animateToPage(
+        index,
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
+      );
+    } else {
+      _workspaceController.jumpToPage(index);
+    }
+  }
+
+  void _setIncludeDone(bool value) {
+    if (value == _includeDone) return;
+    setState(() {
+      _includeDone = value;
+      _futures.clear();
+    });
+  }
+
+  Widget _buildWorkspacePage(String category) {
+    return FutureBuilder<AgendaSummary>(
+      future: _futures.putIfAbsent(category, () => _loadAgenda(category)),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const ProtoPageLoader(label: 'Agenda');
+        }
+
+        if (snapshot.hasError) {
+          return _AgendaError(onRetry: _refresh);
+        }
+
+        final agenda = snapshot.requireData;
+        return RefreshIndicator(
+          onRefresh: _refresh,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(18, 4, 18, 112),
+            children: [
+              if (category == 'school') ...[
+                _SectionTitle(
+                  title: 'Devoirs de la classe',
+                  count: agenda.homework.length,
+                  shared: true,
+                ),
+                if (agenda.homework.isEmpty)
+                  const _EmptyCard(
+                    text: 'Aucun devoir à venir',
+                    message:
+                        'Ajoute un devoir depuis ce bouton ou depuis un cours du planning.',
+                  )
+                else
+                  ...agenda.homework.map(_homeworkCard),
+                const SizedBox(height: 16),
+              ],
+              _SectionTitle(
+                title: _eventSectionTitle(category),
+                count: agenda.events.length,
+                shared: false,
+              ),
+              if (agenda.events.isEmpty)
+                const _EmptyCard(
+                  text: 'Aucun événement prévu',
+                  message:
+                      'Rendez-vous, entretien, révision : visible uniquement par toi.',
+                )
+              else
+                ...agenda.events.map(_eventCard),
+              const SizedBox(height: 16),
+              _SectionTitle(
+                title: 'Mes tâches',
+                count: agenda.tasks.length,
+                shared: false,
+              ),
+              if (agenda.tasks.isEmpty)
+                const _EmptyCard(
+                  text: 'Aucune tâche',
+                  message: 'Tes tâches restent visibles uniquement par toi.',
+                )
+              else
+                ...agenda.tasks.map(_taskCard),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _homeworkCard(HomeworkItem item, {VoidCallback? before}) {
+    VoidCallback run(void Function() action) => () {
+      before?.call();
+      action();
+    };
+    return _HomeworkCard(
+      homework: item,
+      onEdit: run(() => _openHomeworkSheet(item)),
+      onDelete: run(() => _confirmDeleteHomework(item)),
+      onToggleDone: run(() => _setHomeworkDone(item, !item.isDone)),
+      onEditReminder: run(() => _editHomeworkReminder(item)),
+    );
+  }
+
+  Widget _eventCard(PersonalEventItem item, {VoidCallback? before}) {
+    VoidCallback run(void Function() action) => () {
+      before?.call();
+      action();
+    };
+    return _PersonalEventCard(
+      event: item,
+      color: _colorFor(item.category),
+      onEdit: run(() => _openEventSheet(item)),
+      onDelete: run(() => _confirmDeleteEvent(item)),
+    );
+  }
+
+  Widget _taskCard(AgendaTaskItem item, {VoidCallback? before}) {
+    VoidCallback run(void Function() action) => () {
+      before?.call();
+      action();
+    };
+    return _TaskCard(
+      task: item,
+      color: _colorFor(item.category),
+      onOpenDetails: run(() => _openTaskDetails(item)),
+      onToggleDone: run(() => _setTaskDone(item, isDone: !item.isDone)),
+      onDelete: run(() => _confirmDeleteTask(item)),
+    );
+  }
+
+  Widget _buildCalendar() {
+    return FutureBuilder<List<AgendaSummary>>(
+      future: _calendarFuture ??= _loadCalendar(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const ProtoPageLoader(label: 'Calendrier');
+        }
+        if (snapshot.hasError) {
+          return _AgendaError(onRetry: _refresh);
+        }
+
+        return AgendaCalendarView(
+          entries: [
+            ..._calendarEntries(_merge(snapshot.requireData)),
+            ..._examEntries(),
+          ],
+          onRefresh: _refresh,
+          onOpenDay: (day) =>
+              _openCalendarDay(_merge(snapshot.requireData), day),
+        );
+      },
+    );
+  }
+
+  /// École et entreprise (ou alternance) dans une seule liste, sans doublon.
+  AgendaSummary _merge(List<AgendaSummary> summaries) {
+    List<T> unique<T>(Iterable<T> items, String Function(T) id) {
+      final seen = <String>{};
+      return [
+        for (final item in items)
+          if (seen.add(id(item))) item,
+      ];
+    }
+
+    return AgendaSummary(
+      homework: unique(summaries.expand((x) => x.homework), (x) => x.id),
+      tasks: unique(summaries.expand((x) => x.tasks), (x) => x.id),
+      events: unique(summaries.expand((x) => x.events), (x) => x.id),
+    );
+  }
+
+  List<AgendaCalendarEntry> _calendarEntries(AgendaSummary agenda) {
+    String? timeOf(DateTime value) => value.hour == 0 && value.minute == 0
+        ? null
+        : StudyFlowFormat.timeOf(value);
+
+    return [
+      for (final item in agenda.homework)
+        AgendaCalendarEntry(
+          id: item.id,
+          kind: item.isEvaluation
+              ? AgendaEntryKind.evaluation
+              : AgendaEntryKind.homework,
+          day: DateUtils.dateOnly(item.deadline),
+          time: timeOf(item.deadline),
+          title: item.subjectName == null
+              ? item.title
+              : '${item.subjectName} · ${item.title}',
+        ),
+      for (final item in agenda.tasks)
+        if (item.deadline case final deadline?)
+          AgendaCalendarEntry(
+            id: item.id,
+            kind: AgendaEntryKind.task,
+            day: DateUtils.dateOnly(deadline),
+            time: timeOf(deadline),
+            title: item.title,
+            isCompany: item.category != 'school',
+          ),
+      for (final item in agenda.events)
+        AgendaCalendarEntry(
+          id: item.id,
+          kind: AgendaEntryKind.event,
+          day: DateUtils.dateOnly(item.day),
+          time: item.startsAt,
+          title: item.title,
+          isCompany: item.category != 'personal',
+        ),
+    ];
+  }
+
+  List<AgendaCalendarEntry> _examEntries() {
+    return [
+      for (final session in _examSessions)
+        for (final subject in session.subjects)
+          if (subject.examDay case final day?)
+            AgendaCalendarEntry(
+              id: 'exam-${subject.id}',
+              kind: AgendaEntryKind.evaluation,
+              day: DateUtils.dateOnly(day),
+              time: subject.startsAt,
+              title: 'Partiel · ${subject.name}',
+            ),
+    ];
+  }
+
+  /// Détail d'un jour du calendrier, avec les mêmes cartes que la liste.
+  Future<void> _openCalendarDay(AgendaSummary agenda, DateTime day) async {
+    final homework = agenda.homework
+        .where((x) => DateUtils.isSameDay(x.deadline, day))
+        .toList();
+    final tasks = agenda.tasks
+        .where(
+          (x) => x.deadline != null && DateUtils.isSameDay(x.deadline, day),
+        )
+        .toList();
+    final events = agenda.events
+        .where((x) => DateUtils.isSameDay(x.day, day))
+        .toList();
+    final exams = [
+      for (final session in _examSessions)
+        for (final subject in session.subjects)
+          if (subject.examDay != null &&
+              DateUtils.isSameDay(subject.examDay, day))
+            (session, subject),
+    ];
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      builder: (sheetContext) {
+        void close() => Navigator.pop(sheetContext);
+        final isEmpty =
+            homework.isEmpty &&
+            tasks.isEmpty &&
+            events.isEmpty &&
+            exams.isEmpty;
+
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: isEmpty ? 0.32 : 0.6,
+          maxChildSize: 0.92,
+          builder: (context, scrollController) => ListView(
+            controller: scrollController,
+            padding: const EdgeInsets.fromLTRB(18, 0, 18, 32),
+            children: [
+              ProtoSectionHeading(
+                overline: DateUtils.isSameDay(day, DateTime.now())
+                    ? 'Aujourd’hui'
+                    : 'Agenda',
+                title: StudyFlowFormat.longDay(day),
+              ),
+              const SizedBox(height: 14),
+              if (isEmpty)
+                const _EmptyCard(
+                  text: 'Rien de prévu',
+                  message: 'Ajoute un devoir, une tâche ou un événement.',
+                ),
+              if (exams.isNotEmpty) ...[
+                _SectionTitle(
+                  title: 'Partiels',
+                  count: exams.length,
+                  shared: true,
+                ),
+                for (final (session, subject) in exams)
+                  ProtoCard(
+                    onTap: () {
+                      close();
+                      ExamsPage.open(context, sessionId: session.id);
+                    },
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(14),
+                    borderColor: context.sfEvaluation,
+                    backgroundColor: context.sfEvaluationSoft,
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.grading_outlined,
+                          color: context.sfEvaluation,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                subject.name,
+                                style: TextStyle(
+                                  color: context.sfText,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              ProtoMutedText(
+                                [
+                                  ?subject.startsAt,
+                                  session.title,
+                                  ?subject.details,
+                                ].join(' · '),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.chevron_right, color: context.sfEvaluation),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 8),
+              ],
+              if (homework.isNotEmpty) ...[
+                _SectionTitle(
+                  title: 'Devoirs de la classe',
+                  count: homework.length,
+                  shared: true,
+                ),
+                for (final item in homework) _homeworkCard(item, before: close),
+                const SizedBox(height: 8),
+              ],
+              if (events.isNotEmpty) ...[
+                _SectionTitle(
+                  title: 'Mes événements',
+                  count: events.length,
+                  shared: false,
+                ),
+                for (final item in events) _eventCard(item, before: close),
+                const SizedBox(height: 8),
+              ],
+              if (tasks.isNotEmpty) ...[
+                _SectionTitle(
+                  title: 'Mes tâches',
+                  count: tasks.length,
+                  shared: false,
+                ),
+                for (final item in tasks) _taskCard(item, before: close),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Color _colorFor(String category) {
+    return switch (category) {
       'company' => AppColors.green,
       'apprenticeship' => const Color(0xFF4F7891),
       _ => AppColors.petrol,
     };
   }
 
-  String get _eventSectionTitle {
-    return switch (_category) {
+  String _eventSectionTitle(String category) {
+    return switch (category) {
       'company' => 'Mes rendez-vous entreprise',
       'apprenticeship' => 'Mes rendez-vous alternance',
       _ => 'Mes événements',
@@ -258,22 +557,50 @@ class _AgendaPageState extends State<AgendaPage> {
     };
   }
 
-  Future<AgendaSummary> _loadAgenda() async {
+  Future<AgendaSummary> _loadAgenda(String category) async {
     final appScope = AppScope.of(context);
     final accessToken = await appScope.sessionController.accessTokenForApi();
 
     return appScope.agendaRepository.getAgenda(
-      taskCategory: _category,
+      taskCategory: category,
       includeDone: _includeDone,
       accessToken: accessToken,
     );
   }
 
+  Future<List<AgendaSummary>> _loadCalendar() async {
+    final appScope = AppScope.of(context);
+    final accessToken = await appScope.sessionController.accessTokenForApi();
+
+    // Partiels : facultatifs, le calendrier s'affiche même sans eux.
+    unawaited(
+      appScope.examRepository
+          .listSessions(accessToken: accessToken)
+          .then((sessions) {
+            if (mounted) setState(() => _examSessions = sessions);
+          })
+          .catchError((Object _) {}),
+    );
+
+    return Future.wait([
+      for (final category in _workspaces)
+        appScope.agendaRepository.getAgenda(
+          taskCategory: category,
+          accessToken: accessToken,
+        ),
+    ]);
+  }
+
   Future<void> _refresh() async {
     setState(() {
-      _agendaFuture = _loadAgenda();
+      _futures.clear();
+      _calendarFuture = null;
     });
-    await _agendaFuture;
+    if (_mode == _AgendaMode.calendar) {
+      await (_calendarFuture ??= _loadCalendar());
+    } else {
+      await _futures.putIfAbsent(_category, () => _loadAgenda(_category));
+    }
     // Un devoir, une tâche ou un rappel a pu changer.
     if (mounted) AppScope.of(context).reminderSync.requestSync();
   }
@@ -329,7 +656,7 @@ class _AgendaPageState extends State<AgendaPage> {
       ),
       builder: (context) => _TaskDetailsSheet(
         task: task,
-        color: _categoryColor,
+        color: _colorFor(task.category),
         onDelete: () {
           Navigator.pop(context);
           _confirmDeleteTask(task);
@@ -394,8 +721,10 @@ class _AgendaPageState extends State<AgendaPage> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      builder: (context) =>
-          _PersonalEventFormSheet(event: event, category: _eventCategory),
+      builder: (context) => _PersonalEventFormSheet(
+        event: event,
+        category: event?.category ?? _eventCategory,
+      ),
     );
 
     if (saved == true && mounted) {
@@ -714,6 +1043,32 @@ class _VisibilityLegend extends StatelessWidget {
         SizedBox(width: 6),
         ProtoVisibilityChip(shared: false),
       ],
+    );
+  }
+}
+
+/// « Liste » (vue habituelle, par espace) ou « Calendrier » (tout réuni).
+class _AgendaModeSwitch extends StatelessWidget {
+  const _AgendaModeSwitch({required this.mode, required this.onChanged});
+
+  final _AgendaMode mode;
+  final ValueChanged<_AgendaMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SegmentedButton<_AgendaMode>(
+      key: const ValueKey('agenda-mode-switch'),
+      showSelectedIcon: false,
+      style: const ButtonStyle(
+        visualDensity: VisualDensity.compact,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      segments: const [
+        ButtonSegment(value: _AgendaMode.list, label: Text('Liste')),
+        ButtonSegment(value: _AgendaMode.calendar, label: Text('Calendrier')),
+      ],
+      selected: {mode},
+      onSelectionChanged: (value) => onChanged(value.single),
     );
   }
 }
@@ -1649,6 +2004,7 @@ class _HomeworkCard extends StatelessWidget {
               onTap: onEditReminder,
             ),
       isDone: homework.isDone,
+      isEvaluation: homework.isEvaluation,
       menu: PopupMenuButton<_HomeworkAction>(
         tooltip: 'Actions devoir',
         icon: Icon(Icons.more_vert, color: context.sfChevron),
@@ -1726,14 +2082,18 @@ class _ReminderBadge extends StatelessWidget {
               color: color,
             ),
             const SizedBox(width: 5),
-            Text(
-              enabled
-                  ? 'Rappel : ${ReminderFormat.label(minutes, atMoment: 'à l’échéance').toLowerCase()}'
-                  : 'Sans rappel',
-              style: TextStyle(
-                color: color,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
+            Flexible(
+              child: Text(
+                enabled
+                    ? 'Rappel : ${ReminderFormat.label(minutes, atMoment: 'à l’échéance').toLowerCase()}'
+                    : 'Sans rappel',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],
@@ -1886,6 +2246,7 @@ class _AgendaItemShell extends StatelessWidget {
     this.label,
     this.footer,
     this.isDone = false,
+    this.isEvaluation = false,
     this.onTap,
   });
 
@@ -1896,6 +2257,7 @@ class _AgendaItemShell extends StatelessWidget {
   final String subtitle;
   final bool shared;
   final bool isDone;
+  final bool isEvaluation;
   final VoidCallback? onTap;
   final Widget menu;
 
@@ -1932,6 +2294,12 @@ class _AgendaItemShell extends StatelessWidget {
                               runSpacing: 4,
                               children: [
                                 ProtoVisibilityChip(shared: shared),
+                                if (isEvaluation)
+                                  ProtoChip(
+                                    label: 'Évaluation',
+                                    backgroundColor: context.sfEvaluationSoft,
+                                    foregroundColor: context.sfEvaluation,
+                                  ),
                                 if (label case final text?)
                                   ProtoChip(
                                     label: text,

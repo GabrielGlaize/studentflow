@@ -10,6 +10,7 @@ import 'package:studyflow_app/features/dashboard/data/dashboard_repository.dart'
 import 'package:studyflow_app/features/company/application/company_contacts_controller.dart';
 import 'package:studyflow_app/features/company/application/company_documents_controller.dart';
 import 'package:studyflow_app/features/exams/data/exam_repository.dart';
+import 'package:studyflow_app/features/notes/application/daily_notes_controller.dart';
 import 'package:studyflow_app/features/notifications/application/local_notification_scheduler.dart';
 import 'package:studyflow_app/features/notifications/application/reminder_sync.dart';
 import 'package:studyflow_app/features/profile/data/app_preferences_repository.dart';
@@ -32,6 +33,7 @@ class AppScope extends InheritedWidget {
     required this.classResourceRepository,
     required this.companyContactsController,
     required this.companyDocumentsController,
+    required this.dailyNotesController,
     required this.dashboardRepository,
     required this.appPreferencesRepository,
     required this.notificationPreferencesRepository,
@@ -52,6 +54,7 @@ class AppScope extends InheritedWidget {
   final ClassResourceRepository classResourceRepository;
   final CompanyContactsController companyContactsController;
   final CompanyDocumentsController companyDocumentsController;
+  final DailyNotesController dailyNotesController;
   final DashboardRepository dashboardRepository;
   final AppPreferencesRepository appPreferencesRepository;
   final NotificationPreferencesRepository notificationPreferencesRepository;
@@ -77,6 +80,7 @@ class AppScope extends InheritedWidget {
         classResourceRepository != oldWidget.classResourceRepository ||
         companyContactsController != oldWidget.companyContactsController ||
         companyDocumentsController != oldWidget.companyDocumentsController ||
+        dailyNotesController != oldWidget.dailyNotesController ||
         dashboardRepository != oldWidget.dashboardRepository ||
         appPreferencesRepository != oldWidget.appPreferencesRepository ||
         notificationPreferencesRepository !=

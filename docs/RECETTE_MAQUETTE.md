@@ -39,7 +39,7 @@ Dernière vérification : 4 juillet 2026.
 - entraide alternance privée de classe ;
 - agrégation backend de sources alternance : La Bonne Alternance, Adzuna et France Travail selon configuration ;
 - notifications locales natives branchées côté Flutter avec `flutter_local_notifications` ;
-- lancement iPhone automatisé via `scripts/run_iphone_developer.sh` ;
+- lancement iPhone automatisé via `scripts/install_app.sh` ;
 - durcissement sécurité backend : CORS limité, rate limiting auth, headers HTTP, DataProtection persistée et politique de mot de passe renforcée.
 
 ## Responsive vérifié

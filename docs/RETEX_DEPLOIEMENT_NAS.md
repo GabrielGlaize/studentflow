@@ -67,7 +67,7 @@ Le déploiement repose sur les fichiers suivants :
 - [`.env.nas.example`](../.env.nas.example) : modèle de configuration NAS ;
 - [`scripts/nas_generate_env.sh`](../scripts/nas_generate_env.sh) : génère un fichier `.env.nas` local avec des secrets ;
 - [`scripts/nas_deploy.sh`](../scripts/nas_deploy.sh) : construit et lance les conteneurs ;
-- [`scripts/run_iphone_developer.sh`](../scripts/run_iphone_developer.sh) : installe l’app iPhone avec l’URL du backend.
+- [`scripts/install_app.sh`](../scripts/install_app.sh) : installe l’app iPhone avec l’URL du backend.
 
 Le fichier important à ne pas commiter est :
 
@@ -524,7 +524,7 @@ domaine DuckDNS :
 
 ```bash
 cd /Users/gab/Documents/studentflow
-./scripts/run_iphone_developer.sh --clean --release --api-url=https://studyflow-dev.duckdns.org
+./scripts/install_app.sh --clean --release --api-url=https://studyflow-dev.duckdns.org
 ```
 
 Le mode `--release` permet d’installer une app plus autonome qu’un simple

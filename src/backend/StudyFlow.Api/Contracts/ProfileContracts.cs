@@ -26,14 +26,24 @@ public sealed record AppSettingsResponse(
     string? CompanyName,
     string ProfessionalMode);
 
+/// <param name="QuietHoursEnabled">Plage calme quotidienne ; nul pour garder le réglage actuel.</param>
+/// <param name="MutedUntil">Pause jusqu'à cet instant ; nul pour garder la pause actuelle, un instant passé pour l'arrêter.</param>
 public sealed record NotificationSettingsRequest(
     bool CoursesEnabled,
     bool HomeworkEnabled,
     bool ApprenticeshipsEnabled,
-    int CourseReminderMinutes);
+    int CourseReminderMinutes,
+    bool? QuietHoursEnabled = null,
+    TimeOnly? QuietHoursStart = null,
+    TimeOnly? QuietHoursEnd = null,
+    DateTimeOffset? MutedUntil = null);
 
 public sealed record NotificationSettingsResponse(
     bool CoursesEnabled,
     bool HomeworkEnabled,
     bool ApprenticeshipsEnabled,
-    int CourseReminderMinutes);
+    int CourseReminderMinutes,
+    bool QuietHoursEnabled,
+    TimeOnly QuietHoursStart,
+    TimeOnly QuietHoursEnd,
+    DateTimeOffset? MutedUntil);

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:studyflow_app/core/app_scope.dart';
+import 'package:studyflow_app/core/settings/app_settings_controller.dart';
 import 'package:studyflow_app/core/theme/app_colors.dart';
 import 'package:studyflow_app/core/theme/prototype_widgets.dart';
 import 'package:studyflow_app/features/announcements/domain/class_announcement_models.dart';
@@ -8,6 +9,9 @@ import 'package:studyflow_app/features/dashboard/domain/dashboard_models.dart';
 import 'package:studyflow_app/features/exams/domain/exam_models.dart';
 import 'package:studyflow_app/features/exams/presentation/exam_widgets.dart';
 import 'package:studyflow_app/features/exams/presentation/exams_page.dart';
+import 'package:studyflow_app/features/notes/application/daily_notes_controller.dart';
+import 'package:studyflow_app/features/notes/presentation/daily_note_page.dart';
+import 'package:studyflow_app/features/notes/presentation/quick_note_sheet.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({
@@ -85,11 +89,13 @@ class _DashboardContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = AppScope.of(context).sessionController.session?.user;
+    final appScope = AppScope.of(context);
+    final user = appScope.sessionController.session?.user;
     final firstName = (user?.firstName.trim().isNotEmpty ?? false)
         ? user!.firstName.trim()
         : 'toi';
     final initials = _initials(user?.firstName, user?.lastName);
+    final notes = appScope.dailyNotesController;
 
     return SafeArea(
       child: RefreshIndicator(
@@ -125,40 +131,57 @@ class _DashboardContent extends StatelessWidget {
                     ],
                   ),
                 ),
+                _DailyNoteButton(
+                  controller: notes,
+                  settings: appScope.settingsController,
+                ),
                 _AvatarBadge(initials: initials),
               ],
             ),
-            const SizedBox(height: 24),
-            if (dashboard.hasClass)
+            const SizedBox(height: 20),
+            _EveningNoteCard(
+              controller: notes,
+              settings: appScope.settingsController,
+            ),
+            // Prochain cours et infos classe côte à côte : les devoirs à
+            // rendre restent visibles sans faire défiler.
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: _NextCourseCard(
+                      course: dashboard.nextCourse,
+                      onTap: onOpenSchedule,
+                    ),
+                  ),
+                  if (dashboard.hasClass) ...[
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _ClassInfoTile(
+                        pinned: dashboard.pinnedAnnouncements,
+                        refreshedAt: dashboard.generatedAt,
+                        onOpenFeed: () => _openAnnouncementFeed(context),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            if (dashboard.hasClass) ...[
+              _SectionHeader(
+                overline: 'À rendre bientôt',
+                title: 'Devoirs et projets',
+                color: AppColors.petrol,
+              ),
+              _UpcomingHomeworkCard(
+                homework: dashboard.upcomingHomework,
+                onOpenAgenda: onOpenAgenda,
+              ),
               _ExamsDashboardCard(refreshedAt: dashboard.generatedAt),
-            _PinnedAnnouncementCard(
-              announcements: dashboard.pinnedAnnouncements,
-              onTap: () => _openAnnouncementFeed(context),
-            ),
-            const SizedBox(height: 18),
-            _NextCourseCard(
-              course: dashboard.nextCourse,
-              onTap: onOpenSchedule,
-            ),
-            const SizedBox(height: 18),
-            _ClassFeedSection(
-              onOpenFullFeed: () => _openAnnouncementFeed(context),
-            ),
-            const SizedBox(height: 18),
-            _SectionHeader(
-              overline: 'À rendre bientôt',
-              title: 'Devoirs et projets',
-              color: AppColors.petrol,
-            ),
-            _SummaryTile(
-              icon: Icons.assignment_outlined,
-              title: '${dashboard.upcomingHomework.length} devoirs à venir',
-              subtitle: dashboard.upcomingHomework.isEmpty
-                  ? 'Rien d’urgent pour le moment'
-                  : dashboard.upcomingHomework.first.title,
-              onTap: onOpenAgenda,
-            ),
-            const SizedBox(height: 8),
+              const SizedBox(height: 8),
+            ],
             _SectionHeader(
               overline: 'Mon organisation',
               title: 'Mes tâches',
@@ -179,15 +202,6 @@ class _DashboardContent extends StatelessWidget {
                   ? 'Aucun événement prévu'
                   : dashboard.todayEvents.first.title,
               onTap: onOpenAgenda,
-            ),
-            _SummaryTile(
-              icon: Icons.campaign_outlined,
-              title:
-                  '${dashboard.pinnedAnnouncements.length} annonces épinglées',
-              subtitle: dashboard.pinnedAnnouncements.isEmpty
-                  ? 'Aucune annonce importante'
-                  : dashboard.pinnedAnnouncements.first.content,
-              onTap: () => _openAnnouncementFeed(context),
             ),
           ],
         ),
@@ -285,68 +299,146 @@ class _AvatarBadge extends StatelessWidget {
   }
 }
 
-class _PinnedAnnouncementCard extends StatelessWidget {
-  const _PinnedAnnouncementCard({
-    required this.announcements,
-    required this.onTap,
-  });
+/// Coin note (facultatif) : un appui ouvre la saisie rapide, un appui long la
+/// note complète. Un point indique qu'il y a déjà quelque chose ; le soir, tant
+/// que la note n'a pas été relue, le bouton passe en surbrillance et l'appui
+/// ouvre directement la note pour la relire.
+class _DailyNoteButton extends StatelessWidget {
+  const _DailyNoteButton({required this.controller, required this.settings});
 
-  final List<ClassAnnouncementSummary> announcements;
-  final VoidCallback onTap;
+  final DailyNotesController controller;
+  final AppSettingsController settings;
 
   @override
   Widget build(BuildContext context) {
-    final announcement = announcements.isEmpty ? null : announcements.first;
+    return AnimatedBuilder(
+      animation: Listenable.merge([controller, settings]),
+      builder: (context, _) {
+        if (!settings.dailyNotesEnabled) return const SizedBox.shrink();
 
-    return ProtoCard(
-      onTap: onTap,
-      padding: const EdgeInsets.all(15),
-      borderColor: AppColors.rose,
-      backgroundColor: AppColors.roseSoft,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: context.sfCard,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.push_pin_outlined, color: AppColors.rose),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const _Overline(
-                  text: 'Épinglé par le délégué',
-                  color: AppColors.rose,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  announcement?.content ?? 'Aucune annonce épinglée',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
+        final now = DateTime.now();
+        final hasNote = controller.noteFor(now)?.isEmpty == false;
+        final highlight =
+            settings.dailyNoteReminderEnabled && controller.needsReview(now);
+
+        return Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: Tooltip(
+            message: 'Note rapide (appui long : note du jour)',
+            child: Material(
+              color: highlight ? context.sfEvaluation : context.sfCard,
+              borderRadius: BorderRadius.circular(16),
+              child: InkWell(
+                key: const ValueKey('daily-note-button'),
+                borderRadius: BorderRadius.circular(16),
+                onTap: highlight
+                    ? () => DailyNotePage.open(context)
+                    : () => QuickNoteSheet.show(context),
+                onLongPress: () => DailyNotePage.open(context),
+                child: Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: highlight ? Colors.transparent : context.sfLine,
+                    ),
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Icon(
+                        Icons.edit_note,
+                        color: highlight ? Colors.white : context.sfIcon,
+                      ),
+                      if (hasNote && !highlight)
+                        Positioned(
+                          top: 9,
+                          right: 9,
+                          child: Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: context.sfEvaluation,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  announcement == null
-                      ? 'Le fil officiel reste accessible ici.'
-                      : '${announcement.authorName} · toucher pour ouvrir le fil',
-                  style: TextStyle(color: context.sfMuted, fontSize: 12),
-                ),
-              ],
+              ),
             ),
           ),
-          const Icon(Icons.chevron_right, color: AppColors.rose),
-        ],
-      ),
+        );
+      },
+    );
+  }
+}
+
+/// Le soir, rappelle ce qui a été noté dans la journée.
+class _EveningNoteCard extends StatelessWidget {
+  const _EveningNoteCard({required this.controller, required this.settings});
+
+  final DailyNotesController controller;
+  final AppSettingsController settings;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: Listenable.merge([controller, settings]),
+      builder: (context, _) {
+        final now = DateTime.now();
+        final note = controller.noteFor(now);
+        if (note == null ||
+            !settings.dailyNoteReminderEnabled ||
+            !controller.needsReview(now)) {
+          return const SizedBox.shrink();
+        }
+
+        return ProtoCard(
+          key: const ValueKey('evening-note-card'),
+          onTap: () => DailyNotePage.open(context),
+          margin: const EdgeInsets.only(bottom: 14),
+          padding: const EdgeInsets.all(14),
+          borderColor: context.sfEvaluation,
+          backgroundColor: context.sfEvaluationSoft,
+          child: Row(
+            children: [
+              ProtoIconBox(
+                icon: Icons.edit_note,
+                backgroundColor: context.sfCard,
+                foregroundColor: context.sfEvaluation,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _Overline(
+                      text: 'Fin de journée',
+                      color: context.sfEvaluation,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      note.preview,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: context.sfText,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    const ProtoMutedText('Relis ta note du jour avant demain.'),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: context.sfEvaluation),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -410,6 +502,7 @@ class _Overline extends StatelessWidget {
   }
 }
 
+/// Demi-carte : prochain cours de la classe.
 class _NextCourseCard extends StatelessWidget {
   const _NextCourseCard({required this.course, required this.onTap});
 
@@ -419,76 +512,106 @@ class _NextCourseCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final course = this.course;
+    const muted = Color(0xCFFFFFFF);
 
     return InkWell(
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(22),
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           gradient: const RadialGradient(
             center: Alignment(.95, -.75),
-            radius: 1.25,
+            radius: 1.4,
             colors: [Color(0x9984DCCF), AppColors.petrol],
           ),
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(22),
           boxShadow: const [
             BoxShadow(
               color: Color(0x40073B4C),
-              blurRadius: 34,
-              offset: Offset(0, 16),
+              blurRadius: 26,
+              offset: Offset(0, 12),
             ),
           ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                course == null ? 'AUCUN COURS À VENIR' : 'TON PROCHAIN COURS',
-                style: const TextStyle(
-                  color: Color(0xBFFFFFFF),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: .8,
-                ),
+        padding: const EdgeInsets.all(15),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              course == null ? 'AUCUN COURS' : 'PROCHAIN COURS',
+              style: const TextStyle(
+                color: Color(0xBFFFFFFF),
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                letterSpacing: .8,
               ),
-              const SizedBox(height: 8),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              course?.subjectName ?? 'Rien de prévu pour l’instant.',
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                height: 1.2,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -.4,
+              ),
+            ),
+            const Spacer(),
+            if (course != null) ...[
+              const SizedBox(height: 10),
               Text(
-                course?.subjectName ?? 'Respire, rien de prévu pour l’instant.',
+                '${_dayLabel(course.day)} ${course.startsAt}–${course.endsAt}',
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 21,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -.5,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-              if (course != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  '${course.startsAt}–${course.endsAt} · Salle ${course.room}'
-                  '${course.teacherName == null ? '' : ' · ${course.teacherName}'}',
-                  style: const TextStyle(color: Color(0xCFFFFFFF)),
-                ),
-              ],
+              const SizedBox(height: 2),
+              Text(
+                'Salle ${course.room}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: muted, fontSize: 12),
+              ),
             ],
-          ),
+          ],
         ),
       ),
     );
   }
+
+  static String _dayLabel(DateTime day) {
+    final today = DateUtils.dateOnly(DateTime.now());
+    final difference = DateUtils.dateOnly(day).difference(today).inDays;
+    return switch (difference) {
+      0 => 'Auj.',
+      1 => 'Demain',
+      _ => StudyFlowFormat.shortDay(day),
+    };
+  }
 }
 
-class _ClassFeedSection extends StatefulWidget {
-  const _ClassFeedSection({required this.onOpenFullFeed});
+/// Demi-carte : fil officiel de la classe, l'annonce épinglée en premier.
+class _ClassInfoTile extends StatefulWidget {
+  const _ClassInfoTile({
+    required this.pinned,
+    required this.refreshedAt,
+    required this.onOpenFeed,
+  });
 
-  final VoidCallback onOpenFullFeed;
+  final List<ClassAnnouncementSummary> pinned;
+  final DateTime refreshedAt;
+  final VoidCallback onOpenFeed;
 
   @override
-  State<_ClassFeedSection> createState() => _ClassFeedSectionState();
+  State<_ClassInfoTile> createState() => _ClassInfoTileState();
 }
 
-class _ClassFeedSectionState extends State<_ClassFeedSection> {
+class _ClassInfoTileState extends State<_ClassInfoTile> {
   Future<List<ClassAnnouncement>>? _future;
 
   @override
@@ -498,17 +621,40 @@ class _ClassFeedSectionState extends State<_ClassFeedSection> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final user = AppScope.of(context).sessionController.session?.user;
-    final canPublish = user?.isDelegate == true;
+  void didUpdateWidget(covariant _ClassInfoTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshedAt != widget.refreshedAt) _future = _load();
+  }
 
+  Future<List<ClassAnnouncement>> _load() async {
+    final appScope = AppScope.of(context);
+    try {
+      final accessToken = await appScope.sessionController.accessTokenForApi();
+      return await appScope.classAnnouncementRepository.listAnnouncements(
+        accessToken: accessToken,
+      );
+    } on Exception {
+      return const [];
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return FutureBuilder<List<ClassAnnouncement>>(
       future: _future,
       builder: (context, snapshot) {
         final announcements = snapshot.data ?? const <ClassAnnouncement>[];
+        final pinned = widget.pinned.firstOrNull;
+        final latest = announcements.firstOrNull;
+        final content = pinned?.content ?? latest?.content;
+        final isPinned = pinned != null || latest?.isPinned == true;
 
         return ProtoCard(
-          borderRadius: 20,
+          key: const ValueKey('class-info-tile'),
+          onTap: widget.onOpenFeed,
+          margin: EdgeInsets.zero,
+          padding: const EdgeInsets.all(14),
+          borderRadius: 22,
           borderColor: const Color(0xFFA6D9F7),
           backgroundColor: const Color(0xFFEDF8FD),
           child: Column(
@@ -516,130 +662,227 @@ class _ClassFeedSectionState extends State<_ClassFeedSection> {
             children: [
               Row(
                 children: [
-                  ProtoIconBox(
-                    icon: Icons.campaign_outlined,
-                    backgroundColor:
-                        Theme.of(context).brightness == Brightness.dark
-                        ? Colors.white.withValues(alpha: 0.14)
-                        : Colors.white,
+                  Icon(
+                    Icons.campaign_outlined,
+                    size: 18,
+                    color: context.sfShared,
                   ),
-                  const SizedBox(width: 11),
-                  const Expanded(
-                    child: ProtoSectionHeading(
-                      overline: 'Infos classe',
-                      title: 'Fil officiel',
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: _Overline(
+                      text: 'Infos classe',
+                      color: context.sfShared,
                     ),
-                  ),
-                  if (canPublish)
-                    IconButton(
-                      tooltip: 'Publier une info',
-                      onPressed: _openCreateSheet,
-                      icon: const Icon(Icons.add),
-                      color: context.sfIcon,
-                    ),
-                  IconButton(
-                    tooltip: 'Ouvrir le fil',
-                    onPressed: widget.onOpenFullFeed,
-                    icon: const Icon(Icons.chevron_right),
-                    color: context.sfChevron,
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              if (snapshot.connectionState != ConnectionState.done)
-                const LinearProgressIndicator(minHeight: 3)
-              else if (announcements.isEmpty)
-                const ProtoMutedText(
-                  'Aucune information officielle pour le moment.',
-                )
-              else
-                ...announcements
-                    .take(2)
-                    .map(
-                      (announcement) => _AnnouncementMiniCard(
-                        announcement,
-                        canManage: canPublish,
-                        onDelete: () => _deleteAnnouncement(announcement),
-                        onTogglePin: () => _togglePin(announcement),
+              const SizedBox(height: 8),
+              if (isPinned)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.push_pin,
+                        size: 13,
+                        color: AppColors.rose,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Épinglé',
+                        style: TextStyle(
+                          color: context.sfMuted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              Text(
+                content ??
+                    (snapshot.connectionState == ConnectionState.done
+                        ? 'Aucune info officielle pour le moment.'
+                        : '…'),
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: context.sfText,
+                  fontSize: 14,
+                  height: 1.3,
+                  fontWeight: content == null
+                      ? FontWeight.w500
+                      : FontWeight.w800,
+                ),
+              ),
+              const Spacer(),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      announcements.isEmpty
+                          ? 'Fil officiel'
+                          : 'Fil officiel · ${announcements.length}',
+                      style: TextStyle(
+                        color: context.sfShared,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
+                  ),
+                  Icon(Icons.chevron_right, size: 18, color: context.sfShared),
+                ],
+              ),
             ],
           ),
         );
       },
     );
   }
+}
 
-  Future<List<ClassAnnouncement>> _load() async {
-    final appScope = AppScope.of(context);
-    final accessToken = await appScope.sessionController.accessTokenForApi();
-    return appScope.classAnnouncementRepository.listAnnouncements(
-      accessToken: accessToken,
-    );
-  }
+/// Les prochains rendus, visibles d'un coup d'œil (évaluations en ambre).
+class _UpcomingHomeworkCard extends StatelessWidget {
+  const _UpcomingHomeworkCard({
+    required this.homework,
+    required this.onOpenAgenda,
+  });
 
-  Future<void> _refresh() async {
-    setState(() {
-      _future = _load();
-    });
-    await _future;
-  }
+  static const _visible = 3;
 
-  Future<void> _openCreateSheet() async {
-    final created = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      builder: (context) => const _CreateAnnouncementSheet(),
-    );
+  final List<HomeworkSummary> homework;
+  final VoidCallback onOpenAgenda;
 
-    if (created == true && mounted) await _refresh();
-  }
+  @override
+  Widget build(BuildContext context) {
+    if (homework.isEmpty) {
+      return _SummaryTile(
+        icon: Icons.assignment_outlined,
+        title: 'Aucun devoir à venir',
+        subtitle: 'Rien d’urgent pour le moment',
+        onTap: onOpenAgenda,
+      );
+    }
 
-  Future<void> _deleteAnnouncement(ClassAnnouncement announcement) async {
-    final shouldDelete = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Supprimer cette annonce ?'),
-        content: Text('“${announcement.content}” sera retirée du fil.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler'),
+    return ProtoCard(
+      key: const ValueKey('upcoming-homework-card'),
+      onTap: onOpenAgenda,
+      padding: const EdgeInsets.fromLTRB(14, 6, 8, 6),
+      child: Column(
+        children: [
+          for (final item in homework.take(_visible))
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  _DueBadge(deadline: item.deadline),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            if (item.isEvaluation) ...[
+                              Icon(
+                                Icons.grading_outlined,
+                                size: 15,
+                                color: context.sfEvaluation,
+                              ),
+                              const SizedBox(width: 4),
+                            ],
+                            Flexible(
+                              child: Text(
+                                item.subjectName ??
+                                    (item.isEvaluation
+                                        ? 'Évaluation'
+                                        : 'Devoir'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: item.isEvaluation
+                                      ? context.sfEvaluation
+                                      : context.sfShared,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          item.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: context.sfText,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Row(
+            children: [
+              Expanded(
+                child: ProtoMutedText(
+                  homework.length > _visible
+                      ? '+ ${homework.length - _visible} autre${homework.length - _visible > 1 ? 's' : ''} dans l’agenda'
+                      : 'Tout est dans l’agenda',
+                ),
+              ),
+              Icon(Icons.chevron_right, color: context.sfChevron),
+            ],
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Supprimer'),
-          ),
+          const SizedBox(height: 4),
         ],
       ),
     );
-
-    if (shouldDelete != true || !mounted) return;
-
-    final appScope = AppScope.of(context);
-    final accessToken = await appScope.sessionController.accessTokenForApi();
-    await appScope.classAnnouncementRepository.deleteAnnouncement(
-      announcementId: announcement.id,
-      accessToken: accessToken,
-    );
-
-    if (mounted) await _refresh();
   }
+}
 
-  Future<void> _togglePin(ClassAnnouncement announcement) async {
-    final appScope = AppScope.of(context);
-    final accessToken = await appScope.sessionController.accessTokenForApi();
-    await appScope.classAnnouncementRepository.updateAnnouncement(
-      announcement: announcement,
-      isPinned: !announcement.isPinned,
-      accessToken: accessToken,
+/// « Demain », « 3 j », « Auj. » : le délai avant le rendu.
+class _DueBadge extends StatelessWidget {
+  const _DueBadge({required this.deadline});
+
+  final DateTime deadline;
+
+  @override
+  Widget build(BuildContext context) {
+    final today = DateUtils.dateOnly(DateTime.now());
+    final days = DateUtils.dateOnly(deadline).difference(today).inDays;
+    final urgent = days <= 1;
+    final label = switch (days) {
+      < 0 => 'Retard',
+      0 => 'Auj.',
+      1 => 'Demain',
+      _ => '$days j',
+    };
+    final color = urgent ? AppColors.danger : context.sfShared;
+
+    return Container(
+      width: 58,
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: urgent
+            ? AppColors.danger.withValues(alpha: 0.10)
+            : context.sfSharedSoft,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
     );
-
-    if (mounted) await _refresh();
   }
 }
 
@@ -974,9 +1217,22 @@ class _ClassFeedFullListState extends State<_ClassFeedFullList> {
           controller: widget.scrollController,
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
           children: [
-            const ProtoSectionHeading(
-              overline: 'Délégué',
-              title: 'Fil officiel de la classe',
+            Row(
+              children: [
+                const Expanded(
+                  child: ProtoSectionHeading(
+                    overline: 'Infos classe',
+                    title: 'Fil officiel de la classe',
+                  ),
+                ),
+                if (canManage)
+                  FilledButton.tonalIcon(
+                    key: const ValueKey('publish-announcement-button'),
+                    onPressed: _openCreateSheet,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Publier'),
+                  ),
+              ],
             ),
             const SizedBox(height: 12),
             if (snapshot.connectionState != ConnectionState.done)
@@ -1016,6 +1272,20 @@ class _ClassFeedFullListState extends State<_ClassFeedFullList> {
       _future = _load();
     });
     await _future;
+  }
+
+  Future<void> _openCreateSheet() async {
+    final created = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (context) => const _CreateAnnouncementSheet(),
+    );
+
+    if (created == true && mounted) await _refresh();
   }
 
   Future<void> _deleteAnnouncement(ClassAnnouncement announcement) async {

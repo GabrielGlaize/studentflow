@@ -155,11 +155,12 @@ dotnet run --project src/backend/StudyFlow.Api \
   --urls http://0.0.0.0:5028
 ```
 
-Terminal 2 — app iPhone :
+Terminal 2 — app iPhone/iPad/Android (le script demande sur quel appareil
+connecté installer ; `--device=NOM_OU_ID` pour le choisir directement) :
 
 ```bash
 cd /Users/gab/Documents/studentflow
-./scripts/run_iphone_developer.sh
+./scripts/install_app.sh
 ```
 
 Pour installer une app autonome pendant environ 7 jours avec le compte Apple
@@ -167,7 +168,7 @@ gratuit, utilise le mode release :
 
 ```bash
 cd /Users/gab/Documents/studentflow
-./scripts/run_iphone_developer.sh --clean --release
+./scripts/install_app.sh --clean --release
 ```
 
 Quand Flutter affiche les commandes interactives, utilise `d` pour détacher la
@@ -178,7 +179,7 @@ Pour utiliser un backend sur NAS :
 
 ```bash
 cd /Users/gab/Documents/studentflow
-./scripts/run_iphone_developer.sh --clean --release --api-url=http://IP_DU_NAS:5028
+./scripts/install_app.sh --clean --release --api-url=http://IP_DU_NAS:5028
 ```
 
 Le guide complet est dans [`docs/NAS_DEPLOIEMENT.md`](./NAS_DEPLOIEMENT.md).
@@ -187,7 +188,7 @@ Si Xcode/iOS recommence à parler de `resource fork`, relance en mode réparatio
 
 ```bash
 cd /Users/gab/Documents/studentflow
-./scripts/run_iphone_developer.sh --clean
+./scripts/install_app.sh --clean
 ```
 
 ### Bloc manuel si besoin

@@ -109,6 +109,7 @@ class _ReminderPreviewLine extends StatelessWidget {
               ReminderType.homework => Icons.assignment_outlined,
               ReminderType.task => Icons.check_circle_outline,
               ReminderType.event => Icons.event_outlined,
+              ReminderType.note => Icons.sticky_note_2_outlined,
             },
             backgroundColor:
                 reminder.type == ReminderType.course ||
@@ -235,6 +236,7 @@ class _NotificationPreferencesLoaderState
         homeworkEnabled: preferences.homeworkEnabled,
         apprenticeshipsEnabled: preferences.apprenticeshipsEnabled,
         courseReminderMinutes: preferences.courseReminderMinutes,
+        quietHours: preferences.quietHours,
       );
     } on Exception {
       // Local settings remain usable if the API is unavailable.
@@ -279,6 +281,7 @@ void _syncNotificationPreferences(BuildContext context) {
           homeworkEnabled: settings.homeworkNotificationsEnabled,
           apprenticeshipsEnabled: settings.apprenticeshipNotificationsEnabled,
           courseReminderMinutes: settings.courseReminderMinutes,
+          quietHours: settings.quietHours,
         ),
         accessToken: accessToken,
       );

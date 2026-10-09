@@ -67,6 +67,7 @@ class _HomeworkFormPageState extends State<HomeworkFormPage> {
   bool _dueAtCourseStart = true;
   late DateTime _customDeadline;
   bool _showPastCourses = false;
+  bool _isEvaluation = false;
   bool _isSaving = false;
   String? _error;
 
@@ -80,6 +81,7 @@ class _HomeworkFormPageState extends State<HomeworkFormPage> {
     _descriptionController = TextEditingController(
       text: homework?.description ?? '',
     );
+    _isEvaluation = homework?.isEvaluation ?? false;
     _courseId = homework?.courseId ?? widget.initialCourse?.id;
     _subjectId = widget.initialCourse?.subjectId;
     _customDeadline =
@@ -173,14 +175,25 @@ class _HomeworkFormPageState extends State<HomeworkFormPage> {
                     controller: _titleController,
                     textCapitalization: TextCapitalization.sentences,
                     textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      labelText: 'À faire',
-                      hintText: 'Exercices 3 à 5 page 42',
-                      prefixIcon: Icon(Icons.assignment_outlined),
+                    decoration: InputDecoration(
+                      labelText: _isEvaluation ? 'Évaluation' : 'À faire',
+                      hintText: _isEvaluation
+                          ? 'Contrôle sur le chapitre 4'
+                          : 'Exercices 3 à 5 page 42',
+                      prefixIcon: Icon(
+                        _isEvaluation
+                            ? Icons.grading_outlined
+                            : Icons.assignment_outlined,
+                      ),
                     ),
                     validator: (value) => (value ?? '').trim().isEmpty
                         ? 'Décris le devoir en quelques mots.'
                         : null,
+                  ),
+                  const SizedBox(height: 12),
+                  _EvaluationToggle(
+                    value: _isEvaluation,
+                    onChanged: (value) => setState(() => _isEvaluation = value),
                   ),
                   const SizedBox(height: 20),
                   _buildSubjectSection(choices),
@@ -516,6 +529,7 @@ class _HomeworkFormPageState extends State<HomeworkFormPage> {
       courseId: _courseId,
       subjectName: course?.subjectName ?? widget.homework?.subjectName,
       courseDay: course?.day ?? widget.homework?.courseDay,
+      isEvaluation: _isEvaluation,
     );
 
     try {
@@ -633,6 +647,52 @@ class _CourseChoiceTile extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Indique un devoir noté : il ressort dans l'agenda et sur l'accueil.
+class _EvaluationToggle extends StatelessWidget {
+  const _EvaluationToggle({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return ProtoCard(
+      key: const ValueKey('homework-evaluation-toggle'),
+      onTap: () => onChanged(!value),
+      padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
+      borderColor: value ? context.sfEvaluation : context.sfLine,
+      backgroundColor: value ? context.sfEvaluationSoft : context.sfCard,
+      child: Row(
+        children: [
+          ProtoIconBox(
+            icon: Icons.grading_outlined,
+            size: 34,
+            backgroundColor: value ? context.sfCard : context.sfSoftCard,
+            foregroundColor: value ? context.sfEvaluation : context.sfMuted,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'C’est une évaluation',
+                  style: TextStyle(
+                    color: context.sfText,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const ProtoMutedText('Contrôle, oral, dossier noté…'),
+              ],
+            ),
+          ),
+          Switch(value: value, onChanged: onChanged),
+        ],
       ),
     );
   }

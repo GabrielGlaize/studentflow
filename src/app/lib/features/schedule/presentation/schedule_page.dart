@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:studyflow_app/core/app_scope.dart';
 import 'package:studyflow_app/core/theme/app_colors.dart';
 import 'package:studyflow_app/core/theme/prototype_widgets.dart';
 import 'package:studyflow_app/core/widgets/date_time_pickers.dart';
 import 'package:studyflow_app/features/agenda/presentation/homework_form_page.dart';
+import 'package:studyflow_app/features/exams/domain/exam_models.dart';
+import 'package:studyflow_app/features/exams/presentation/exams_page.dart';
 import 'package:studyflow_app/features/schedule/domain/course_models.dart';
 import 'package:studyflow_app/features/schedule/presentation/course_form_page.dart';
 
@@ -32,6 +36,10 @@ class _SchedulePageState extends State<SchedulePage> {
   final Map<DateTime, Future<List<CourseItem>>> _weeks = {};
   bool _hasClass = false;
 
+  /// Épreuves de partiels, rangées par jour, affichées avec les cours.
+  Map<DateTime, List<_ExamSlot>> _exams = const {};
+  bool _examsRequested = false;
+
   @override
   void initState() {
     super.initState();
@@ -51,6 +59,47 @@ class _SchedulePageState extends State<SchedulePage> {
     _hasClass =
         AppScope.of(context).sessionController.session?.user.schoolClassId !=
         null;
+    if (!_examsRequested) {
+      _examsRequested = true;
+      unawaited(_loadExams());
+    }
+  }
+
+  Future<void> _loadExams() async {
+    final appScope = AppScope.of(context);
+    try {
+      final accessToken = await appScope.sessionController.accessTokenForApi();
+      final sessions = await appScope.examRepository.listSessions(
+        accessToken: accessToken,
+      );
+      final byDay = <DateTime, List<_ExamSlot>>{};
+      for (final session in sessions) {
+        for (final subject in session.subjects) {
+          final day = subject.examDay;
+          if (day == null) continue;
+          byDay
+              .putIfAbsent(DateUtils.dateOnly(day), () => [])
+              .add(_ExamSlot(session: session, subject: subject));
+        }
+      }
+      for (final slots in byDay.values) {
+        slots.sort(
+          (a, b) =>
+              (a.subject.startsAt ?? '').compareTo(b.subject.startsAt ?? ''),
+        );
+      }
+      if (mounted) setState(() => _exams = byDay);
+    } on Exception {
+      // Facultatif : sans partiels, le planning reste utilisable.
+    }
+  }
+
+  List<_ExamSlot> _examsOn(DateTime day) =>
+      _exams[DateUtils.dateOnly(day)] ?? const [];
+
+  Future<void> _openExam(_ExamSlot slot) async {
+    await ExamsPage.open(context, sessionId: slot.session.id);
+    if (mounted) unawaited(_loadExams());
   }
 
   @override
@@ -108,6 +157,7 @@ class _SchedulePageState extends State<SchedulePage> {
 
   Future<void> _refresh() async {
     setState(_weeks.clear);
+    unawaited(_loadExams());
     await _coursesOfWeek(_weekStart);
     if (mounted) AppScope.of(context).reminderSync.requestSync();
   }
@@ -225,6 +275,7 @@ class _SchedulePageState extends State<SchedulePage> {
             .where((course) => DateUtils.isSameDay(course.day, day))
             .toList();
         final active = courses.where((x) => !x.isCancelled).toList();
+        final exams = _examsOn(day);
 
         return RefreshIndicator(
           onRefresh: _refresh,
@@ -236,7 +287,9 @@ class _SchedulePageState extends State<SchedulePage> {
                   Expanded(
                     child: ProtoSectionHeading(
                       overline: StudyFlowFormat.longDay(day),
-                      title: courses.isEmpty
+                      title: courses.isEmpty && exams.isNotEmpty
+                          ? '${exams.length} épreuve${exams.length > 1 ? 's' : ''} de partiel'
+                          : courses.isEmpty
                           ? 'Pas de cours'
                           : active.isEmpty
                           ? 'Cours annulés'
@@ -247,7 +300,7 @@ class _SchedulePageState extends State<SchedulePage> {
                 ],
               ),
               const SizedBox(height: 12),
-              if (courses.isEmpty)
+              if (courses.isEmpty && exams.isEmpty)
                 const ProtoStateCard(
                   icon: Icons.event_busy_outlined,
                   title: 'Journée libre',
@@ -259,12 +312,15 @@ class _SchedulePageState extends State<SchedulePage> {
                 _DayTimeline(
                   day: day,
                   courses: courses,
+                  exams: exams,
+                  onOpenExam: _openExam,
                   showHeader: false,
                   onEditCourse: _openCourseForm,
                   onDeleteCourse: _deleteCourse,
                   onOpenHistory: _openCourseHistory,
                   onDuplicateCourse: _duplicateCourse,
                   onAddHomework: _addHomework,
+                  onToggleCancelled: _toggleCancelled,
                 ),
             ],
           ),
@@ -292,10 +348,12 @@ class _SchedulePageState extends State<SchedulePage> {
                 .where((course) => DateUtils.isSameDay(course.day, day))
                 .toList(),
         };
-        final courseDays = days.where((day) => byDay[day]!.isNotEmpty).toList();
+        final courseDays = days
+            .where((day) => byDay[day]!.isNotEmpty || _examsOn(day).isNotEmpty)
+            .toList();
         final freeWeekdays = days
             .take(_weekdays)
-            .where((day) => byDay[day]!.isEmpty)
+            .where((day) => byDay[day]!.isEmpty && _examsOn(day).isEmpty)
             .toList();
         final count = courses.where((x) => !x.isCancelled).length;
 
@@ -311,7 +369,13 @@ class _SchedulePageState extends State<SchedulePage> {
                       overline: 'Planning de la classe',
                       title: courseDays.isEmpty
                           ? 'Aucun cours cette semaine'
-                          : '$count cours sur ${courseDays.length} jour${courseDays.length > 1 ? 's' : ''}',
+                          : _weekSummary(
+                              courses: count,
+                              exams: days
+                                  .map((day) => _examsOn(day).length)
+                                  .fold(0, (sum, x) => sum + x),
+                              days: courseDays.length,
+                            ),
                     ),
                   ),
                   const ProtoVisibilityChip(shared: true),
@@ -331,6 +395,8 @@ class _SchedulePageState extends State<SchedulePage> {
                   _DayTimeline(
                     day: day,
                     courses: byDay[day]!,
+                    exams: _examsOn(day),
+                    onOpenExam: _openExam,
                     compact: true,
                     onOpenDay: () => _openDay(day),
                     onEditCourse: _openCourseForm,
@@ -338,6 +404,7 @@ class _SchedulePageState extends State<SchedulePage> {
                     onOpenHistory: _openCourseHistory,
                     onDuplicateCourse: _duplicateCourse,
                     onAddHomework: _addHomework,
+                    onToggleCancelled: _toggleCancelled,
                   ),
               if (courseDays.isNotEmpty && freeWeekdays.isNotEmpty)
                 Padding(
@@ -363,6 +430,18 @@ class _SchedulePageState extends State<SchedulePage> {
         );
       },
     );
+  }
+
+  /// « 12 cours sur 4 jours », « 3 partiels », « 8 cours · 2 partiels ».
+  String _weekSummary({
+    required int courses,
+    required int exams,
+    required int days,
+  }) {
+    final examLabel = '$exams partiel${exams > 1 ? 's' : ''}';
+    if (courses == 0) return examLabel;
+    final courseLabel = '$courses cours sur $days jour${days > 1 ? 's' : ''}';
+    return exams == 0 ? courseLabel : '$courses cours · $examLabel';
   }
 
   String _joinDays(List<DateTime> days) {
@@ -472,6 +551,99 @@ class _SchedulePageState extends State<SchedulePage> {
             content: Text('Devoir ajouté à l’agenda de la classe.'),
           ),
         );
+    }
+  }
+
+  /// Annule (ou rétablit) un cours. À l'annulation, propose d'annuler aussi
+  /// les autres cours de la journée pas encore terminés : l'intervenant absent
+  /// assure souvent toute la journée. La réponse par défaut est « Oui ».
+  Future<void> _toggleCancelled(CourseItem course) async {
+    final messenger = ScaffoldMessenger.of(context);
+
+    if (course.isCancelled) {
+      await _setCancelled({course.id}, course.day, cancelled: false);
+      if (!mounted) return;
+      messenger
+        ..clearSnackBars()
+        ..showSnackBar(const SnackBar(content: Text('Cours rétabli.')));
+      return;
+    }
+
+    final now = DateTime.now();
+    final sameDay = (await _coursesOfWeek(StudyFlowDates.mondayOf(course.day)))
+        .where(
+          (other) =>
+              other.id != course.id &&
+              !other.isCancelled &&
+              DateUtils.isSameDay(other.day, course.day) &&
+              other.endDateTime.isAfter(now),
+        )
+        .toList();
+    if (!mounted) return;
+
+    final ids = {course.id};
+    if (sameDay.isNotEmpty) {
+      final alsoOthers = await showDialog<bool>(
+        context: context,
+        builder: (context) =>
+            _CancelCourseDialog(course: course, others: sameDay),
+      );
+      if (alsoOthers == null || !mounted) return;
+      if (alsoOthers) ids.addAll(sameDay.map((other) => other.id));
+    }
+
+    final done = await _setCancelled(ids, course.day, cancelled: true);
+    if (!done || !mounted) return;
+    messenger
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            ids.length == 1
+                ? '${course.subjectName} annulé pour la classe.'
+                : '${ids.length} cours annulés pour la journée.',
+          ),
+          action: SnackBarAction(
+            label: 'Rétablir',
+            onPressed: () => _setCancelled(ids, course.day, cancelled: false),
+          ),
+        ),
+      );
+  }
+
+  /// Relit les cours du jour avant de les modifier : le serveur refuse une
+  /// version périmée (après une annulation tout juste faite, par exemple).
+  Future<bool> _setCancelled(
+    Set<String> courseIds,
+    DateTime day, {
+    required bool cancelled,
+  }) async {
+    final appScope = AppScope.of(context);
+    try {
+      final accessToken = await appScope.sessionController.accessTokenForApi();
+      final fresh = await appScope.courseRepository.listCourses(
+        from: day,
+        to: day,
+        accessToken: accessToken,
+      );
+      for (final course in fresh.where((x) => courseIds.contains(x.id))) {
+        if (course.isCancelled == cancelled) continue;
+        await appScope.courseRepository.updateCourse(
+          courseId: course.id,
+          data: course.toFormData().copyWith(isCancelled: cancelled),
+          accessToken: accessToken,
+        );
+      }
+      return true;
+    } on Exception catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+      return false;
+    } finally {
+      if (mounted) await _refresh();
     }
   }
 
@@ -764,6 +936,9 @@ class _DayTimeline extends StatelessWidget {
     required this.onOpenHistory,
     required this.onDuplicateCourse,
     required this.onAddHomework,
+    required this.onToggleCancelled,
+    this.exams = const [],
+    this.onOpenExam,
     this.showHeader = true,
     this.compact = false,
     this.onOpenDay,
@@ -782,12 +957,22 @@ class _DayTimeline extends StatelessWidget {
   final ValueChanged<CourseItem> onOpenHistory;
   final ValueChanged<CourseItem> onDuplicateCourse;
   final ValueChanged<CourseItem> onAddHomework;
+  final ValueChanged<CourseItem> onToggleCancelled;
+  final List<_ExamSlot> exams;
+  final ValueChanged<_ExamSlot>? onOpenExam;
 
   @override
   Widget build(BuildContext context) {
     final sorted = [...courses]..sort(_byStart);
     final isToday = DateUtils.isSameDay(day, DateTime.now());
-    final children = <Widget>[];
+    final children = <Widget>[
+      for (final exam in exams)
+        _ExamSlotCard(
+          slot: exam,
+          compact: compact,
+          onTap: onOpenExam == null ? null : () => onOpenExam!(exam),
+        ),
+    ];
     CourseItem? previous;
 
     for (var i = 0; i < sorted.length; i++) {
@@ -814,6 +999,7 @@ class _DayTimeline extends StatelessWidget {
           onOpenHistory: () => onOpenHistory(course),
           onDuplicate: () => onDuplicateCourse(course),
           onAddHomework: () => onAddHomework(course),
+          onToggleCancelled: () => onToggleCancelled(course),
         ),
       );
       if (!course.isCancelled) previous = course;
@@ -861,7 +1047,9 @@ class _DayTimeline extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '${sorted.first.startsAt}–${sorted.last.endsAt}',
+                      sorted.isEmpty
+                          ? 'Partiels'
+                          : '${sorted.first.startsAt}–${sorted.last.endsAt}',
                       style: TextStyle(color: context.sfMuted, fontSize: 13),
                     ),
                   ],
@@ -899,32 +1087,40 @@ class _BreakSeparator extends StatelessWidget {
       child: Row(
         children: [
           line,
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 10),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: context.sfSoftCard,
-              borderRadius: BorderRadius.circular(99),
-              border: Border.all(color: context.sfLine),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  isLunch ? Icons.restaurant_outlined : Icons.coffee_outlined,
-                  size: 16,
-                  color: color,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  '${isLunch ? 'Pause déjeuner' : 'Pause'} · ${StudyFlowFormat.duration(minutes)}',
-                  style: TextStyle(
+          // Compressible : sur un écran étroit, l'étiquette se raccourcit.
+          Flexible(
+            flex: 4,
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: context.sfSoftCard,
+                borderRadius: BorderRadius.circular(99),
+                border: Border.all(color: context.sfLine),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    isLunch ? Icons.restaurant_outlined : Icons.coffee_outlined,
+                    size: 16,
                     color: color,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
                   ),
-                ),
-              ],
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      '${isLunch ? 'Pause déjeuner' : 'Pause'} · ${StudyFlowFormat.duration(minutes)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           line,
@@ -944,6 +1140,7 @@ class _TimelineCourseCard extends StatelessWidget {
     required this.onOpenHistory,
     required this.onDuplicate,
     required this.onAddHomework,
+    required this.onToggleCancelled,
   });
 
   final CourseItem course;
@@ -954,6 +1151,7 @@ class _TimelineCourseCard extends StatelessWidget {
   final VoidCallback onOpenHistory;
   final VoidCallback onDuplicate;
   final VoidCallback onAddHomework;
+  final VoidCallback onToggleCancelled;
 
   @override
   Widget build(BuildContext context) {
@@ -969,6 +1167,8 @@ class _TimelineCourseCard extends StatelessWidget {
         accent: accent,
         onEdit: onEdit,
         menu: _CourseMenu(
+          isCancelled: course.isCancelled,
+          onToggleCancelled: onToggleCancelled,
           onEdit: onEdit,
           onAddHomework: onAddHomework,
           onDuplicate: onDuplicate,
@@ -1060,6 +1260,8 @@ class _TimelineCourseCard extends StatelessWidget {
                                 ),
                               ),
                               _CourseMenu(
+                                isCancelled: course.isCancelled,
+                                onToggleCancelled: onToggleCancelled,
                                 onEdit: onEdit,
                                 onAddHomework: onAddHomework,
                                 onDuplicate: onDuplicate,
@@ -1119,10 +1321,21 @@ class _TimelineCourseCard extends StatelessWidget {
   }
 }
 
-enum _CourseAction { addHomework, edit, duplicate, history, delete }
+enum _CourseAction {
+  toggleCancelled,
+  addHomework,
+  edit,
+  duplicate,
+  history,
+  delete,
+}
 
+/// Actions d'un cours. L'annulation vient en premier : c'est le cas le plus
+/// fréquent (intervenant absent), il se règle en deux touches.
 class _CourseMenu extends StatelessWidget {
   const _CourseMenu({
+    required this.isCancelled,
+    required this.onToggleCancelled,
     required this.onEdit,
     required this.onAddHomework,
     required this.onDuplicate,
@@ -1130,6 +1343,8 @@ class _CourseMenu extends StatelessWidget {
     required this.onDelete,
   });
 
+  final bool isCancelled;
+  final VoidCallback onToggleCancelled;
   final VoidCallback onEdit;
   final VoidCallback onAddHomework;
   final VoidCallback onDuplicate;
@@ -1144,6 +1359,8 @@ class _CourseMenu extends StatelessWidget {
       color: context.sfCard,
       onSelected: (action) {
         switch (action) {
+          case _CourseAction.toggleCancelled:
+            onToggleCancelled();
           case _CourseAction.edit:
             onEdit();
           case _CourseAction.addHomework:
@@ -1156,41 +1373,218 @@ class _CourseMenu extends StatelessWidget {
             onDelete();
         }
       },
-      itemBuilder: (context) => const [
+      itemBuilder: (context) => [
         PopupMenuItem(
+          key: const ValueKey('course-toggle-cancelled'),
+          value: _CourseAction.toggleCancelled,
+          child: ListTile(
+            leading: Icon(
+              isCancelled ? Icons.event_available_outlined : Icons.event_busy,
+              color: isCancelled ? null : AppColors.rose,
+            ),
+            title: Text(isCancelled ? 'Rétablir le cours' : 'Annuler le cours'),
+          ),
+        ),
+        const PopupMenuDivider(),
+        const PopupMenuItem(
           value: _CourseAction.addHomework,
           child: ListTile(
             leading: Icon(Icons.assignment_add),
             title: Text('Ajouter un devoir'),
           ),
         ),
-        PopupMenuItem(
+        const PopupMenuItem(
           value: _CourseAction.edit,
           child: ListTile(
             leading: Icon(Icons.edit_outlined),
             title: Text('Modifier'),
           ),
         ),
-        PopupMenuItem(
+        const PopupMenuItem(
           value: _CourseAction.duplicate,
           child: ListTile(
             leading: Icon(Icons.copy_all_outlined),
             title: Text('Dupliquer'),
           ),
         ),
-        PopupMenuItem(
+        const PopupMenuItem(
           value: _CourseAction.history,
           child: ListTile(
             leading: Icon(Icons.history_outlined),
             title: Text('Historique'),
           ),
         ),
-        PopupMenuItem(
+        const PopupMenuItem(
           value: _CourseAction.delete,
           child: ListTile(
             leading: Icon(Icons.delete_outline),
             title: Text('Supprimer'),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ExamSlot {
+  const _ExamSlot({required this.session, required this.subject});
+
+  final ExamSession session;
+  final ExamSubjectSummary subject;
+}
+
+/// Épreuve de partiel dans le planning, en ambre comme les évaluations.
+class _ExamSlotCard extends StatelessWidget {
+  const _ExamSlotCard({
+    required this.slot,
+    required this.compact,
+    required this.onTap,
+  });
+
+  final _ExamSlot slot;
+  final bool compact;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final subject = slot.subject;
+    final accent = context.sfEvaluation;
+    final details = [slot.session.title, ?subject.details].join(' · ');
+
+    final card = ProtoCard(
+      key: ValueKey('schedule-exam-${subject.id}'),
+      onTap: onTap,
+      margin: EdgeInsets.only(bottom: compact ? 8 : 12),
+      padding: EdgeInsets.fromLTRB(12, compact ? 10 : 13, 8, compact ? 10 : 13),
+      borderColor: accent,
+      backgroundColor: context.sfEvaluationSoft,
+      child: Row(
+        children: [
+          Icon(Icons.grading_outlined, color: accent),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  subject.startsAt == null
+                      ? 'PARTIEL'
+                      : 'PARTIEL · ${subject.startsAt}',
+                  style: TextStyle(
+                    color: accent,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                Text(
+                  subject.name,
+                  style: TextStyle(
+                    color: context.sfText,
+                    fontSize: compact ? 15 : 17,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                if (!compact)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: ProtoMutedText(details, maxLines: 2),
+                  ),
+              ],
+            ),
+          ),
+          Icon(Icons.chevron_right, color: accent),
+        ],
+      ),
+    );
+
+    if (compact) return card;
+    // Même alignement que les cours : colonne d'horaire à gauche.
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 46,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 13),
+            child: Text(
+              subject.startsAt ?? '',
+              textAlign: TextAlign.end,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: context.sfText,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(child: card),
+      ],
+    );
+  }
+}
+
+/// Confirme l'annulation et propose d'annuler les autres cours du jour
+/// (« Oui » par défaut). Renvoie `true` pour tout annuler, `false` pour ce
+/// seul cours, `null` si l'élève renonce.
+class _CancelCourseDialog extends StatefulWidget {
+  const _CancelCourseDialog({required this.course, required this.others});
+
+  final CourseItem course;
+  final List<CourseItem> others;
+
+  @override
+  State<_CancelCourseDialog> createState() => _CancelCourseDialogState();
+}
+
+class _CancelCourseDialogState extends State<_CancelCourseDialog> {
+  bool _alsoOthers = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final others = widget.others;
+
+    return AlertDialog(
+      title: Text('Annuler ${widget.course.subjectName} ?'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Le cours de ${widget.course.startsAt} sera marqué annulé pour '
+            'toute la classe.',
+          ),
+          const SizedBox(height: 14),
+          SwitchListTile(
+            key: const ValueKey('cancel-whole-day-switch'),
+            contentPadding: EdgeInsets.zero,
+            value: _alsoOthers,
+            onChanged: (value) => setState(() => _alsoOthers = value),
+            title: Text(
+              others.length == 1
+                  ? 'Annuler aussi l’autre cours de la journée'
+                  : 'Annuler aussi les ${others.length} autres cours de la journée',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            subtitle: Text(
+              others
+                  .map((other) => '${other.startsAt} ${other.subjectName}')
+                  .join(' · '),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Retour'),
+        ),
+        FilledButton(
+          key: const ValueKey('confirm-cancel-course'),
+          style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+          onPressed: () => Navigator.pop(context, _alsoOthers),
+          child: Text(_alsoOthers ? 'Tout annuler' : 'Annuler ce cours'),
         ),
       ],
     );

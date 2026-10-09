@@ -598,6 +598,42 @@ namespace StudyFlow.Infrastructure.Persistence.Migrations
                     b.ToTable("revision_resource_files", (string)null);
                 });
 
+            modelBuilder.Entity("StudyFlow.Domain.Notes.DailyNote", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateOnly>("Day")
+                        .HasColumnType("date")
+                        .HasColumnName("day");
+
+                    b.Property<string>("EncryptedText")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("encrypted_text");
+
+                    b.Property<DateTimeOffset?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reviewed_at");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Day")
+                        .IsUnique();
+
+                    b.ToTable("daily_notes", (string)null);
+                });
+
             modelBuilder.Entity("StudyFlow.Domain.Notifications.NotificationDelivery", b =>
                 {
                     b.Property<Guid>("Id")
@@ -710,6 +746,26 @@ namespace StudyFlow.Infrastructure.Persistence.Migrations
                     b.Property<bool>("HomeworkEnabled")
                         .HasColumnType("boolean")
                         .HasColumnName("homework_enabled");
+
+                    b.Property<DateTimeOffset?>("MutedUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("muted_until");
+
+                    b.Property<bool>("QuietHoursEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("quiet_hours_enabled");
+
+                    b.Property<TimeOnly>("QuietHoursEnd")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("time without time zone")
+                        .HasDefaultValue(new TimeOnly(7, 0, 0))
+                        .HasColumnName("quiet_hours_end");
+
+                    b.Property<TimeOnly>("QuietHoursStart")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("time without time zone")
+                        .HasDefaultValue(new TimeOnly(22, 0, 0))
+                        .HasColumnName("quiet_hours_start");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
@@ -975,6 +1031,10 @@ namespace StudyFlow.Infrastructure.Persistence.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text")
                         .HasColumnName("description");
+
+                    b.Property<bool>("IsEvaluation")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_evaluation");
 
                     b.Property<Guid>("SchoolClassId")
                         .HasColumnType("uuid")
@@ -1755,6 +1815,15 @@ namespace StudyFlow.Infrastructure.Persistence.Migrations
                     b.HasOne("StudyFlow.Domain.Exams.RevisionResource", null)
                         .WithOne("File")
                         .HasForeignKey("StudyFlow.Domain.Exams.RevisionResourceFile", "RevisionResourceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Notes.DailyNote", b =>
+                {
+                    b.HasOne("StudyFlow.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

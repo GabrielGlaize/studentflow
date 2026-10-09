@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:studyflow_app/core/settings/app_settings_controller.dart';
+import 'package:studyflow_app/core/settings/quiet_hours.dart';
 import 'package:studyflow_app/features/agenda/domain/agenda_models.dart';
 import 'package:studyflow_app/features/notifications/application/local_notification_scheduler.dart';
 import 'package:studyflow_app/features/notifications/application/reminder_planner.dart';
@@ -174,12 +175,51 @@ void main() {
     await scheduler.replaceAll(const []);
     expect(scheduler.scheduledReminders, isEmpty);
   });
+  test('ne pas déranger : rien pendant la plage calme ni la pause', () {
+    // Rappel la veille à 18 h (en dehors) et rendu à 23 h la veille (dedans).
+    final homework = [
+      HomeworkItem(
+        id: 'evening',
+        title: 'Dossier anglais',
+        deadline: DateTime(2026, 6, 27, 18),
+        isDone: false,
+        notificationsEnabled: true,
+      ),
+      HomeworkItem(
+        id: 'night',
+        title: 'QCM en ligne',
+        deadline: DateTime(2026, 6, 27, 23),
+        isDone: false,
+        notificationsEnabled: true,
+      ),
+    ];
+    final now = DateTime(2026, 6, 25, 8);
+
+    final quiet = planner.plan(
+      courses: const [],
+      homework: homework,
+      settings: _settings(quietHours: const QuietHours(enabled: true)),
+      now: now,
+    );
+    expect(quiet.map((reminder) => reminder.sourceId), ['evening']);
+
+    final paused = planner.plan(
+      courses: const [],
+      homework: homework,
+      settings: _settings(
+        quietHours: QuietHours(mutedUntil: DateTime(2026, 6, 28)),
+      ),
+      now: now,
+    );
+    expect(paused, isEmpty);
+  });
 }
 
 AppSettings _settings({
   bool courseNotificationsEnabled = true,
   bool homeworkNotificationsEnabled = true,
   int courseReminderMinutes = 5,
+  QuietHours quietHours = const QuietHours(),
 }) {
   return AppSettings(
     themeMode: ThemeMode.system,
@@ -187,5 +227,6 @@ AppSettings _settings({
     courseNotificationsEnabled: courseNotificationsEnabled,
     homeworkNotificationsEnabled: homeworkNotificationsEnabled,
     courseReminderMinutes: courseReminderMinutes,
+    quietHours: quietHours,
   );
 }

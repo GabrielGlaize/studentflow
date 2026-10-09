@@ -593,7 +593,9 @@ class _AddDocumentSheet extends StatefulWidget {
 class _AddDocumentSheetState extends State<_AddDocumentSheet> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
-  final _kindController = TextEditingController(text: 'Contrat');
+  final _customKindController = TextEditingController();
+  String _kind = CompanyDocumentsController.baseKinds.first;
+  bool _addingKind = false;
   final _linkController = TextEditingController();
   final _noteController = TextEditingController();
   PlatformFile? _selectedFile;
@@ -607,88 +609,186 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
         top: 20,
         bottom: MediaQuery.viewInsetsOf(context).bottom + 20,
       ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Ajouter un document',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _titleController,
-              decoration: const InputDecoration(
-                labelText: 'Titre',
-                prefixIcon: Icon(Icons.description_outlined),
+      // Défile si les types ou le clavier prennent de la place.
+      child: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Ajouter un document',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
               ),
-              validator: _required,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _kindController,
-              decoration: const InputDecoration(
-                labelText: 'Type',
-                prefixIcon: Icon(Icons.category_outlined),
-              ),
-              validator: _required,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _linkController,
-              decoration: const InputDecoration(
-                labelText: 'Lien optionnel',
-                prefixIcon: Icon(Icons.link),
-              ),
-              keyboardType: TextInputType.url,
-            ),
-            const SizedBox(height: 10),
-            OutlinedButton.icon(
-              onPressed: _pickFile,
-              icon: const Icon(Icons.upload_file_outlined),
-              label: Text(
-                _selectedFile == null
-                    ? 'Importer depuis fichiers'
-                    : 'Fichier : ${_selectedFile!.name}',
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _noteController,
-              decoration: const InputDecoration(
-                labelText: 'Note optionnelle',
-                prefixIcon: Icon(Icons.notes_outlined),
-              ),
-              minLines: 1,
-              maxLines: 3,
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Annuler'),
-                  ),
+              const SizedBox(height: 16),
+              TextFormField(
+                key: const ValueKey('document-title-field'),
+                controller: _titleController,
+                decoration: const InputDecoration(
+                  labelText: 'Titre',
+                  prefixIcon: Icon(Icons.description_outlined),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: _save,
-                    child: const Text('Ajouter'),
-                  ),
+                validator: _required,
+              ),
+              const SizedBox(height: 12),
+              _buildKindPicker(),
+              const SizedBox(height: 12),
+              TextFormField(
+                key: const ValueKey('document-link-field'),
+                controller: _linkController,
+                decoration: const InputDecoration(
+                  labelText: 'Lien optionnel',
+                  prefixIcon: Icon(Icons.link),
                 ),
-              ],
-            ),
-          ],
+                keyboardType: TextInputType.url,
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: _pickFile,
+                icon: const Icon(Icons.upload_file_outlined),
+                label: Text(
+                  _selectedFile == null
+                      ? 'Importer depuis fichiers'
+                      : 'Fichier : ${_selectedFile!.name}',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _noteController,
+                decoration: const InputDecoration(
+                  labelText: 'Note optionnelle',
+                  prefixIcon: Icon(Icons.notes_outlined),
+                ),
+                minLines: 1,
+                maxLines: 3,
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Annuler'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      key: const ValueKey('document-save-button'),
+                      onPressed: _save,
+                      child: const Text('Ajouter'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  /// Types de base et types personnalisés ; « Autre… » en crée un nouveau,
+  /// gardé pour les prochains documents.
+  Widget _buildKindPicker() {
+    final controller = AppScope.of(context).companyDocumentsController;
+
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Type',
+            style: TextStyle(
+              color: context.sfMuted,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final kind in CompanyDocumentsController.baseKinds)
+                ChoiceChip(
+                  label: Text(kind),
+                  selected: _kind == kind,
+                  onSelected: (_) => setState(() => _kind = kind),
+                ),
+              for (final kind in controller.customKinds)
+                InputChip(
+                  key: ValueKey('document-kind-$kind'),
+                  label: Text(kind),
+                  selected: _kind == kind,
+                  showCheckmark: false,
+                  onSelected: (_) => setState(() => _kind = kind),
+                  deleteButtonTooltipMessage: 'Ne plus proposer ce type',
+                  onDeleted: () {
+                    controller.removeCustomKind(kind);
+                    if (_kind == kind) {
+                      setState(
+                        () =>
+                            _kind = CompanyDocumentsController.baseKinds.first,
+                      );
+                    }
+                  },
+                ),
+              if (!_addingKind)
+                ActionChip(
+                  key: const ValueKey('document-kind-add'),
+                  avatar: const Icon(Icons.add, size: 18),
+                  label: const Text('Autre…'),
+                  onPressed: () => setState(() => _addingKind = true),
+                ),
+            ],
+          ),
+          if (_addingKind) ...[
+            const SizedBox(height: 8),
+            TextField(
+              key: const ValueKey('document-kind-field'),
+              controller: _customKindController,
+              autofocus: true,
+              textCapitalization: TextCapitalization.sentences,
+              textInputAction: TextInputAction.done,
+              maxLength: 40,
+              decoration: InputDecoration(
+                labelText: 'Nouveau type',
+                hintText: 'Badge, planning d’équipe…',
+                prefixIcon: const Icon(Icons.category_outlined),
+                suffixIcon: IconButton(
+                  tooltip: 'Ajouter ce type',
+                  onPressed: _addCustomKind,
+                  icon: const Icon(Icons.check),
+                ),
+              ),
+              onSubmitted: (_) => _addCustomKind(),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _addCustomKind() {
+    final value = _customKindController.text.trim();
+    if (value.isEmpty) {
+      setState(() => _addingKind = false);
+      return;
+    }
+    final kind = AppScope.of(
+      context,
+    ).companyDocumentsController.addCustomKind(value);
+    setState(() {
+      _kind = kind;
+      _addingKind = false;
+      _customKindController.clear();
+    });
   }
 
   String? _required(String? value) {
@@ -700,10 +800,13 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
 
   void _save() {
     if (!_formKey.currentState!.validate()) return;
+    if (_addingKind && _customKindController.text.trim().isNotEmpty) {
+      _addCustomKind();
+    }
 
     AppScope.of(context).companyDocumentsController.addDocument(
       title: _titleController.text,
-      kind: _kindController.text,
+      kind: _kind,
       link: _linkController.text,
       note: _noteController.text,
       fileName: _selectedFile?.name,
@@ -733,7 +836,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
   @override
   void dispose() {
     _titleController.dispose();
-    _kindController.dispose();
+    _customKindController.dispose();
     _linkController.dispose();
     _noteController.dispose();
     super.dispose();
@@ -944,6 +1047,7 @@ class _AddContactSheetState extends State<_AddContactSheet> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton(
+                    key: const ValueKey('contact-save-button'),
                     onPressed: _save,
                     child: const Text('Ajouter'),
                   ),

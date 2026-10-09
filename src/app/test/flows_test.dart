@@ -114,7 +114,13 @@ void main() {
   ) async {
     await _signIn(tester);
 
-    // Partiels dans 9 jours : la carte apparaît sur l'accueil.
+    // Partiels dans 9 jours : la carte apparaît sur l'accueil, sous les
+    // devoirs à rendre.
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('exam-countdown')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('J-9'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('exam-countdown')));
     await tester.pumpAndSettle();
@@ -199,5 +205,132 @@ void main() {
 
     expect(find.text('Matières (1)'), findsOneWidget);
     expect(find.text('2 retirés.'), findsOneWidget);
+  });
+
+  testWidgets('annuler un cours propose d’annuler le reste de la journée', (
+    tester,
+  ) async {
+    // Même jour la semaine prochaine : tous les cours sont encore à venir.
+    final day = StudyFlowDates.addDays(_firstShownDay(), 7);
+    const repository = DemoCourseRepository();
+    await tester.runAsync(() async {
+      await repository.listCourses(from: day, to: day);
+      for (final (subject, start, end) in [
+        ('Physique', '08:00', '10:00'),
+        ('Chimie', '10:15', '12:15'),
+        ('Biologie', '13:30', '15:30'),
+      ]) {
+        await repository.createCourse(
+          data: CourseFormData(
+            subjectId: 'subject-$subject',
+            subjectName: subject,
+            day: day,
+            startsAt: start,
+            endsAt: end,
+            room: 'A101',
+          ),
+        );
+      }
+    });
+
+    await _signIn(tester);
+    await tester.tap(find.text('Planning'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Semaine suivante'));
+    await tester.pumpAndSettle();
+    expect(find.text('Physique'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Actions cours').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('course-toggle-cancelled')));
+    await tester.pumpAndSettle();
+
+    // « Oui » par défaut : les deux autres cours seront annulés aussi.
+    expect(
+      find.text('Annuler aussi les 2 autres cours de la journée'),
+      findsOneWidget,
+    );
+    final toggle = tester.widget<SwitchListTile>(
+      find.byKey(const ValueKey('cancel-whole-day-switch')),
+    );
+    expect(toggle.value, isTrue);
+
+    await tester.tap(find.byKey(const ValueKey('confirm-cancel-course')));
+    await tester.pumpAndSettle();
+    // Le dépôt de démo simule la latence réseau : on laisse passer le temps.
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+
+    expect(find.text('3 cours annulés pour la journée.'), findsOneWidget);
+    expect(find.text('ANNULÉ'), findsNWidgets(3));
+    expect(find.text('Cours annulés'), findsOneWidget);
+  });
+
+  testWidgets('l’agenda passe en vue calendrier, semaine puis mois', (
+    tester,
+  ) async {
+    await _signIn(tester);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.text('Agenda'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+
+    // Liste : on balaie de l'école à l'espace alternance.
+    expect(find.text('Devoirs de la classe'), findsOneWidget);
+    await tester.fling(
+      find.byKey(const ValueKey('agenda-workspace-pager')),
+      const Offset(-400, 0),
+      1000,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Mes rendez-vous alternance'), findsOneWidget);
+
+    await tester.tap(find.text('Calendrier'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('agenda-calendar-scale')), findsOneWidget);
+    expect(find.textContaining('Devoirs · '), findsOneWidget);
+    final today = DateUtils.dateOnly(DateTime.now());
+    expect(
+      find.byKey(ValueKey('agenda-week-day-${today.day}')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Mois'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(ValueKey('agenda-month-day-${today.month}-${today.day}')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text(StudyFlowFormat.longDay(today)), findsOneWidget);
+  });
+
+  testWidgets('une note rapide se prend en deux gestes depuis l’accueil', (
+    tester,
+  ) async {
+    await _signIn(tester);
+
+    await tester.tap(find.byKey(const ValueKey('daily-note-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('Note rapide'), findsOneWidget);
+    expect(find.byKey(const ValueKey('quick-note-next-line')), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('quick-note-field')),
+      'Rendre le badge',
+    );
+    await tester.tap(find.byKey(const ValueKey('quick-note-send')));
+    await tester.pumpAndSettle();
+    expect(find.text('Noté dans ta note du jour.'), findsOneWidget);
+
+    // La note complète montre la ligne, numérotée comme dans un éditeur.
+    await tester.longPress(find.byKey(const ValueKey('daily-note-button')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('note-line-number-1')), findsOneWidget);
+    expect(find.textContaining('Rendre le badge'), findsOneWidget);
   });
 }

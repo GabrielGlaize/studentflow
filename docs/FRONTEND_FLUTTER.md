@@ -43,25 +43,26 @@ Par défaut, l’app démarre maintenant en mode dev réel : elle appelle le bac
 
 Sur Android Emulator, l’URL locale est automatiquement `http://10.0.2.2:5028`. Sur les autres cibles locales, l’app utilise `http://localhost:5028`, sauf si `STUDYFLOW_API_URL` est fourni.
 
-Sur iPhone physique, on utilise maintenant le script racine :
+Sur un appareil iOS ou Android branché au Mac, on utilise le script racine :
 
 ```bash
 cd /Users/gab/Documents/studentflow
-./scripts/run_iphone_developer.sh
+./scripts/install_app.sh                 # menu de choix de l’appareil
+./scripts/install_app.sh --device=pixel  # ID exact ou partie du nom
 ```
 
-Ce script copie le projet vers `/Users/gab/Developer/studentflow`, nettoie les attributs macOS qui peuvent casser le codesign, détecte l’IP du Mac et lance Flutter avec `STUDYFLOW_API_URL=http://IP_DU_MAC:5028`.
+Ce script demande sur quel appareil installer, copie le projet vers `/Users/gab/Developer/studentflow`, nettoie les attributs macOS qui peuvent casser le codesign iOS et lance Flutter avec `STUDYFLOW_API_URL` pointant vers l’API du NAS. Avec `--local-mac`, l’URL vise le backend du Mac (`http://IP_DU_MAC:5028` sur un appareil physique, `10.0.2.2` sur l’émulateur Android).
 
 Pour une installation autonome sur iPhone, utilise une build release :
 
 ```bash
-./scripts/run_iphone_developer.sh --clean --release
+./scripts/install_app.sh --clean --release
 ```
 
 Pour pointer l'app vers une API sur NAS :
 
 ```bash
-./scripts/run_iphone_developer.sh --clean --release --api-url=http://IP_DU_NAS:5028
+./scripts/install_app.sh --clean --release --api-url=http://IP_DU_NAS:5028
 ```
 
 Le guide de déploiement NAS est dans [`NAS_DEPLOIEMENT.md`](./NAS_DEPLOIEMENT.md).
@@ -180,7 +181,7 @@ Notes importantes :
 - le lancement iPhone est simplifié par le script racine :
 
 ```bash
-./scripts/run_iphone_developer.sh
+./scripts/install_app.sh
 ```
 
 Dans Xcode, il faut garder une équipe Apple valide dans `Runner > Signing & Capabilities`, puis tester les notifications sur un vrai iPhone.

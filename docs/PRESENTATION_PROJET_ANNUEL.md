@@ -449,7 +449,7 @@ Avant la démo :
 
 1. lancer PostgreSQL avec Docker ;
 2. lancer le backend ;
-3. lancer l’app iPhone avec `./scripts/run_iphone_developer.sh` ;
+3. lancer l’app iPhone avec `./scripts/install_app.sh` ;
 4. vérifier que le compte seedé fonctionne.
 
 Compte principal :
@@ -513,13 +513,13 @@ Terminal 2 :
 
 ```bash
 cd /Users/gab/Documents/studentflow
-./scripts/run_iphone_developer.sh
+./scripts/install_app.sh
 ```
 
 Si iOS recasse le codesign :
 
 ```bash
-./scripts/run_iphone_developer.sh --clean
+./scripts/install_app.sh --clean
 ```
 
 Test backend :
@@ -578,7 +578,7 @@ Cette partie est importante : elle montre que vous n’avez pas seulement assemb
 
 | Problème rencontré | Ce que ça a bloqué | Solution apportée | Ce que ça montre au jury |
 | :--- | :--- | :--- | :--- |
-| L’iPhone ne pouvait pas joindre `localhost` | L’app marchait côté Mac, mais pas sur téléphone réel | Utilisation de l’IP locale du Mac et script `run_iphone_developer.sh` | Compréhension réseau client/serveur |
+| L’iPhone ne pouvait pas joindre `localhost` | L’app marchait côté Mac, mais pas sur téléphone réel | Utilisation de l’IP locale du Mac et script `install_app.sh` | Compréhension réseau client/serveur |
 | Codesign iOS cassé par des attributs macOS | Flutter échouait au build sur iPhone | Copie propre dans `/Users/gab/Developer`, nettoyage `xattr`, option `--clean` | Capacité à diagnostiquer un problème d’environnement |
 | Mode démo trop visible | L’app donnait l’impression d’une simple maquette | Seeder réaliste, backend réel, comptes, classe, cours, devoirs, élèves | Passage d’une maquette à un MVP testable |
 | Données sensibles scolaires | Risque d’exposer professeurs, salles, horaires | Chiffrement, isolation par classe, JWT minimal, DataProtection persistée | Prise en compte de la confidentialité |

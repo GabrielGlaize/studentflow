@@ -103,6 +103,8 @@ class HomeworkSummary {
     required this.deadline,
     required this.isDone,
     required this.notificationsEnabled,
+    this.subjectName,
+    this.isEvaluation = false,
   });
 
   final String id;
@@ -110,6 +112,8 @@ class HomeworkSummary {
   final DateTime deadline;
   final bool isDone;
   final bool notificationsEnabled;
+  final String? subjectName;
+  final bool isEvaluation;
 
   factory HomeworkSummary.fromJson(Map<String, Object?> json) {
     return HomeworkSummary(
@@ -118,6 +122,8 @@ class HomeworkSummary {
       deadline: DateTime.parse(json['deadline'] as String),
       isDone: json['isDone'] as bool? ?? false,
       notificationsEnabled: json['notificationsEnabled'] as bool? ?? true,
+      subjectName: json['subjectName'] as String?,
+      isEvaluation: json['isEvaluation'] as bool? ?? false,
     );
   }
 }

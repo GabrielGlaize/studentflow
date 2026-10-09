@@ -10,12 +10,16 @@ class HomeworkItem {
     this.subjectName,
     this.courseDay,
     this.reminderMinutesBefore = ReminderDelays.homeworkDefault,
+    this.isEvaluation = false,
   });
 
   final String id;
   final String title;
   final String? description;
   final DateTime deadline;
+
+  /// Devoir noté (contrôle, oral…), mis en avant dans l'agenda.
+  final bool isEvaluation;
   final String? courseId;
 
   /// Matière du cours lié, pour afficher « Mathématiques » sur le devoir.
@@ -43,6 +47,7 @@ class HomeworkItem {
       reminderMinutesBefore:
           (json['reminderMinutesBefore'] as num?)?.toInt() ??
           ReminderDelays.homeworkDefault,
+      isEvaluation: json['isEvaluation'] as bool? ?? false,
     );
   }
 
@@ -63,6 +68,7 @@ class HomeworkItem {
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       reminderMinutesBefore:
           reminderMinutesBefore ?? this.reminderMinutesBefore,
+      isEvaluation: isEvaluation,
     );
   }
 
@@ -74,6 +80,7 @@ class HomeworkItem {
       courseId: courseId,
       subjectName: subjectName,
       courseDay: courseDay,
+      isEvaluation: isEvaluation,
     );
   }
 }
@@ -86,12 +93,14 @@ class CreateHomeworkRequest {
     this.courseId,
     this.subjectName,
     this.courseDay,
+    this.isEvaluation = false,
   });
 
   final String title;
   final String? description;
   final DateTime deadline;
   final String? courseId;
+  final bool isEvaluation;
 
   /// Affichage seulement (mode démo) : le serveur les déduit du cours lié.
   final String? subjectName;
@@ -103,6 +112,7 @@ class CreateHomeworkRequest {
       'description': _cleanOptional(description),
       'deadline': deadline.toUtc().toIso8601String(),
       'courseId': courseId,
+      'isEvaluation': isEvaluation,
     };
   }
 

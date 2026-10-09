@@ -38,6 +38,12 @@ abstract final class AppColors {
   /// Ce qui n'est visible que par l'élève (tâches et événements perso).
   static const Color personal = green;
   static const Color personalSoft = greenSoft;
+
+  /// Évaluations (devoirs notés, partiels) : ambre, distinct du bleu « classe »
+  /// et du vert « perso ».
+  static const Color evaluation = Color(0xFFB0701A);
+  static const Color evaluationSoft = Color(0xFFFCF2E3);
+  static const Color evaluationLight = Color(0xFFF2C27D);
 }
 
 extension StudyFlowThemeColors on BuildContext {
@@ -77,4 +83,11 @@ extension StudyFlowThemeColors on BuildContext {
   Color get sfPersonalSoft => sfIsDark
       ? AppColors.mint.withValues(alpha: 0.12)
       : AppColors.personalSoft;
+
+  Color get sfEvaluation =>
+      sfIsDark ? AppColors.evaluationLight : AppColors.evaluation;
+
+  Color get sfEvaluationSoft => sfIsDark
+      ? AppColors.evaluationLight.withValues(alpha: 0.13)
+      : AppColors.evaluationSoft;
 }

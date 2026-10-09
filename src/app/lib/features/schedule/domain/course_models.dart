@@ -89,7 +89,12 @@ class CourseFormData {
   final bool isCancelled;
   final int? version;
 
-  CourseFormData copyWith({DateTime? day, String? startsAt, String? endsAt}) {
+  CourseFormData copyWith({
+    DateTime? day,
+    String? startsAt,
+    String? endsAt,
+    bool? isCancelled,
+  }) {
     return CourseFormData(
       subjectId: subjectId,
       subjectName: subjectName,
@@ -99,7 +104,7 @@ class CourseFormData {
       startsAt: startsAt ?? this.startsAt,
       endsAt: endsAt ?? this.endsAt,
       room: room,
-      isCancelled: isCancelled,
+      isCancelled: isCancelled ?? this.isCancelled,
       version: version,
     );
   }

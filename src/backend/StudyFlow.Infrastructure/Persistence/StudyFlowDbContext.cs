@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using StudyFlow.Domain.Apprenticeships;
 using StudyFlow.Domain.Contributions;
 using StudyFlow.Domain.Exams;
+using StudyFlow.Domain.Notes;
 using StudyFlow.Domain.Notifications;
 using StudyFlow.Domain.School;
 using StudyFlow.Domain.Users;
@@ -23,6 +24,7 @@ public sealed class StudyFlowDbContext(
     public DbSet<Homework> HomeworkItems => Set<Homework>();
     public DbSet<HomeworkProgress> HomeworkProgressItems => Set<HomeworkProgress>();
     public DbSet<PersonalTask> PersonalTasks => Set<PersonalTask>();
+    public DbSet<DailyNote> DailyNotes => Set<DailyNote>();
     public DbSet<PersonalEvent> PersonalEvents => Set<PersonalEvent>();
     public DbSet<ClassMembershipRequest> ClassMembershipRequests => Set<ClassMembershipRequest>();
     public DbSet<ApprenticeshipMessage> ApprenticeshipMessages => Set<ApprenticeshipMessage>();
@@ -242,6 +244,14 @@ public sealed class StudyFlowDbContext(
 
     private static void ConfigurePersonalData(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<DailyNote>(entity =>
+        {
+            entity.ToTable("daily_notes");
+            entity.Property(x => x.EncryptedText).IsRequired();
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(x => new { x.UserId, x.Day }).IsUnique();
+        });
+
         modelBuilder.Entity<PersonalTask>(entity =>
         {
             entity.ToTable("personal_tasks");
@@ -291,6 +301,8 @@ public sealed class StudyFlowDbContext(
                 "course_reminder_minutes IN (0, 5, 10, 15, 30, 60)"));
             entity.HasOne<ApplicationUser>().WithOne().HasForeignKey<NotificationPreference>(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(x => x.UserId).IsUnique();
+            entity.Property(x => x.QuietHoursStart).HasDefaultValue(new TimeOnly(22, 0));
+            entity.Property(x => x.QuietHoursEnd).HasDefaultValue(new TimeOnly(7, 0));
         });
 
         modelBuilder.Entity<UserAppSettings>(entity =>
