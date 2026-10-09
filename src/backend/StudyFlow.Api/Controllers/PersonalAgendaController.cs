@@ -45,7 +45,7 @@ public sealed class PersonalAgendaController(
         if (!string.IsNullOrWhiteSpace(category))
         {
             var parsedCategory = ParseTaskCategory(category);
-            if (parsedCategory is null) return BadRequestProblem("Categorie de tache invalide.");
+            if (parsedCategory is null) return BadRequestProblem("Catégorie de tâche invalide.");
             query = query.Where(x => x.Category == parsedCategory);
         }
 
@@ -67,10 +67,11 @@ public sealed class PersonalAgendaController(
         if (user is null) return Unauthorized();
 
         var category = ParseTaskCategory(request.Category);
-        if (category is null) return BadRequestProblem("Categorie de tache invalide.");
+        if (category is null) return BadRequestProblem("Catégorie de tâche invalide.");
 
         var validationProblem = await ValidateTaskRequestAsync(user, request.Title, request.CourseId, cancellationToken);
         if (validationProblem is not null) return validationProblem;
+        if (!ReminderDefaults.IsValid(request.ReminderMinutesBefore)) return InvalidReminderProblem();
 
         var task = new PersonalTask
         {
@@ -80,7 +81,8 @@ public sealed class PersonalAgendaController(
             Description = CleanOptional(request.Description),
             Deadline = request.Deadline?.ToUniversalTime(),
             Category = category.Value,
-            NotificationsEnabled = request.NotificationsEnabled
+            NotificationsEnabled = request.NotificationsEnabled,
+            ReminderMinutesBefore = request.ReminderMinutesBefore
         };
 
         dbContext.PersonalTasks.Add(task);
@@ -112,7 +114,7 @@ public sealed class PersonalAgendaController(
         if (user is null) return Unauthorized();
 
         var category = ParseTaskCategory(request.Category);
-        if (category is null) return BadRequestProblem("Categorie de tache invalide.");
+        if (category is null) return BadRequestProblem("Catégorie de tâche invalide.");
 
         var task = await dbContext.PersonalTasks
             .SingleOrDefaultAsync(x => x.Id == id && x.UserId == user.Id, cancellationToken);
@@ -120,6 +122,7 @@ public sealed class PersonalAgendaController(
 
         var validationProblem = await ValidateTaskRequestAsync(user, request.Title, request.CourseId, cancellationToken);
         if (validationProblem is not null) return validationProblem;
+        if (!ReminderDefaults.IsValid(request.ReminderMinutesBefore)) return InvalidReminderProblem();
 
         task.CourseId = request.CourseId;
         task.Title = request.Title.Trim();
@@ -127,6 +130,7 @@ public sealed class PersonalAgendaController(
         task.Deadline = request.Deadline?.ToUniversalTime();
         task.Category = category.Value;
         task.NotificationsEnabled = request.NotificationsEnabled;
+        task.ReminderMinutesBefore = request.ReminderMinutesBefore;
         task.IsDone = request.IsDone;
         task.CompletedAt = request.IsDone ? task.CompletedAt ?? DateTimeOffset.UtcNow : null;
         task.UpdatedAt = DateTimeOffset.UtcNow;
@@ -171,7 +175,7 @@ public sealed class PersonalAgendaController(
         if (!string.IsNullOrWhiteSpace(category))
         {
             var parsedCategory = ParseEventCategory(category);
-            if (parsedCategory is null) return BadRequestProblem("Categorie d'evenement invalide.");
+            if (parsedCategory is null) return BadRequestProblem("Catégorie d'événement invalide.");
             query = query.Where(x => x.Category == parsedCategory);
         }
 
@@ -193,6 +197,7 @@ public sealed class PersonalAgendaController(
 
         var validationProblem = ValidateEventRequest(request.Title, request.StartsAt, request.EndsAt, request.Category);
         if (validationProblem is not null) return validationProblem;
+        if (!ReminderDefaults.IsValid(request.ReminderMinutesBefore)) return InvalidReminderProblem();
 
         var eventCategory = ParseEventCategory(request.Category)!.Value;
         var personalEvent = new PersonalEvent
@@ -201,6 +206,7 @@ public sealed class PersonalAgendaController(
             Day = request.Day,
             Category = eventCategory,
             NotificationsEnabled = request.NotificationsEnabled,
+            ReminderMinutesBefore = request.ReminderMinutesBefore,
             EncryptedData = ProtectEventData(request.Title, request.StartsAt, request.EndsAt, request.Location, request.Notes)
         };
 
@@ -238,10 +244,12 @@ public sealed class PersonalAgendaController(
 
         var validationProblem = ValidateEventRequest(request.Title, request.StartsAt, request.EndsAt, request.Category);
         if (validationProblem is not null) return validationProblem;
+        if (!ReminderDefaults.IsValid(request.ReminderMinutesBefore)) return InvalidReminderProblem();
 
         personalEvent.Day = request.Day;
         personalEvent.Category = ParseEventCategory(request.Category)!.Value;
         personalEvent.NotificationsEnabled = request.NotificationsEnabled;
+        personalEvent.ReminderMinutesBefore = request.ReminderMinutesBefore;
         personalEvent.EncryptedData = ProtectEventData(request.Title, request.StartsAt, request.EndsAt, request.Location, request.Notes);
         personalEvent.UpdatedAt = DateTimeOffset.UtcNow;
 
@@ -264,6 +272,9 @@ public sealed class PersonalAgendaController(
         return NoContent();
     }
 
+    private ObjectResult InvalidReminderProblem() =>
+        BadRequestProblem("Le rappel doit être programmé entre le moment même et 30 jours avant.");
+
     private async Task<ActionResult?> ValidateTaskRequestAsync(
         ApplicationUser user,
         string title,
@@ -272,7 +283,7 @@ public sealed class PersonalAgendaController(
     {
         if (string.IsNullOrWhiteSpace(title))
         {
-            return BadRequestProblem("Le titre de la tache est obligatoire.");
+            return BadRequestProblem("Le titre de la tâche est obligatoire.");
         }
 
         if (courseId is null)
@@ -283,7 +294,7 @@ public sealed class PersonalAgendaController(
         // Un futur eleve sans classe peut utiliser son agenda, mais ne peut pas lier une tache a un cours.
         if (user.SchoolClassId is null)
         {
-            return BadRequestProblem("Vous devez appartenir a une classe pour lier une tache a un cours.");
+            return BadRequestProblem("Rejoins une classe pour lier une tâche à un cours.");
         }
 
         var courseExists = await dbContext.Courses.AnyAsync(
@@ -294,23 +305,23 @@ public sealed class PersonalAgendaController(
 
         return courseExists
             ? null
-            : BadRequestProblem("Le cours lie a la tache n'existe pas dans votre classe.");
+            : BadRequestProblem("Le cours lié à la tâche n'existe pas dans ta classe.");
     }
 
     private ActionResult? ValidateEventRequest(string title, TimeOnly startsAt, TimeOnly endsAt, string category)
     {
         if (string.IsNullOrWhiteSpace(title))
         {
-            return BadRequestProblem("Le titre de l'evenement est obligatoire.");
+            return BadRequestProblem("Le titre de l'événement est obligatoire.");
         }
 
         if (endsAt <= startsAt)
         {
-            return BadRequestProblem("L'heure de fin doit etre apres l'heure de debut.");
+            return BadRequestProblem("L'heure de fin doit être après l'heure de début.");
         }
 
         return ParseEventCategory(category) is null
-            ? BadRequestProblem("Categorie d'evenement invalide.")
+            ? BadRequestProblem("Catégorie d'événement invalide.")
             : null;
     }
 
@@ -324,7 +335,8 @@ public sealed class PersonalAgendaController(
         task.NotificationsEnabled,
         task.CourseId,
         task.CreatedAt,
-        task.UpdatedAt);
+        task.UpdatedAt,
+        task.ReminderMinutesBefore);
 
     private PersonalEventResponse ToEventResponse(PersonalEvent personalEvent)
     {
@@ -343,7 +355,8 @@ public sealed class PersonalAgendaController(
             data.Notes,
             personalEvent.NotificationsEnabled,
             personalEvent.CreatedAt,
-            personalEvent.UpdatedAt);
+            personalEvent.UpdatedAt,
+            personalEvent.ReminderMinutesBefore);
     }
 
     private string ProtectEventData(

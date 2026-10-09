@@ -12,6 +12,7 @@ class ProtoCard extends StatelessWidget {
     this.backgroundColor = Colors.white,
     this.borderRadius = 18,
     this.onTap,
+    this.onLongPress,
     super.key,
   });
 
@@ -22,6 +23,7 @@ class ProtoCard extends StatelessWidget {
   final Color backgroundColor;
   final double borderRadius;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +47,7 @@ class ProtoCard extends StatelessWidget {
       child: child,
     );
 
-    if (onTap == null) return card;
+    if (onTap == null && onLongPress == null) return card;
 
     return Padding(
       padding: margin,
@@ -54,6 +56,7 @@ class ProtoCard extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(borderRadius),
           onTap: onTap,
+          onLongPress: onLongPress,
           child: Container(
             padding: padding,
             clipBehavior: Clip.antiAlias,

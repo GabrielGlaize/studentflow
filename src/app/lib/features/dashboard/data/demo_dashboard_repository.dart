@@ -103,6 +103,8 @@ class DemoDashboardRepository implements DashboardRepository {
           category: 'apprenticeship',
         ),
       ],
+      className: 'ESGI2',
+      schoolYear: '2026-2027',
     );
   }
 }

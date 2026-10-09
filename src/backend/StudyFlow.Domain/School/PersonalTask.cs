@@ -18,6 +18,7 @@ public sealed class PersonalTask : AuditableEntity
     public DateTimeOffset? Deadline { get; set; }
     public bool IsDone { get; set; }
     public bool NotificationsEnabled { get; set; }
+    public int ReminderMinutesBefore { get; set; } = ReminderDefaults.TaskMinutes;
     public PersonalTaskCategory Category { get; set; } = PersonalTaskCategory.School;
     public DateTimeOffset? CompletedAt { get; set; }
 

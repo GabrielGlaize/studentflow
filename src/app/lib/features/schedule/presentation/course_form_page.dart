@@ -17,7 +17,6 @@ class CourseFormPage extends StatefulWidget {
     required this.initialDay,
     this.course,
     this.template,
-    this.knownRooms = const [],
     super.key,
   });
 
@@ -29,15 +28,11 @@ class CourseFormPage extends StatefulWidget {
 
   final DateTime initialDay;
 
-  /// Salles déjà utilisées cette semaine, proposées en raccourci.
-  final List<String> knownRooms;
-
   static Future<bool?> open(
     BuildContext context, {
     required DateTime initialDay,
     CourseItem? course,
     CourseFormData? template,
-    List<String> knownRooms = const [],
   }) {
     return Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -46,7 +41,6 @@ class CourseFormPage extends StatefulWidget {
           initialDay: initialDay,
           course: course,
           template: template,
-          knownRooms: knownRooms,
         ),
       ),
     );
@@ -82,6 +76,14 @@ class _CourseFormPageState extends State<CourseFormPage> {
   String? _error;
   Future<ClassResources>? _resourcesFuture;
 
+  /// Cours du mois du jour choisi : pour proposer l'heure qui suit le dernier
+  /// cours de la journée et les salles utilisées ce mois-ci.
+  List<CourseItem> _monthCourses = const [];
+  DateTime? _loadedMonth;
+
+  /// L'élève a choisi lui-même un horaire : on ne le change plus.
+  bool _timesTouched = false;
+
   bool get _isEditing => widget.course != null;
 
   @override
@@ -102,12 +104,66 @@ class _CourseFormPageState extends State<CourseFormPage> {
       ),
     ];
     _repeatUntil = StudyFlowDates.addDays(_day, 7 * 8);
+    _timesTouched = source != null;
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _resourcesFuture ??= ClassResources.load(context);
+    if (_loadedMonth == null) _loadMonth();
+  }
+
+  Future<void> _loadMonth() async {
+    final month = DateTime(_day.year, _day.month);
+    if (_loadedMonth == month) {
+      _suggestTimes();
+      return;
+    }
+    _loadedMonth = month;
+
+    final appScope = AppScope.of(context);
+    try {
+      final accessToken = await appScope.sessionController.accessTokenForApi();
+      final courses = await appScope.courseRepository.listCourses(
+        from: month,
+        to: DateTime(month.year, month.month + 1, 0),
+        accessToken: accessToken,
+      );
+      if (!mounted) return;
+      setState(() {
+        _monthCourses = courses;
+        _suggestTimes();
+        _suggestRoom();
+      });
+    } on Exception {
+      // Sans ces suggestions, le formulaire reste utilisable.
+    }
+  }
+
+  /// Nouveau cours : il commence après le dernier cours du jour (15 min de
+  /// pause, ou 14 h si ce dernier finit à l'heure du déjeuner).
+  void _suggestTimes() {
+    if (_timesTouched || _isEditing) return;
+    final dayCourses =
+        _monthCourses
+            .where((x) => !x.isCancelled && DateUtils.isSameDay(x.day, _day))
+            .toList()
+          ..sort((a, b) => a.endsAt.compareTo(b.endsAt));
+    final slot = nextCourseSlot(dayCourses);
+    _slots
+      ..clear()
+      ..add(_Slot(slot.$1, slot.$2));
+  }
+
+  /// La matière a souvent la même salle : on la propose si le champ est vide.
+  void _suggestRoom() {
+    if (_roomController.text.trim().isNotEmpty || _subjectId == null) return;
+    final rooms = roomSuggestions(_monthCourses, subjectId: _subjectId);
+    final usedForSubject = _monthCourses.any(
+      (x) => x.subjectId == _subjectId && x.room.trim().isNotEmpty,
+    );
+    if (usedForSubject && rooms.isNotEmpty) _roomController.text = rooms.first;
   }
 
   @override
@@ -376,11 +432,10 @@ class _CourseFormPageState extends State<CourseFormPage> {
   }
 
   Widget _buildRoomSection() {
-    final suggestions = widget.knownRooms
-        .where((room) => room.trim().isNotEmpty)
-        .toSet()
-        .take(6)
-        .toList();
+    final suggestions = roomSuggestions(
+      _monthCourses,
+      subjectId: _subjectId,
+    ).take(6).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -399,6 +454,11 @@ class _CourseFormPageState extends State<CourseFormPage> {
         ),
         if (suggestions.isNotEmpty) ...[
           const SizedBox(height: 8),
+          Text(
+            'Salles utilisées en ${_monthName(_day)}',
+            style: TextStyle(color: context.sfMuted, fontSize: 12),
+          ),
+          const SizedBox(height: 6),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -472,6 +532,7 @@ class _CourseFormPageState extends State<CourseFormPage> {
       if (!keepsTeacher) {
         _teacherId = linked.length == 1 ? linked.first.id : null;
       }
+      _suggestRoom();
     });
   }
 
@@ -502,7 +563,9 @@ class _CourseFormPageState extends State<CourseFormPage> {
 
   Future<void> _reloadResources() async {
     final future = ClassResources.load(context);
-    setState(() => _resourcesFuture = future);
+    setState(() {
+      _resourcesFuture = future;
+    });
     await future;
   }
 
@@ -519,6 +582,8 @@ class _CourseFormPageState extends State<CourseFormPage> {
         _repeatUntil = StudyFlowDates.addDays(_day, 7 * 8);
       }
     });
+    await _loadMonth();
+    if (mounted) setState(() {});
   }
 
   Future<void> _pickRepeatUntil() async {
@@ -544,6 +609,7 @@ class _CourseFormPageState extends State<CourseFormPage> {
     if (picked == null) return;
 
     setState(() {
+      _timesTouched = true;
       if (isStart) {
         // Décaler le début garde la même durée.
         final duration = slot.durationMinutes > 0 ? slot.durationMinutes : 60;
@@ -559,6 +625,7 @@ class _CourseFormPageState extends State<CourseFormPage> {
 
   void _addSlot() {
     FocusManager.instance.primaryFocus?.unfocus();
+    _timesTouched = true;
     final last = _slots.last;
     final duration = last.durationMinutes > 0 ? last.durationMinutes : 90;
     final start = StudyFlowFormat.minutes(last.end) + 15;
@@ -656,6 +723,77 @@ class _CourseFormPageState extends State<CourseFormPage> {
     _roomController.dispose();
     super.dispose();
   }
+}
+
+String _monthName(DateTime day) {
+  const months = [
+    'janvier',
+    'février',
+    'mars',
+    'avril',
+    'mai',
+    'juin',
+    'juillet',
+    'août',
+    'septembre',
+    'octobre',
+    'novembre',
+    'décembre',
+  ];
+  return months[day.month - 1];
+}
+
+/// Créneau proposé pour un nouveau cours, d'après les cours déjà prévus ce
+/// jour-là (triés ou non) : après le dernier, avec la même durée.
+(TimeOfDay, TimeOfDay) nextCourseSlot(List<CourseItem> dayCourses) {
+  if (dayCourses.isEmpty) {
+    return (
+      const TimeOfDay(hour: 8, minute: 0),
+      const TimeOfDay(hour: 9, minute: 30),
+    );
+  }
+
+  final last = dayCourses.reduce(
+    (a, b) => a.endsAt.compareTo(b.endsAt) >= 0 ? a : b,
+  );
+  final lastStart = StudyFlowFormat.minutes(
+    StudyFlowFormat.parseTime(last.startsAt)!,
+  );
+  final lastEnd = StudyFlowFormat.minutes(
+    StudyFlowFormat.parseTime(last.endsAt)!,
+  );
+  final duration = lastEnd > lastStart ? lastEnd - lastStart : 90;
+
+  // Fin de matinée vers midi : l'après-midi reprend à 14 h.
+  var start = lastEnd >= 12 * 60 && lastEnd < 14 * 60 ? 14 * 60 : lastEnd + 15;
+  start = ((start + 4) ~/ 5) * 5;
+  return (
+    StudyFlowFormat.fromMinutes(start),
+    StudyFlowFormat.fromMinutes(start + duration),
+  );
+}
+
+/// Salles du mois, les plus utilisées d'abord ; celles de la matière en tête.
+List<String> roomSuggestions(List<CourseItem> courses, {String? subjectId}) {
+  final counts = <String, int>{};
+  final forSubject = <String, int>{};
+  for (final course in courses) {
+    final room = course.room.trim();
+    if (room.isEmpty) continue;
+    counts[room] = (counts[room] ?? 0) + 1;
+    if (course.subjectId == subjectId) {
+      forSubject[room] = (forSubject[room] ?? 0) + 1;
+    }
+  }
+
+  final rooms = counts.keys.toList()
+    ..sort((a, b) {
+      final bySubject = (forSubject[b] ?? 0).compareTo(forSubject[a] ?? 0);
+      if (bySubject != 0) return bySubject;
+      final byCount = counts[b]!.compareTo(counts[a]!);
+      return byCount != 0 ? byCount : a.compareTo(b);
+    });
+  return rooms;
 }
 
 class _SlotRow extends StatelessWidget {

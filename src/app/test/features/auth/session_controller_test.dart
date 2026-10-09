@@ -20,6 +20,42 @@ void main() {
     expect(controller.session?.user.email, 'gabriel@example.com');
   });
 
+  test(
+    'restoreSession récupère la classe validée depuis un autre appareil',
+    () async {
+      final storage = MemorySessionStorage();
+      await storage.save(_session);
+
+      final controller = SessionController(
+        authRepository: _JoinedClassAuthRepository(),
+        sessionStorage: storage,
+      );
+
+      await controller.restoreSession();
+
+      expect(controller.session?.user.schoolClassId, 'class-1');
+      expect((await storage.read())?.user.schoolClassId, 'class-1');
+    },
+  );
+
+  test(
+    'reloadUser garde le profil stocké si le serveur est injoignable',
+    () async {
+      final storage = MemorySessionStorage();
+      await storage.save(_session);
+
+      final controller = SessionController(
+        authRepository: _OfflineProfileAuthRepository(),
+        sessionStorage: storage,
+      );
+
+      await controller.restoreSession();
+
+      expect(controller.status, SessionStatus.signedIn);
+      expect(controller.session?.user.schoolClassId, isNull);
+    },
+  );
+
   test('logout efface la session stockée', () async {
     final storage = MemorySessionStorage();
     await storage.save(_session);
@@ -288,6 +324,9 @@ class _FakeAuthRepository implements AuthRepository {
 
   @override
   Future<void> deleteAccount(AuthSession session) async {}
+
+  @override
+  Future<UserSummary> currentUser(String accessToken) async => _session.user;
 }
 
 class _FailingLogoutAuthRepository implements AuthRepository {
@@ -347,6 +386,9 @@ class _FailingLogoutAuthRepository implements AuthRepository {
 
   @override
   Future<void> deleteAccount(AuthSession session) async {}
+
+  @override
+  Future<UserSummary> currentUser(String accessToken) async => _session.user;
 }
 
 class _RefreshingAuthRepository implements AuthRepository {
@@ -409,6 +451,9 @@ class _RefreshingAuthRepository implements AuthRepository {
 
   @override
   Future<void> deleteAccount(AuthSession session) async {}
+
+  @override
+  Future<UserSummary> currentUser(String accessToken) async => _session.user;
 }
 
 class _FailingRefreshAuthRepository implements AuthRepository {
@@ -466,6 +511,9 @@ class _FailingRefreshAuthRepository implements AuthRepository {
 
   @override
   Future<void> deleteAccount(AuthSession session) async {}
+
+  @override
+  Future<UserSummary> currentUser(String accessToken) async => _session.user;
 }
 
 class _ScriptedRefreshAuthRepository extends _FakeAuthRepository {
@@ -487,5 +535,26 @@ class _ScriptedRefreshAuthRepository extends _FakeAuthRepository {
       refreshToken: 'fresh-refresh-token-$refreshCalls',
       refreshTokenExpiresAt: _futureDate,
     );
+  }
+}
+
+class _JoinedClassAuthRepository extends _FakeAuthRepository {
+  @override
+  Future<UserSummary> currentUser(String accessToken) async {
+    return const UserSummary(
+      id: 'user-1',
+      email: 'gabriel@example.com',
+      firstName: 'Gabriel',
+      lastName: 'Demo',
+      schoolClassId: 'class-1',
+      roles: ['Eleve'],
+    );
+  }
+}
+
+class _OfflineProfileAuthRepository extends _FakeAuthRepository {
+  @override
+  Future<UserSummary> currentUser(String accessToken) async {
+    throw const AuthException('Serveur injoignable.');
   }
 }

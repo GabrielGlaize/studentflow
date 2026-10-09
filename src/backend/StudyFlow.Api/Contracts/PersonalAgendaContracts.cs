@@ -8,7 +8,8 @@ public sealed record PersonalTaskRequest(
     DateTimeOffset? Deadline,
     [StringLength(20, ErrorMessage = "Catégorie : 20 caractères maximum.")] string Category,
     bool NotificationsEnabled = false,
-    Guid? CourseId = null);
+    Guid? CourseId = null,
+    int ReminderMinutesBefore = 1440);
 
 public sealed record PersonalTaskUpdateRequest(
     [StringLength(160, ErrorMessage = "Titre : 160 caractères maximum.")] string Title,
@@ -17,7 +18,8 @@ public sealed record PersonalTaskUpdateRequest(
     [StringLength(20, ErrorMessage = "Catégorie : 20 caractères maximum.")] string Category,
     bool IsDone,
     bool NotificationsEnabled = false,
-    Guid? CourseId = null);
+    Guid? CourseId = null,
+    int ReminderMinutesBefore = 1440);
 
 public sealed record PersonalTaskResponse(
     Guid Id,
@@ -29,7 +31,8 @@ public sealed record PersonalTaskResponse(
     bool NotificationsEnabled,
     Guid? CourseId,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    int ReminderMinutesBefore);
 
 public sealed record PersonalEventRequest(
     [StringLength(160, ErrorMessage = "Titre : 160 caractères maximum.")] string Title,
@@ -39,7 +42,8 @@ public sealed record PersonalEventRequest(
     [StringLength(20, ErrorMessage = "Catégorie : 20 caractères maximum.")] string Category,
     [StringLength(200, ErrorMessage = "Lieu : 200 caractères maximum.")] string? Location = null,
     [StringLength(2000, ErrorMessage = "Notes : 2000 caractères maximum.")] string? Notes = null,
-    bool NotificationsEnabled = false);
+    bool NotificationsEnabled = false,
+    int ReminderMinutesBefore = 60);
 
 public sealed record PersonalEventUpdateRequest(
     [StringLength(160, ErrorMessage = "Titre : 160 caractères maximum.")] string Title,
@@ -49,7 +53,8 @@ public sealed record PersonalEventUpdateRequest(
     [StringLength(20, ErrorMessage = "Catégorie : 20 caractères maximum.")] string Category,
     [StringLength(200, ErrorMessage = "Lieu : 200 caractères maximum.")] string? Location = null,
     [StringLength(2000, ErrorMessage = "Notes : 2000 caractères maximum.")] string? Notes = null,
-    bool NotificationsEnabled = false);
+    bool NotificationsEnabled = false,
+    int ReminderMinutesBefore = 60);
 
 public sealed record PersonalEventResponse(
     Guid Id,
@@ -62,4 +67,5 @@ public sealed record PersonalEventResponse(
     string? Notes,
     bool NotificationsEnabled,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    int ReminderMinutesBefore);

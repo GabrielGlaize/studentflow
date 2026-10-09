@@ -1,13 +1,14 @@
 import 'package:studyflow_app/core/settings/app_settings_controller.dart';
+import 'package:studyflow_app/core/widgets/reminder_picker.dart';
 import 'package:studyflow_app/features/agenda/domain/agenda_models.dart';
 import 'package:studyflow_app/features/notifications/domain/notification_models.dart';
 import 'package:studyflow_app/features/schedule/domain/course_models.dart';
 
-/// Computes the reminders that should be scheduled for the current student.
+/// Calcule les rappels à programmer pour l'élève connecté.
 ///
-/// This class contains no Flutter UI and no native notification dependency on
-/// purpose: it is easy to test, and it mirrors the backend rule that homework
-/// reminders happen one day before the deadline.
+/// Aucune dépendance à Flutter ni aux notifications natives : c'est testable,
+/// et cela suit les mêmes règles que le serveur (délai choisi par l'élève pour
+/// chaque devoir, tâche ou événement ; délai global pour les cours).
 class ReminderPlanner {
   const ReminderPlanner();
 
@@ -15,6 +16,8 @@ class ReminderPlanner {
     required Iterable<CourseItem> courses,
     required Iterable<HomeworkItem> homework,
     required AppSettings settings,
+    Iterable<AgendaTaskItem> tasks = const [],
+    Iterable<PersonalEventItem> events = const [],
     DateTime? now,
   }) {
     final referenceTime = now ?? DateTime.now();
@@ -28,6 +31,17 @@ class ReminderPlanner {
         ...homework
             .where((item) => !item.isDone && item.notificationsEnabled)
             .map(_homeworkReminder),
+      ...tasks
+          .where(
+            (task) =>
+                !task.isDone &&
+                task.notificationsEnabled &&
+                task.deadline != null,
+          )
+          .map(_taskReminder),
+      ...events
+          .where((event) => event.notificationsEnabled)
+          .map(_eventReminder),
     ];
 
     return reminders
@@ -55,17 +69,49 @@ class ReminderPlanner {
   }
 
   ScheduledReminder _homeworkReminder(HomeworkItem homework) {
-    final scheduledAt = homework.deadline.subtract(const Duration(days: 1));
+    final minutes = homework.reminderMinutesBefore;
 
     return ScheduledReminder(
-      id: 'homework-${homework.id}',
+      id: 'homework-${homework.id}-$minutes',
       type: ReminderType.homework,
       title: homework.title,
-      body: 'À rendre le ${_formatDate(homework.deadline)}.',
-      scheduledAt: scheduledAt,
+      body:
+          'À rendre le ${_formatDate(homework.deadline)} (${_when(minutes)}).',
+      scheduledAt: homework.deadline.subtract(Duration(minutes: minutes)),
       sourceId: homework.id,
     );
   }
+
+  ScheduledReminder _taskReminder(AgendaTaskItem task) {
+    final minutes = task.reminderMinutesBefore;
+
+    return ScheduledReminder(
+      id: 'task-${task.id}-$minutes',
+      type: ReminderType.task,
+      title: task.title,
+      body: 'Échéance le ${_formatDate(task.deadline!)} (${_when(minutes)}).',
+      scheduledAt: task.deadline!.subtract(Duration(minutes: minutes)),
+      sourceId: task.id,
+    );
+  }
+
+  ScheduledReminder _eventReminder(PersonalEventItem event) {
+    final minutes = event.reminderMinutesBefore;
+    final place = event.location == null ? '' : ' · ${event.location}';
+
+    return ScheduledReminder(
+      id: 'event-${event.id}-$minutes',
+      type: ReminderType.event,
+      title: event.title,
+      body: 'Commence à ${event.startsAt}$place.',
+      scheduledAt: event.startDateTime.subtract(Duration(minutes: minutes)),
+      sourceId: event.id,
+    );
+  }
+
+  /// « la veille », « 1 h avant »…
+  String _when(int minutes) =>
+      ReminderFormat.label(minutes, atMoment: 'maintenant').toLowerCase();
 
   DateTime? _mergeDayAndTime(DateTime day, String time) {
     final parts = time.split(':');
@@ -81,6 +127,8 @@ class ReminderPlanner {
   String _formatDate(DateTime value) {
     final day = value.day.toString().padLeft(2, '0');
     final month = value.month.toString().padLeft(2, '0');
-    return '$day/$month/${value.year}';
+    final hour = value.hour.toString().padLeft(2, '0');
+    final minute = value.minute.toString().padLeft(2, '0');
+    return '$day/$month à $hour:$minute';
   }
 }

@@ -140,6 +140,10 @@ public sealed class HomeworkController(
                 && x.SchoolClassId == user.SchoolClassId
                 && x.DeletedAt == null, cancellationToken);
         if (homework is null) return NotFound();
+        if (request.ReminderMinutesBefore is { } minutes && !ReminderDefaults.IsValid(minutes))
+        {
+            return BadRequestProblem("Le rappel doit être programmé entre le moment même et 30 jours avant.");
+        }
 
         var progress = await dbContext.HomeworkProgressItems
             .SingleOrDefaultAsync(x => x.HomeworkId == id && x.UserId == user.Id, cancellationToken);
@@ -157,6 +161,7 @@ public sealed class HomeworkController(
 
         progress.IsDone = request.IsDone;
         progress.NotificationsEnabled = request.NotificationsEnabled;
+        if (request.ReminderMinutesBefore is { } reminder) progress.ReminderMinutesBefore = reminder;
         progress.CompletedAt = request.IsDone
             ? progress.CompletedAt ?? now
             : null;
@@ -231,7 +236,8 @@ public sealed class HomeworkController(
         homework.ProgressItems.SingleOrDefault()?.NotificationsEnabled ?? true,
         homework.ProgressItems.SingleOrDefault()?.CompletedAt,
         homework.CreatedAt,
-        homework.UpdatedAt);
+        homework.UpdatedAt,
+        homework.ProgressItems.SingleOrDefault()?.ReminderMinutesBefore ?? ReminderDefaults.HomeworkMinutes);
 
     private async Task LoadCourseAsync(Homework homework, CancellationToken cancellationToken)
     {

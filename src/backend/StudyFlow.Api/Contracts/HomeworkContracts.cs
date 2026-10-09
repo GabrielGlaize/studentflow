@@ -14,9 +14,11 @@ public sealed record HomeworkUpdateRequest(
     DateTimeOffset Deadline,
     Guid? CourseId = null);
 
+/// <param name="ReminderMinutesBefore">Délai du rappel avant l'échéance ; nul pour garder le réglage actuel.</param>
 public sealed record HomeworkProgressRequest(
     bool IsDone,
-    bool NotificationsEnabled = true);
+    bool NotificationsEnabled = true,
+    int? ReminderMinutesBefore = null);
 
 public sealed record HomeworkResponse(
     Guid Id,
@@ -30,4 +32,5 @@ public sealed record HomeworkResponse(
     bool NotificationsEnabled,
     DateTimeOffset? CompletedAt,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    int ReminderMinutesBefore = 1440);

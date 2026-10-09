@@ -111,7 +111,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Visible uniquement par toi'), findsNothing);
 
-    await tester.drag(find.byType(ListView), const Offset(0, -220));
+    await tester.scrollUntilVisible(
+      find.text('Appeler une entreprise'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
     await tester.pumpAndSettle();
     expect(find.text('Appeler une entreprise'), findsOneWidget);
 

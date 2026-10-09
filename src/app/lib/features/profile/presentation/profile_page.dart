@@ -12,7 +12,7 @@ import 'package:studyflow_app/features/classes/domain/class_models.dart';
 import 'package:studyflow_app/features/classes/presentation/class_resources_page.dart';
 import 'package:studyflow_app/features/classes/domain/class_resource_models.dart';
 import 'package:studyflow_app/features/company/application/company_documents_controller.dart';
-import 'package:studyflow_app/features/notifications/application/reminder_planner.dart';
+import 'package:studyflow_app/features/exams/presentation/exams_page.dart';
 import 'package:studyflow_app/features/notifications/domain/notification_models.dart';
 import 'package:studyflow_app/features/profile/domain/app_preferences.dart';
 import 'package:studyflow_app/features/profile/domain/notification_preferences.dart';

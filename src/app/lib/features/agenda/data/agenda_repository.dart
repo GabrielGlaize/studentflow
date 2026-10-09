@@ -47,5 +47,20 @@ abstract interface class AgendaRepository {
     String? accessToken,
   });
 
+  /// Enregistre la tâche telle quelle (rappel, statut…).
+  Future<AgendaTaskItem> updateTask({
+    required AgendaTaskItem task,
+    String? accessToken,
+  });
+
+  /// Suivi personnel d'un devoir : fait ou non, rappel et son délai.
+  Future<HomeworkItem> updateHomeworkProgress({
+    required HomeworkItem homework,
+    required bool isDone,
+    required bool notificationsEnabled,
+    required int reminderMinutesBefore,
+    String? accessToken,
+  });
+
   Future<void> deleteTask({required String taskId, String? accessToken});
 }

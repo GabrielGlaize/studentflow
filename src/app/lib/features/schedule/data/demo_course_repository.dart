@@ -6,7 +6,7 @@ class DemoCourseRepository implements CourseRepository {
   const DemoCourseRepository();
 
   static final List<CourseItem> _courses = [];
-  static DateTime? _seedWeekStart;
+  static bool _seeded = false;
 
   @override
   Future<List<CourseItem>> listCourses({
@@ -17,8 +17,7 @@ class DemoCourseRepository implements CourseRepository {
     await Future<void>.delayed(const Duration(milliseconds: 250));
     if (DemoSessionState.hasNoClass(accessToken)) return const [];
 
-    final start = DateTime(from.year, from.month, from.day);
-    _seedIfNeeded(start);
+    _seedIfNeeded();
 
     return _courses
         .where(
@@ -59,7 +58,9 @@ class DemoCourseRepository implements CourseRepository {
       _throwIfConflict(courses[i]);
       for (final other in courses.skip(i + 1)) {
         if (_overlaps(courses[i], other)) {
-          throw StateError('Deux créneaux se chevauchent.');
+          throw StateError(
+            'Deux de tes créneaux se chevauchent. Décale l’un des deux.',
+          );
         }
       }
     }
@@ -158,10 +159,14 @@ class DemoCourseRepository implements CourseRepository {
     return restored;
   }
 
-  void _seedIfNeeded(DateTime start) {
-    if (_seedWeekStart == start && _courses.isNotEmpty) return;
+  /// Une semaine type, une seule fois : changer de semaine ou lire le mois
+  /// ne doit pas effacer les cours ajoutés pendant la démo.
+  void _seedIfNeeded() {
+    if (_seeded) return;
+    _seeded = true;
 
-    _seedWeekStart = start;
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day - (now.weekday - 1));
     _courses
       ..clear()
       ..addAll([
@@ -184,7 +189,7 @@ class DemoCourseRepository implements CourseRepository {
           subjectName: 'Mathématiques',
           teacherId: 'teacher-2',
           teacherName: 'M. Bernard',
-          day: start.add(const Duration(days: 1)),
+          day: DateTime(start.year, start.month, start.day + 1),
           startsAt: '08:30',
           endsAt: '10:30',
           room: 'A112',
@@ -195,7 +200,7 @@ class DemoCourseRepository implements CourseRepository {
           id: 'course-3',
           subjectId: 'subject-3',
           subjectName: 'Réseaux',
-          day: start.add(const Duration(days: 2)),
+          day: DateTime(start.year, start.month, start.day + 2),
           startsAt: '14:00',
           endsAt: '16:00',
           room: 'C301',
@@ -242,7 +247,9 @@ class DemoCourseRepository implements CourseRepository {
     });
 
     if (hasConflict) {
-      throw StateError('Ce cours chevauche déjà un autre cours.');
+      throw StateError(
+        'Il y a déjà un cours sur ce créneau. Choisis un autre horaire.',
+      );
     }
   }
 

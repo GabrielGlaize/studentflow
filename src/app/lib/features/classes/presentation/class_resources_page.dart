@@ -23,8 +23,28 @@ class _ClassResourcesPageState extends State<ClassResourcesPage>
   late final TabController _tabController = TabController(
     length: 2,
     vsync: this,
-  )..addListener(() => setState(() {}));
+  )..addListener(_onTabChanged);
   Future<ClassResources>? _future;
+
+  /// Sélection multiple (délégués) : pour retirer d'un coup les matières ou
+  /// intervenants d'un module ou d'un trimestre terminé.
+  final Set<String> _selected = {};
+  bool _deleting = false;
+
+  bool get _selecting => _selected.isNotEmpty;
+
+  bool get _onSubjects => _tabController.index == 0;
+
+  void _onTabChanged() {
+    // La sélection ne vaut que pour l'onglet affiché.
+    setState(_selected.clear);
+  }
+
+  void _toggle(String id) {
+    setState(() {
+      if (!_selected.remove(id)) _selected.add(id);
+    });
+  }
 
   @override
   void didChangeDependencies() {
@@ -39,75 +59,230 @@ class _ClassResourcesPageState extends State<ClassResourcesPage>
       builder: (context, snapshot) {
         final resources = snapshot.data;
 
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Matières et intervenants'),
-            bottom: TabBar(
-              controller: _tabController,
-              labelStyle: const TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-              ),
-              unselectedLabelColor: context.sfMuted,
-              labelColor: context.sfText,
-              indicatorColor: context.sfAccent,
-              tabs: [
-                Tab(text: 'Matières (${resources?.subjects.length ?? '…'})'),
-                Tab(
-                  text: 'Intervenants (${resources?.teachers.length ?? '…'})',
-                ),
-              ],
-            ),
-          ),
-          floatingActionButton: widget.isDelegate && resources != null
-              ? FloatingActionButton.extended(
-                  key: const ValueKey('add-resource-button'),
-                  backgroundColor: context.sfAccent,
-                  foregroundColor: context.sfOnAccent,
-                  onPressed: () => _tabController.index == 0
-                      ? _editSubject(resources)
-                      : _editTeacher(resources),
-                  icon: const Icon(Icons.add),
-                  label: Text(
-                    _tabController.index == 0
-                        ? 'Ajouter une matière'
-                        : 'Ajouter un intervenant',
-                  ),
-                )
-              : null,
-          body: switch (snapshot.connectionState) {
-            ConnectionState.done when snapshot.hasError => ProtoStateCard(
-              icon: Icons.cloud_off_outlined,
-              title: 'Listes indisponibles',
-              message: 'Impossible de charger les matières et intervenants.',
-              actionLabel: 'Réessayer',
-              onAction: _reload,
-            ),
-            ConnectionState.done => TabBarView(
-              controller: _tabController,
-              children: [
-                _SubjectList(
-                  resources: resources!,
-                  isDelegate: widget.isDelegate,
-                  onEdit: (subject) => _editSubject(resources, subject),
-                ),
-                _TeacherList(
-                  resources: resources,
-                  isDelegate: widget.isDelegate,
-                  onEdit: (teacher) => _editTeacher(resources, teacher),
-                ),
-              ],
-            ),
-            _ => const ProtoPageLoader(label: 'Matières et intervenants'),
+        final visibleIds = resources == null
+            ? const <String>[]
+            : _onSubjects
+            ? resources.subjects.map((x) => x.id).toList()
+            : resources.teachers.map((x) => x.id).toList();
+
+        return PopScope(
+          canPop: !_selecting,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) setState(_selected.clear);
           },
+          child: Scaffold(
+            appBar: AppBar(
+              leading: _selecting
+                  ? IconButton(
+                      tooltip: 'Annuler la sélection',
+                      icon: const Icon(Icons.close),
+                      onPressed: () => setState(_selected.clear),
+                    )
+                  : null,
+              title: Text(
+                _selecting
+                    ? '${_selected.length} sélectionné${_selected.length > 1 ? 's' : ''}'
+                    : 'Matières et intervenants',
+              ),
+              actions: [
+                if (_selecting)
+                  TextButton(
+                    key: const ValueKey('select-all-resources'),
+                    onPressed: () => setState(() {
+                      if (_selected.length == visibleIds.length) {
+                        _selected.clear();
+                      } else {
+                        _selected.addAll(visibleIds);
+                      }
+                    }),
+                    child: Text(
+                      _selected.length == visibleIds.length ? 'Aucun' : 'Tout',
+                    ),
+                  )
+                else if (widget.isDelegate && visibleIds.isNotEmpty)
+                  IconButton(
+                    key: const ValueKey('start-resource-selection'),
+                    tooltip: 'Sélectionner plusieurs',
+                    icon: const Icon(Icons.checklist),
+                    onPressed: () =>
+                        setState(() => _selected.add(visibleIds.first)),
+                  ),
+              ],
+              bottom: TabBar(
+                controller: _tabController,
+                labelStyle: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
+                unselectedLabelColor: context.sfMuted,
+                labelColor: context.sfText,
+                indicatorColor: context.sfAccent,
+                tabs: [
+                  Tab(text: 'Matières (${resources?.subjects.length ?? '…'})'),
+                  Tab(
+                    text: 'Intervenants (${resources?.teachers.length ?? '…'})',
+                  ),
+                ],
+              ),
+            ),
+            bottomNavigationBar: _selecting && resources != null
+                ? SafeArea(
+                    minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                    child: FilledButton.icon(
+                      key: const ValueKey('delete-selected-resources'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.danger,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: _deleting
+                          ? null
+                          : () => _deleteSelected(resources),
+                      icon: const Icon(Icons.delete_outline),
+                      label: Text(
+                        _deleting
+                            ? 'Suppression…'
+                            : _deleteLabel(_selected.length),
+                      ),
+                    ),
+                  )
+                : null,
+            floatingActionButton:
+                widget.isDelegate && resources != null && !_selecting
+                ? FloatingActionButton.extended(
+                    key: const ValueKey('add-resource-button'),
+                    backgroundColor: context.sfAccent,
+                    foregroundColor: context.sfOnAccent,
+                    onPressed: () => _tabController.index == 0
+                        ? _editSubject(resources)
+                        : _editTeacher(resources),
+                    icon: const Icon(Icons.add),
+                    label: Text(
+                      _tabController.index == 0
+                          ? 'Ajouter une matière'
+                          : 'Ajouter un intervenant',
+                    ),
+                  )
+                : null,
+            body: switch (snapshot.connectionState) {
+              ConnectionState.done when snapshot.hasError => ProtoStateCard(
+                icon: Icons.cloud_off_outlined,
+                title: 'Listes indisponibles',
+                message: 'Impossible de charger les matières et intervenants.',
+                actionLabel: 'Réessayer',
+                onAction: _reload,
+              ),
+              ConnectionState.done => TabBarView(
+                controller: _tabController,
+                children: [
+                  _SubjectList(
+                    resources: resources!,
+                    isDelegate: widget.isDelegate,
+                    selected: _onSubjects && _selecting ? _selected : null,
+                    onToggle: _toggle,
+                    onEdit: (subject) => _editSubject(resources, subject),
+                  ),
+                  _TeacherList(
+                    resources: resources,
+                    isDelegate: widget.isDelegate,
+                    selected: !_onSubjects && _selecting ? _selected : null,
+                    onToggle: _toggle,
+                    onEdit: (teacher) => _editTeacher(resources, teacher),
+                  ),
+                ],
+              ),
+              _ => const ProtoPageLoader(label: 'Matières et intervenants'),
+            },
+          ),
         );
       },
     );
   }
 
   void _reload() {
-    setState(() => _future = ClassResources.load(context));
+    final future = ClassResources.load(context);
+    setState(() {
+      _future = future;
+    });
+  }
+
+  String _deleteLabel(int count) {
+    final noun = _onSubjects
+        ? (count > 1 ? 'matières' : 'matière')
+        : (count > 1 ? 'intervenants' : 'intervenant');
+    return 'Retirer $count $noun';
+  }
+
+  Future<void> _deleteSelected(ClassResources resources) async {
+    final ids = _selected.toList();
+    final names = _onSubjects
+        ? ids.map((id) => resources.subjectById(id)?.name)
+        : ids.map((id) => resources.teacherById(id)?.displayName);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${_deleteLabel(ids.length)} ?'),
+        content: Text(
+          '${names.whereType<String>().join(', ')}.\n\nLes cours déjà créés restent dans le planning. Recréer le même nom plus tard le réactivera.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Retirer'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _deleting = true);
+    final appScope = AppScope.of(context);
+    final repository = appScope.classResourceRepository;
+    var failures = 0;
+    try {
+      final accessToken = await appScope.sessionController.accessTokenForApi();
+      for (final id in ids) {
+        try {
+          if (_onSubjects) {
+            await repository.deleteSubject(
+              subjectId: id,
+              accessToken: accessToken,
+            );
+          } else {
+            await repository.deleteTeacher(
+              teacherId: id,
+              accessToken: accessToken,
+            );
+          }
+        } on Exception {
+          failures++;
+        }
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _deleting = false;
+          _selected.clear();
+        });
+        _reload();
+        final removed = ids.length - failures;
+        ScaffoldMessenger.of(context)
+          ..clearSnackBars()
+          ..showSnackBar(
+            SnackBar(
+              content: Text(
+                failures == 0
+                    ? '$removed retiré${removed > 1 ? 's' : ''}.'
+                    : '$removed retiré${removed > 1 ? 's' : ''}, $failures en échec : réessaie.',
+              ),
+            ),
+          );
+      }
+    }
   }
 
   Future<void> _editSubject(
@@ -208,11 +383,17 @@ class _SubjectList extends StatelessWidget {
   const _SubjectList({
     required this.resources,
     required this.isDelegate,
+    required this.selected,
+    required this.onToggle,
     required this.onEdit,
   });
 
   final ClassResources resources;
   final bool isDelegate;
+
+  /// Non nul en mode sélection.
+  final Set<String>? selected;
+  final ValueChanged<String> onToggle;
   final ValueChanged<ClassSubject> onEdit;
 
   @override
@@ -223,7 +404,7 @@ class _SubjectList extends StatelessWidget {
         _ListIntro(
           isDelegate: isDelegate,
           text: isDelegate
-              ? 'Ajoute les matières de la classe, puis rattache leurs intervenants. Touche une matière pour la modifier.'
+              ? 'Ajoute les matières de la classe, puis rattache leurs intervenants. Touche une matière pour la modifier, appuie longuement pour en sélectionner plusieurs.'
               : 'Matières de la classe et leurs intervenants. Seuls les délégués peuvent modifier cette liste.',
         ),
         if (resources.subjects.isEmpty)
@@ -238,13 +419,21 @@ class _SubjectList extends StatelessWidget {
         else
           ...resources.subjects.map((subject) {
             final teachers = resources.teachersOf(subject.id);
+            final selection = selected;
             return _ResourceTile(
+              key: ValueKey('subject-tile-${subject.id}'),
               icon: Icons.menu_book_outlined,
               iconColor: context.sfShared,
               title: subject.name,
               linkedLabels: teachers.map((x) => x.displayName).toList(),
               emptyLinkLabel: 'Aucun intervenant rattaché',
-              onTap: isDelegate ? () => onEdit(subject) : null,
+              selected: selection?.contains(subject.id),
+              onTap: !isDelegate
+                  ? null
+                  : selection != null
+                  ? () => onToggle(subject.id)
+                  : () => onEdit(subject),
+              onLongPress: isDelegate ? () => onToggle(subject.id) : null,
             );
           }),
       ],
@@ -256,11 +445,15 @@ class _TeacherList extends StatelessWidget {
   const _TeacherList({
     required this.resources,
     required this.isDelegate,
+    required this.selected,
+    required this.onToggle,
     required this.onEdit,
   });
 
   final ClassResources resources;
   final bool isDelegate;
+  final Set<String>? selected;
+  final ValueChanged<String> onToggle;
   final ValueChanged<ClassTeacher> onEdit;
 
   @override
@@ -286,14 +479,22 @@ class _TeacherList extends StatelessWidget {
         else
           ...resources.teachers.map((teacher) {
             final subjects = resources.subjectsOf(teacher.id);
+            final selection = selected;
             return _ResourceTile(
+              key: ValueKey('teacher-tile-${teacher.id}'),
               icon: Icons.badge_outlined,
               iconColor: context.sfPersonal,
               title: teacher.displayName,
               subtitle: teacher.information,
               linkedLabels: subjects.map((x) => x.name).toList(),
               emptyLinkLabel: 'Aucune matière rattachée',
-              onTap: isDelegate ? () => onEdit(teacher) : null,
+              selected: selection?.contains(teacher.id),
+              onTap: !isDelegate
+                  ? null
+                  : selection != null
+                  ? () => onToggle(teacher.id)
+                  : () => onEdit(teacher),
+              onLongPress: isDelegate ? () => onToggle(teacher.id) : null,
             );
           }),
       ],
@@ -335,9 +536,15 @@ class _ResourceTile extends StatelessWidget {
     required this.linkedLabels,
     required this.emptyLinkLabel,
     this.subtitle,
+    this.selected,
     this.onTap,
+    this.onLongPress,
+    super.key,
   });
 
+  /// Nul hors sélection ; sinon, case cochée ou non.
+  final bool? selected;
+  final VoidCallback? onLongPress;
   final IconData icon;
   final Color iconColor;
   final String title;
@@ -348,18 +555,31 @@ class _ResourceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isSelected = selected ?? false;
+
     return ProtoCard(
       onTap: onTap,
+      onLongPress: onLongPress,
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.fromLTRB(14, 14, 10, 14),
+      borderColor: isSelected ? context.sfAccent : AppColors.line,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ProtoIconBox(
-            icon: icon,
-            backgroundColor: iconColor.withValues(alpha: 0.12),
-            foregroundColor: iconColor,
-          ),
+          if (selected != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Icon(
+                isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
+                color: isSelected ? context.sfAccent : context.sfMuted,
+              ),
+            )
+          else
+            ProtoIconBox(
+              icon: icon,
+              backgroundColor: iconColor.withValues(alpha: 0.12),
+              foregroundColor: iconColor,
+            ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -404,7 +624,7 @@ class _ResourceTile extends StatelessWidget {
               ],
             ),
           ),
-          if (onTap != null)
+          if (onTap != null && selected == null)
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Icon(Icons.chevron_right, color: context.sfChevron),

@@ -216,6 +216,10 @@ class _ClassManagementSectionState extends State<_ClassManagementSection> {
               isDelegate: isDelegate,
               onOpen: () => _openResources(isDelegate: isDelegate),
             ),
+            _ExamsEntryCard(
+              isDelegate: isDelegate,
+              onOpen: () => ExamsPage.open(context),
+            ),
           ],
         );
       },
@@ -280,7 +284,9 @@ class _ClassManagementSectionState extends State<_ClassManagementSection> {
 
     if (created == true && mounted) {
       _showSnack('Classe créée. Tu es maintenant délégué.');
-      setState(() => _future = _load());
+      setState(() {
+        _future = _load();
+      });
     }
   }
 
@@ -327,7 +333,9 @@ class _ClassManagementSectionState extends State<_ClassManagementSection> {
 
     if (!mounted) return;
     _showSnack('Délégué ajouté.');
-    setState(() => _future = _load());
+    setState(() {
+      _future = _load();
+    });
   }
 
   Future<void> _removeMember(ClassMember member) async {
@@ -361,7 +369,9 @@ class _ClassManagementSectionState extends State<_ClassManagementSection> {
 
     if (!mounted) return;
     _showSnack('Élève retiré de la classe.');
-    setState(() => _future = _load());
+    setState(() {
+      _future = _load();
+    });
   }
 
   Future<void> _leaveDelegateRole() async {
@@ -394,7 +404,9 @@ class _ClassManagementSectionState extends State<_ClassManagementSection> {
 
     if (!mounted) return;
     _showSnack('Rôle délégué retiré.');
-    setState(() => _future = _load());
+    setState(() {
+      _future = _load();
+    });
   }
 
   Future<void> _leaveClass() async {
@@ -429,7 +441,9 @@ class _ClassManagementSectionState extends State<_ClassManagementSection> {
 
       if (!mounted) return;
       _showSnack('Tu as quitté la classe.');
-      setState(() => _future = _load());
+      setState(() {
+        _future = _load();
+      });
     } on Exception catch (error) {
       if (!mounted) return;
       _showSnack(error.toString());
@@ -542,7 +556,11 @@ class _ClassManagementSectionState extends State<_ClassManagementSection> {
         builder: (context) => ClassResourcesPage(isDelegate: isDelegate),
       ),
     );
-    if (mounted) setState(() => _future = _load());
+    if (mounted) {
+      setState(() {
+        _future = _load();
+      });
+    }
   }
 }
 

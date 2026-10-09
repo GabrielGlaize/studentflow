@@ -9,7 +9,9 @@ import 'package:studyflow_app/features/classes/data/class_resource_repository.da
 import 'package:studyflow_app/features/dashboard/data/dashboard_repository.dart';
 import 'package:studyflow_app/features/company/application/company_contacts_controller.dart';
 import 'package:studyflow_app/features/company/application/company_documents_controller.dart';
+import 'package:studyflow_app/features/exams/data/exam_repository.dart';
 import 'package:studyflow_app/features/notifications/application/local_notification_scheduler.dart';
+import 'package:studyflow_app/features/notifications/application/reminder_sync.dart';
 import 'package:studyflow_app/features/profile/data/app_preferences_repository.dart';
 import 'package:studyflow_app/features/profile/data/notification_preferences_repository.dart';
 import 'package:studyflow_app/features/schedule/data/course_repository.dart';
@@ -35,6 +37,8 @@ class AppScope extends InheritedWidget {
     required this.notificationPreferencesRepository,
     required this.notificationScheduler,
     required this.courseRepository,
+    required this.examRepository,
+    required this.reminderSync,
     required super.child,
     super.key,
   });
@@ -53,6 +57,8 @@ class AppScope extends InheritedWidget {
   final NotificationPreferencesRepository notificationPreferencesRepository;
   final LocalNotificationScheduler notificationScheduler;
   final CourseRepository courseRepository;
+  final ExamRepository examRepository;
+  final ReminderSync reminderSync;
 
   static AppScope of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<AppScope>();
@@ -76,6 +82,8 @@ class AppScope extends InheritedWidget {
         notificationPreferencesRepository !=
             oldWidget.notificationPreferencesRepository ||
         notificationScheduler != oldWidget.notificationScheduler ||
-        courseRepository != oldWidget.courseRepository;
+        courseRepository != oldWidget.courseRepository ||
+        examRepository != oldWidget.examRepository ||
+        reminderSync != oldWidget.reminderSync;
   }
 }

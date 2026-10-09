@@ -58,6 +58,32 @@ class SessionController extends ChangeNotifier {
     }
 
     notifyListeners();
+
+    // Jeton toujours périmé : serveur injoignable, inutile d'insister.
+    if (_session != null && !_session!.shouldRefresh()) await reloadUser();
+  }
+
+  /// Relit le profil côté serveur. La classe ou les rôles ont pu changer
+  /// depuis un autre appareil (adhésion validée par un délégué, par exemple),
+  /// alors que la session stockée garde l'état de la dernière connexion.
+  /// Sans effet si le serveur est injoignable.
+  Future<void> reloadUser() async {
+    try {
+      final accessToken = await accessTokenForApi();
+      if (accessToken == null) return;
+
+      final user = await _authRepository.currentUser(accessToken);
+
+      // L'utilisateur a pu se déconnecter pendant l'appel.
+      final currentSession = _session;
+      if (currentSession == null) return;
+
+      _session = AuthSession(tokens: currentSession.tokens, user: user);
+      await _sessionStorage.save(_session!);
+      notifyListeners();
+    } on Exception {
+      // Hors connexion ou mode démo : on garde le profil stocké.
+    }
   }
 
   Future<bool> login({required String email, required String password}) async {

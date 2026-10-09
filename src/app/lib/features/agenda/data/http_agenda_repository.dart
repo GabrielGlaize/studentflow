@@ -160,6 +160,41 @@ class HttpAgendaRepository implements AgendaRepository {
   }
 
   @override
+  Future<AgendaTaskItem> updateTask({
+    required AgendaTaskItem task,
+    String? accessToken,
+  }) async {
+    final json = await _apiClient.putJson(
+      '/api/v1/personal-agenda/tasks/${task.id}',
+      body: task.toUpdateJson(isDone: task.isDone),
+      accessToken: accessToken,
+    );
+
+    return AgendaTaskItem.fromJson(json);
+  }
+
+  @override
+  Future<HomeworkItem> updateHomeworkProgress({
+    required HomeworkItem homework,
+    required bool isDone,
+    required bool notificationsEnabled,
+    required int reminderMinutesBefore,
+    String? accessToken,
+  }) async {
+    final json = await _apiClient.putJson(
+      '/api/v1/homework/${homework.id}/progress',
+      body: {
+        'isDone': isDone,
+        'notificationsEnabled': notificationsEnabled,
+        'reminderMinutesBefore': reminderMinutesBefore,
+      },
+      accessToken: accessToken,
+    );
+
+    return HomeworkItem.fromJson(json);
+  }
+
+  @override
   Future<void> deleteTask({required String taskId, String? accessToken}) {
     return _apiClient.deleteNoContent(
       '/api/v1/personal-agenda/tasks/$taskId',

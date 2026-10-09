@@ -92,6 +92,20 @@ class HttpAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<UserSummary> currentUser(String accessToken) async {
+    try {
+      final json = await _apiClient.getJson(
+        '/api/v1/auth/me',
+        accessToken: accessToken,
+      );
+
+      return UserSummary.fromJson(json);
+    } on ApiException catch (error) {
+      throw AuthException(error.message, statusCode: error.statusCode);
+    }
+  }
+
+  @override
   Future<PasswordResetRequestResult> requestPasswordReset({
     required String email,
   }) async {

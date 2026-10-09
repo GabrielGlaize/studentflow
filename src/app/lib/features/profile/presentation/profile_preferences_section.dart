@@ -9,8 +9,6 @@ class _ScheduledRemindersCard extends StatefulWidget {
 }
 
 class _ScheduledRemindersCardState extends State<_ScheduledRemindersCard> {
-  static const _planner = ReminderPlanner();
-
   Future<List<ScheduledReminder>>? _future;
   Listenable? _settingsListenable;
 
@@ -67,10 +65,12 @@ class _ScheduledRemindersCardState extends State<_ScheduledRemindersCard> {
                   'Aucun rappel futur avec les réglages actuels.',
                 )
               else
-                ...reminders.take(3).map(_ReminderPreviewLine.new),
+                ...reminders.take(4).map(_ReminderPreviewLine.new),
               const SizedBox(height: 8),
-              const ProtoMutedText(
-                'Les rappels sont programmés localement sur ton téléphone quand les autorisations iOS/Android sont acceptées.',
+              ProtoMutedText(
+                AppScope.of(context).reminderSync.deliveredByPush
+                    ? 'Ces rappels t’arrivent en notification push. Leur moment se règle sur chaque devoir, tâche ou événement.'
+                    : 'Ces rappels sont programmés sur ton téléphone (autorisation des notifications requise). Leur moment se règle sur chaque devoir, tâche ou événement.',
               ),
             ],
           ),
@@ -79,33 +79,8 @@ class _ScheduledRemindersCardState extends State<_ScheduledRemindersCard> {
     );
   }
 
-  Future<List<ScheduledReminder>> _loadAndSchedule() async {
-    final appScope = AppScope.of(context);
-    final accessToken = await appScope.sessionController.accessTokenForApi();
-    final today = DateTime.now();
-    final weekStart = DateTime(
-      today.year,
-      today.month,
-      today.day,
-    ).subtract(Duration(days: today.weekday - DateTime.monday));
-
-    final courses = await appScope.courseRepository.listCourses(
-      from: weekStart,
-      to: DateTime(weekStart.year, weekStart.month, weekStart.day + 6),
-      accessToken: accessToken,
-    );
-    final agenda = await appScope.agendaRepository.getAgenda(
-      taskCategory: 'school',
-      accessToken: accessToken,
-    );
-    final reminders = _planner.plan(
-      courses: courses,
-      homework: agenda.homework,
-      settings: appScope.settingsController.currentSettings,
-    );
-
-    await appScope.notificationScheduler.replaceAll(reminders);
-    return reminders;
+  Future<List<ScheduledReminder>> _loadAndSchedule() {
+    return AppScope.of(context).reminderSync.refresh();
   }
 
   void _reload() {
@@ -129,12 +104,22 @@ class _ReminderPreviewLine extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ProtoIconBox(
-            icon: reminder.type == ReminderType.course
-                ? Icons.notifications_active_outlined
-                : Icons.assignment_outlined,
-            backgroundColor: reminder.type == ReminderType.course
-                ? AppColors.primarySoft
-                : AppColors.greenSoft,
+            icon: switch (reminder.type) {
+              ReminderType.course => Icons.school_outlined,
+              ReminderType.homework => Icons.assignment_outlined,
+              ReminderType.task => Icons.check_circle_outline,
+              ReminderType.event => Icons.event_outlined,
+            },
+            backgroundColor:
+                reminder.type == ReminderType.course ||
+                    reminder.type == ReminderType.homework
+                ? context.sfSharedSoft
+                : context.sfPersonalSoft,
+            foregroundColor:
+                reminder.type == ReminderType.course ||
+                    reminder.type == ReminderType.homework
+                ? context.sfShared
+                : context.sfPersonal,
             size: 34,
           ),
           const SizedBox(width: 10),
@@ -146,8 +131,8 @@ class _ReminderPreviewLine extends StatelessWidget {
                   reminder.title,
                   style: TextStyle(
                     color: context.sfText,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
                   ),
                 ),
                 const SizedBox(height: 2),

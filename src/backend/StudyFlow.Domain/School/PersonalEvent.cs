@@ -16,4 +16,5 @@ public sealed class PersonalEvent : AuditableEntity
     public string EncryptedData { get; set; } = string.Empty;
     public PersonalEventCategory Category { get; set; } = PersonalEventCategory.Apprenticeship;
     public bool NotificationsEnabled { get; set; }
+    public int ReminderMinutesBefore { get; set; } = ReminderDefaults.EventMinutes;
 }

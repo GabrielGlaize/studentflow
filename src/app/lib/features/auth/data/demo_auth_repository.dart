@@ -105,6 +105,12 @@ class DemoAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<UserSummary> currentUser(String accessToken) async {
+    // Pas de serveur en démo : la session locale reste la référence.
+    throw const AuthException('Profil indisponible en mode démo.');
+  }
+
+  @override
   Future<PasswordResetRequestResult> requestPasswordReset({
     required String email,
   }) async {

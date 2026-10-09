@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
@@ -118,6 +119,57 @@ class ApiClient {
     _ensureSuccess(response);
   }
 
+  Future<void> putNoContent(
+    String path, {
+    required Map<String, Object?> body,
+    String? accessToken,
+  }) async {
+    final response = await _send(
+      accessToken,
+      (headers) => _httpClient.put(
+        _resolve(path),
+        headers: headers,
+        body: jsonEncode(body),
+      ),
+    );
+
+    _ensureSuccess(response);
+  }
+
+  /// Télécharge un fichier (contenu brut) avec le jeton de l'utilisateur.
+  Future<Uint8List> getBytes(String path, {String? accessToken}) async {
+    final response = await _send(
+      accessToken,
+      (headers) => _httpClient.get(_resolve(path), headers: headers),
+      timeout: const Duration(seconds: 60),
+    );
+
+    _ensureSuccess(response);
+    return response.bodyBytes;
+  }
+
+  /// Envoie un fichier en multipart/form-data (champ [fileField]).
+  Future<Map<String, Object?>> postFile(
+    String path, {
+    required String fileName,
+    required List<int> bytes,
+    String fileField = 'file',
+    Map<String, String> fields = const {},
+    String? accessToken,
+  }) async {
+    final response = await _send(accessToken, (headers) async {
+      final request = http.MultipartRequest('POST', _resolve(path))
+        ..headers.addAll(Map.of(headers)..remove('Content-Type'))
+        ..fields.addAll(fields)
+        ..files.add(
+          http.MultipartFile.fromBytes(fileField, bytes, filename: fileName),
+        );
+      return http.Response.fromStream(await _httpClient.send(request));
+    }, timeout: const Duration(seconds: 90));
+
+    return _decodeObjectResponse(response);
+  }
+
   Future<void> deleteNoContent(String path, {String? accessToken}) async {
     final response = await _send(
       accessToken,
@@ -129,9 +181,13 @@ class ApiClient {
 
   Future<http.Response> _send(
     String? accessToken,
-    Future<http.Response> Function(Map<String, String> headers) request,
-  ) async {
-    final response = await _sendOnce(() => request(_headers(accessToken)));
+    Future<http.Response> Function(Map<String, String> headers) request, {
+    Duration? timeout,
+  }) async {
+    final response = await _sendOnce(
+      () => request(_headers(accessToken)),
+      timeout: timeout,
+    );
 
     final renewer = onAccessTokenRejected;
     if (response.statusCode != 401 || accessToken == null || renewer == null) {
@@ -141,14 +197,15 @@ class ApiClient {
     final renewedToken = await renewer(accessToken);
     if (renewedToken == null || renewedToken == accessToken) return response;
 
-    return _sendOnce(() => request(_headers(renewedToken)));
+    return _sendOnce(() => request(_headers(renewedToken)), timeout: timeout);
   }
 
   Future<http.Response> _sendOnce(
-    Future<http.Response> Function() request,
-  ) async {
+    Future<http.Response> Function() request, {
+    Duration? timeout,
+  }) async {
     try {
-      return await request().timeout(_timeout);
+      return await request().timeout(timeout ?? _timeout);
     } on TimeoutException {
       throw const ApiException(
         statusCode: 0,
@@ -178,6 +235,13 @@ class ApiClient {
   }
 
   void _ensureSuccess(http.Response response) {
+    if (response.statusCode == 413) {
+      // Refus du proxy avant même l'API : la réponse n'est pas du JSON.
+      throw const ApiException(
+        statusCode: 413,
+        message: 'Fichier trop lourd pour le serveur.',
+      );
+    }
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw ApiException(
         statusCode: response.statusCode,
@@ -246,7 +310,11 @@ class ApiClient {
           }
         }
 
-        return decoded['detail'] as String? ?? decoded['title'] as String?;
+        // Le titre dit ce qui ne va pas, le détail comment s'en sortir.
+        final title = decoded['title'] as String?;
+        final detail = decoded['detail'] as String?;
+        if (title != null && detail != null) return '$title $detail';
+        return detail ?? title;
       }
     } on FormatException {
       return null;

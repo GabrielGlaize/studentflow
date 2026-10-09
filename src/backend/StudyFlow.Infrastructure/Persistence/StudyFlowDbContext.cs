@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using StudyFlow.Domain.Apprenticeships;
 using StudyFlow.Domain.Contributions;
+using StudyFlow.Domain.Exams;
 using StudyFlow.Domain.Notifications;
 using StudyFlow.Domain.School;
 using StudyFlow.Domain.Users;
@@ -33,6 +34,12 @@ public sealed class StudyFlowDbContext(
     public DbSet<ClassAnnouncement> ClassAnnouncements => Set<ClassAnnouncement>();
     public DbSet<ApprenticeshipSearch> ApprenticeshipSearches => Set<ApprenticeshipSearch>();
     public DbSet<FavoriteOffer> FavoriteOffers => Set<FavoriteOffer>();
+    public DbSet<ExamSession> ExamSessions => Set<ExamSession>();
+    public DbSet<ExamSubject> ExamSubjects => Set<ExamSubject>();
+    public DbSet<RevisionItem> RevisionItems => Set<RevisionItem>();
+    public DbSet<RevisionItemCheck> RevisionItemChecks => Set<RevisionItemCheck>();
+    public DbSet<RevisionResource> RevisionResources => Set<RevisionResource>();
+    public DbSet<RevisionResourceFile> RevisionResourceFiles => Set<RevisionResourceFile>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
 
@@ -53,6 +60,7 @@ public sealed class StudyFlowDbContext(
         ConfigureUserPreferences(modelBuilder);
         ConfigureApprenticeships(modelBuilder);
         ConfigureContributions(modelBuilder);
+        ConfigureExams(modelBuilder);
         ApplySnakeCaseColumnNames(modelBuilder);
     }
 
@@ -335,6 +343,68 @@ public sealed class StudyFlowDbContext(
             entity.HasOne<SchoolClass>().WithMany().HasForeignKey(x => x.SchoolClassId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.AuthorId).OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(x => new { x.EntityType, x.EntityId, x.CreatedAt });
+        });
+    }
+
+    private static void ConfigureExams(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ExamSession>(entity =>
+        {
+            entity.ToTable("exam_sessions");
+            entity.Property(x => x.Title).HasMaxLength(80).IsRequired();
+            entity.Ignore(x => x.OpensOn);
+            entity.HasOne(x => x.SchoolClass).WithMany().HasForeignKey(x => x.SchoolClassId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(x => new { x.SchoolClassId, x.StartsOn });
+        });
+
+        modelBuilder.Entity<ExamSubject>(entity =>
+        {
+            entity.ToTable("exam_subjects");
+            entity.Property(x => x.Details).HasMaxLength(200);
+            entity.HasOne(x => x.Session).WithMany(x => x.Subjects).HasForeignKey(x => x.ExamSessionId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Subject).WithMany().HasForeignKey(x => x.SubjectId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(x => new { x.ExamSessionId, x.SubjectId }).IsUnique();
+        });
+
+        modelBuilder.Entity<RevisionItem>(entity =>
+        {
+            entity.ToTable("revision_items");
+            entity.Property(x => x.Text).HasMaxLength(500).IsRequired();
+            entity.HasOne(x => x.ExamSubject).WithMany(x => x.Items).HasForeignKey(x => x.ExamSubjectId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.AuthorId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(x => new { x.ExamSubjectId, x.CreatedAt });
+        });
+
+        modelBuilder.Entity<RevisionItemCheck>(entity =>
+        {
+            entity.ToTable("revision_item_checks");
+            entity.HasKey(x => new { x.RevisionItemId, x.UserId });
+            entity.HasOne(x => x.Item).WithMany(x => x.Checks).HasForeignKey(x => x.RevisionItemId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(x => x.UserId);
+        });
+
+        modelBuilder.Entity<RevisionResource>(entity =>
+        {
+            entity.ToTable("revision_resources");
+            entity.Property(x => x.Title).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.Kind).HasConversion<string>().HasMaxLength(10);
+            entity.Property(x => x.Url).HasMaxLength(2000);
+            entity.Property(x => x.FileName).HasMaxLength(120);
+            entity.Property(x => x.FileType).HasMaxLength(10);
+            entity.Property(x => x.ContentType).HasMaxLength(80);
+            entity.HasOne(x => x.ExamSubject).WithMany(x => x.Resources).HasForeignKey(x => x.ExamSubjectId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.AuthorId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.File).WithOne().HasForeignKey<RevisionResourceFile>(x => x.RevisionResourceId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(x => new { x.ExamSubjectId, x.CreatedAt });
+        });
+
+        modelBuilder.Entity<RevisionResourceFile>(entity =>
+        {
+            entity.ToTable("revision_resource_files");
+            entity.HasKey(x => x.RevisionResourceId);
+            entity.Property(x => x.Content).IsRequired();
         });
     }
 

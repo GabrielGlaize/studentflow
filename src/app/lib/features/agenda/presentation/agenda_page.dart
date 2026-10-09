@@ -3,6 +3,7 @@ import 'package:studyflow_app/core/app_scope.dart';
 import 'package:studyflow_app/core/theme/app_colors.dart';
 import 'package:studyflow_app/core/theme/prototype_widgets.dart';
 import 'package:studyflow_app/core/widgets/date_time_pickers.dart';
+import 'package:studyflow_app/core/widgets/reminder_picker.dart';
 import 'package:studyflow_app/features/agenda/domain/agenda_models.dart';
 import 'package:studyflow_app/features/agenda/presentation/homework_form_page.dart';
 
@@ -149,6 +150,10 @@ class _AgendaPageState extends State<AgendaPage> {
                                   homework: item,
                                   onEdit: () => _openHomeworkSheet(item),
                                   onDelete: () => _confirmDeleteHomework(item),
+                                  onToggleDone: () =>
+                                      _setHomeworkDone(item, !item.isDone),
+                                  onEditReminder: () =>
+                                      _editHomeworkReminder(item),
                                 ),
                               ),
                             const SizedBox(height: 16),
@@ -269,6 +274,8 @@ class _AgendaPageState extends State<AgendaPage> {
       _agendaFuture = _loadAgenda();
     });
     await _agendaFuture;
+    // Un devoir, une tâche ou un rappel a pu changer.
+    if (mounted) AppScope.of(context).reminderSync.requestSync();
   }
 
   Future<void> _openCreateTaskSheet() async {
@@ -312,9 +319,10 @@ class _AgendaPageState extends State<AgendaPage> {
     }
   }
 
-  Future<void> _openTaskDetails(AgendaTaskItem task) {
-    return showModalBottomSheet<void>(
+  Future<void> _openTaskDetails(AgendaTaskItem task) async {
+    final changed = await showModalBottomSheet<bool>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
@@ -328,6 +336,54 @@ class _AgendaPageState extends State<AgendaPage> {
         },
       ),
     );
+
+    if (changed == true && mounted) await _refresh();
+  }
+
+  Future<void> _setHomeworkDone(HomeworkItem homework, bool isDone) async {
+    final appScope = AppScope.of(context);
+    final accessToken = await appScope.sessionController.accessTokenForApi();
+    await appScope.agendaRepository.updateHomeworkProgress(
+      homework: homework,
+      isDone: isDone,
+      notificationsEnabled: homework.notificationsEnabled,
+      reminderMinutesBefore: homework.reminderMinutesBefore,
+      accessToken: accessToken,
+    );
+
+    if (!mounted) return;
+    _showMessage(
+      isDone ? 'Devoir marqué comme fait.' : 'Devoir remis à faire.',
+    );
+    await _refresh();
+  }
+
+  Future<void> _editHomeworkReminder(HomeworkItem homework) async {
+    final choice = await showModalBottomSheet<(bool, int)>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => _HomeworkReminderSheet(homework: homework),
+    );
+    if (choice == null || !mounted) return;
+
+    final appScope = AppScope.of(context);
+    final accessToken = await appScope.sessionController.accessTokenForApi();
+    await appScope.agendaRepository.updateHomeworkProgress(
+      homework: homework,
+      isDone: homework.isDone,
+      notificationsEnabled: choice.$1,
+      reminderMinutesBefore: choice.$2,
+      accessToken: accessToken,
+    );
+
+    if (!mounted) return;
+    _showMessage(
+      choice.$1
+          ? 'Rappel : ${ReminderFormat.label(choice.$2).toLowerCase()}.'
+          : 'Rappel désactivé pour ce devoir.',
+    );
+    await _refresh();
   }
 
   Future<void> _openEventSheet([PersonalEventItem? event]) async {
@@ -804,7 +860,7 @@ class _CreateTaskSheet extends StatefulWidget {
   State<_CreateTaskSheet> createState() => _CreateTaskSheetState();
 }
 
-class _TaskDetailsSheet extends StatelessWidget {
+class _TaskDetailsSheet extends StatefulWidget {
   const _TaskDetailsSheet({
     required this.task,
     required this.color,
@@ -816,67 +872,127 @@ class _TaskDetailsSheet extends StatelessWidget {
   final VoidCallback onDelete;
 
   @override
+  State<_TaskDetailsSheet> createState() => _TaskDetailsSheetState();
+}
+
+class _TaskDetailsSheetState extends State<_TaskDetailsSheet> {
+  late AgendaTaskItem _task = widget.task;
+  bool _changed = false;
+  bool _isSaving = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              ProtoIconBox(
-                icon: task.isDone
-                    ? Icons.check_circle_outline
-                    : Icons.checklist_outlined,
-                backgroundColor: color.withValues(alpha: 0.16),
-                foregroundColor: color,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ProtoSectionHeading(
-                  overline: _categoryLabel(task.category),
-                  title: task.title,
+    final task = _task;
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                ProtoIconBox(
+                  icon: task.isDone
+                      ? Icons.check_circle_outline
+                      : Icons.checklist_outlined,
+                  backgroundColor: widget.color.withValues(alpha: 0.16),
+                  foregroundColor: widget.color,
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if ((task.description ?? '').trim().isNotEmpty)
-            ProtoMutedText(task.description!)
-          else
-            const ProtoMutedText('Aucune description.'),
-          const SizedBox(height: 10),
-          ProtoMutedText(
-            [
-              if (task.deadline != null)
-                'Échéance ${_formatDate(task.deadline!)}',
-              task.notificationsEnabled ? 'Rappel actif' : 'Aucun rappel',
-              task.isDone ? 'Terminée' : 'À faire',
-            ].join(' · '),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Fermer'),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ProtoSectionHeading(
+                    overline: _categoryLabel(task.category),
+                    title: task.title,
+                  ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if ((task.description ?? '').trim().isNotEmpty)
+              ProtoMutedText(task.description!)
+            else
+              const ProtoMutedText('Aucune description.'),
+            const SizedBox(height: 10),
+            ProtoMutedText(
+              [
+                if (task.deadline != null)
+                  'Échéance ${_formatDate(task.deadline!)}',
+                task.isDone ? 'Terminée' : 'À faire',
+              ].join(' · '),
+            ),
+            const SizedBox(height: 14),
+            AbsorbPointer(
+              absorbing: _isSaving,
+              child: ReminderSetting(
+                enabled: task.notificationsEnabled,
+                minutesBefore: task.reminderMinutesBefore,
+                reference: task.deadline,
+                atMoment: 'À l’heure de l’échéance',
+                unavailableReason: task.deadline == null
+                    ? 'Cette tâche n’a pas d’échéance.'
+                    : null,
+                onChanged: _saveReminder,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextButton.icon(
-                  onPressed: onDelete,
-                  icon: const Icon(Icons.delete_outline),
-                  label: const Text('Supprimer'),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context, _changed),
+                    child: const Text('Fermer'),
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextButton.icon(
+                    onPressed: widget.onDelete,
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Supprimer'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  Future<void> _saveReminder(bool enabled, int minutes) async {
+    final previous = _task;
+    setState(() {
+      _isSaving = true;
+      _task = _task.copyWith(
+        notificationsEnabled: enabled,
+        reminderMinutesBefore: minutes,
+      );
+    });
+
+    final appScope = AppScope.of(context);
+    try {
+      final accessToken = await appScope.sessionController.accessTokenForApi();
+      final saved = await appScope.agendaRepository.updateTask(
+        task: _task,
+        accessToken: accessToken,
+      );
+      if (mounted) {
+        setState(() {
+          _task = saved;
+          _changed = true;
+        });
+      }
+    } on Exception catch (error) {
+      if (!mounted) return;
+      setState(() => _task = previous);
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(SnackBar(content: Text(error.toString())));
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   String _categoryLabel(String value) {
@@ -896,11 +1012,71 @@ class _TaskDetailsSheet extends StatelessWidget {
   }
 }
 
+/// Rappel personnel d'un devoir de la classe : chacun choisit le sien.
+class _HomeworkReminderSheet extends StatefulWidget {
+  const _HomeworkReminderSheet({required this.homework});
+
+  final HomeworkItem homework;
+
+  @override
+  State<_HomeworkReminderSheet> createState() => _HomeworkReminderSheetState();
+}
+
+class _HomeworkReminderSheetState extends State<_HomeworkReminderSheet> {
+  late bool _enabled = widget.homework.notificationsEnabled;
+  late int _minutes = widget.homework.reminderMinutesBefore;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Mon rappel',
+              style: TextStyle(
+                color: context.sfText,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 4),
+            ProtoMutedText(
+              '« ${widget.homework.title} » · seul toi reçois ce rappel.',
+            ),
+            const SizedBox(height: 14),
+            ReminderSetting(
+              enabled: _enabled,
+              minutesBefore: _minutes,
+              reference: widget.homework.deadline,
+              atMoment: 'À l’heure de l’échéance',
+              onChanged: (enabled, minutes) => setState(() {
+                _enabled = enabled;
+                _minutes = minutes;
+              }),
+            ),
+            const SizedBox(height: 16),
+            FilledButton(
+              key: const ValueKey('homework-reminder-save'),
+              onPressed: () => Navigator.pop(context, (_enabled, _minutes)),
+              child: const Text('Enregistrer'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _CreateTaskSheetState extends State<_CreateTaskSheet> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   bool _notificationsEnabled = false;
+  int _reminderMinutes = ReminderDelays.taskDefault;
   DateTime? _deadline;
   bool _isSaving = false;
 
@@ -977,23 +1153,20 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
                 ],
               ),
               const SizedBox(height: 10),
-              ProtoCard(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: _notificationsEnabled,
-                  onChanged: _deadline == null
-                      ? null
-                      : (value) =>
-                            setState(() => _notificationsEnabled = value),
-                  title: const Text('Me le rappeler'),
-                  subtitle: Text(
-                    _deadline == null
-                        ? 'Ajoute une échéance pour recevoir un rappel.'
-                        : 'Une notification avant l’échéance.',
-                  ),
-                ),
+              ReminderSetting(
+                enabled: _notificationsEnabled,
+                minutesBefore: _reminderMinutes,
+                reference: _deadline,
+                atMoment: 'À l’heure de l’échéance',
+                unavailableReason: _deadline == null
+                    ? 'Ajoute une échéance pour recevoir un rappel.'
+                    : null,
+                onChanged: (enabled, minutes) => setState(() {
+                  _notificationsEnabled = enabled;
+                  _reminderMinutes = minutes;
+                }),
               ),
+              const SizedBox(height: 16),
               Row(
                 children: [
                   Expanded(
@@ -1035,7 +1208,8 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
           description: _cleanOptional(_descriptionController.text),
           category: widget.category,
           deadline: _deadline,
-          notificationsEnabled: _notificationsEnabled,
+          notificationsEnabled: _notificationsEnabled && _deadline != null,
+          reminderMinutesBefore: _reminderMinutes,
         ),
       );
 
@@ -1066,6 +1240,8 @@ class _CreateTaskSheetState extends State<_CreateTaskSheet> {
     if (!mounted) return;
     final picked = time ?? TimeOfDay.fromDateTime(initial);
     setState(() {
+      // Première échéance : le rappel s'active d'office, modifiable ensuite.
+      if (_deadline == null) _notificationsEnabled = true;
       _deadline = DateTime(
         day.year,
         day.month,
@@ -1109,6 +1285,7 @@ class _PersonalEventFormSheetState extends State<_PersonalEventFormSheet> {
   late TimeOfDay _startsAt;
   late TimeOfDay _endsAt;
   bool _notificationsEnabled = false;
+  int _reminderMinutes = ReminderDelays.eventDefault;
   bool _isSaving = false;
 
   bool get _isEditing => widget.event != null;
@@ -1125,6 +1302,8 @@ class _PersonalEventFormSheetState extends State<_PersonalEventFormSheet> {
         _parseTime(event?.startsAt) ?? const TimeOfDay(hour: 9, minute: 0);
     _endsAt = _parseTime(event?.endsAt) ?? const TimeOfDay(hour: 10, minute: 0);
     _notificationsEnabled = event?.notificationsEnabled ?? true;
+    _reminderMinutes =
+        event?.reminderMinutesBefore ?? ReminderDelays.eventDefault;
   }
 
   @override
@@ -1215,17 +1394,24 @@ class _PersonalEventFormSheetState extends State<_PersonalEventFormSheet> {
                 ],
               ),
               const SizedBox(height: 10),
-              ProtoCard(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: _notificationsEnabled,
-                  onChanged: (value) =>
-                      setState(() => _notificationsEnabled = value),
-                  title: const Text('Me le rappeler'),
-                  subtitle: const Text('Une notification avant le début.'),
+              ReminderSetting(
+                enabled: _notificationsEnabled,
+                minutesBefore: _reminderMinutes,
+                reference: DateTime(
+                  _day.year,
+                  _day.month,
+                  _day.day,
+                  _startsAt.hour,
+                  _startsAt.minute,
                 ),
+                referenceLabel: 'Début',
+                atMoment: 'Au début',
+                onChanged: (enabled, minutes) => setState(() {
+                  _notificationsEnabled = enabled;
+                  _reminderMinutes = minutes;
+                }),
               ),
+              const SizedBox(height: 16),
               Row(
                 children: [
                   Expanded(
@@ -1310,6 +1496,7 @@ class _PersonalEventFormSheetState extends State<_PersonalEventFormSheet> {
       location: _cleanOptional(_locationController.text),
       notes: _cleanOptional(_notesController.text),
       notificationsEnabled: _notificationsEnabled,
+      reminderMinutesBefore: _reminderMinutes,
     );
 
     try {
@@ -1427,11 +1614,15 @@ class _HomeworkCard extends StatelessWidget {
     required this.homework,
     required this.onEdit,
     required this.onDelete,
+    required this.onToggleDone,
+    required this.onEditReminder,
   });
 
   final HomeworkItem homework;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onToggleDone;
+  final VoidCallback onEditReminder;
 
   @override
   Widget build(BuildContext context) {
@@ -1450,21 +1641,45 @@ class _HomeworkCard extends StatelessWidget {
           'cours du ${StudyFlowFormat.shortDay(courseDay)}',
         ?homework.description,
       ].join(' · '),
+      footer: homework.isDone
+          ? null
+          : _ReminderBadge(
+              enabled: homework.notificationsEnabled,
+              minutes: homework.reminderMinutesBefore,
+              onTap: onEditReminder,
+            ),
       isDone: homework.isDone,
       menu: PopupMenuButton<_HomeworkAction>(
         tooltip: 'Actions devoir',
         icon: Icon(Icons.more_vert, color: context.sfChevron),
         onSelected: (action) {
           switch (action) {
+            case _HomeworkAction.toggleDone:
+              onToggleDone();
+            case _HomeworkAction.reminder:
+              onEditReminder();
             case _HomeworkAction.edit:
               onEdit();
             case _HomeworkAction.delete:
               onDelete();
           }
         },
-        itemBuilder: (context) => const [
-          PopupMenuItem(value: _HomeworkAction.edit, child: Text('Modifier')),
+        itemBuilder: (context) => [
           PopupMenuItem(
+            value: _HomeworkAction.toggleDone,
+            child: Text(
+              homework.isDone ? 'Remettre à faire' : 'Marquer comme fait',
+            ),
+          ),
+          const PopupMenuItem(
+            value: _HomeworkAction.reminder,
+            child: Text('Mon rappel'),
+          ),
+          const PopupMenuItem(
+            value: _HomeworkAction.edit,
+            child: Text('Modifier'),
+          ),
+          const PopupMenuItem(
             value: _HomeworkAction.delete,
             child: Text('Supprimer'),
           ),
@@ -1478,7 +1693,55 @@ class _HomeworkCard extends StatelessWidget {
   }
 }
 
-enum _HomeworkAction { edit, delete }
+enum _HomeworkAction { toggleDone, reminder, edit, delete }
+
+/// « La veille » sous un devoir ou une tâche : touche pour changer le rappel.
+class _ReminderBadge extends StatelessWidget {
+  const _ReminderBadge({
+    required this.enabled,
+    required this.minutes,
+    this.onTap,
+  });
+
+  final bool enabled;
+  final int minutes;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = enabled ? context.sfAccent : context.sfMuted;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              enabled
+                  ? Icons.notifications_active_outlined
+                  : Icons.notifications_off_outlined,
+              size: 15,
+              color: color,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              enabled
+                  ? 'Rappel : ${ReminderFormat.label(minutes, atMoment: 'à l’échéance').toLowerCase()}'
+                  : 'Sans rappel',
+              style: TextStyle(
+                color: color,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _PersonalEventCard extends StatelessWidget {
   const _PersonalEventCard({
@@ -1506,6 +1769,11 @@ class _PersonalEventCard extends StatelessWidget {
         ?event.location,
         ?event.notes,
       ].join(' · '),
+      footer: _ReminderBadge(
+        enabled: event.notificationsEnabled,
+        minutes: event.reminderMinutesBefore,
+        onTap: onEdit,
+      ),
       menu: PopupMenuButton<_PersonalEventAction>(
         tooltip: 'Actions événement',
         icon: Icon(Icons.more_vert, color: context.sfChevron),
@@ -1589,6 +1857,13 @@ class _TaskCard extends StatelessWidget {
             : _deadlineLabel(task.deadline!),
         ?task.description,
       ].join(' · '),
+      footer: task.deadline == null || task.isDone
+          ? null
+          : _ReminderBadge(
+              enabled: task.notificationsEnabled,
+              minutes: task.reminderMinutesBefore,
+              onTap: onOpenDetails,
+            ),
       menu: IconButton(
         key: ValueKey('task-delete-${task.id}'),
         tooltip: 'Supprimer',
@@ -1609,11 +1884,13 @@ class _AgendaItemShell extends StatelessWidget {
     required this.shared,
     required this.menu,
     this.label,
+    this.footer,
     this.isDone = false,
     this.onTap,
   });
 
   final Widget leading;
+  final Widget? footer;
   final String? label;
   final String title;
   final String subtitle;
@@ -1678,6 +1955,10 @@ class _AgendaItemShell extends StatelessWidget {
                             ),
                             const SizedBox(height: 4),
                             ProtoMutedText(subtitle, maxLines: 2),
+                            if (footer case final widget?) ...[
+                              const SizedBox(height: 4),
+                              widget,
+                            ],
                           ],
                         ),
                       ),

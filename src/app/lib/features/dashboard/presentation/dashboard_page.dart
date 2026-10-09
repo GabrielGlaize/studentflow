@@ -3,7 +3,11 @@ import 'package:studyflow_app/core/app_scope.dart';
 import 'package:studyflow_app/core/theme/app_colors.dart';
 import 'package:studyflow_app/core/theme/prototype_widgets.dart';
 import 'package:studyflow_app/features/announcements/domain/class_announcement_models.dart';
+import 'package:studyflow_app/core/widgets/date_time_pickers.dart';
 import 'package:studyflow_app/features/dashboard/domain/dashboard_models.dart';
+import 'package:studyflow_app/features/exams/domain/exam_models.dart';
+import 'package:studyflow_app/features/exams/presentation/exam_widgets.dart';
+import 'package:studyflow_app/features/exams/presentation/exams_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({
@@ -100,8 +104,10 @@ class _DashboardContent extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const _ClassPill(text: 'L2 DEV · 2026–2027'),
-                      const SizedBox(height: 12),
+                      if (dashboard.classLabel case final label?) ...[
+                        _ClassPill(text: label),
+                        const SizedBox(height: 12),
+                      ],
                       Text(
                         'Bonjour $firstName',
                         style: Theme.of(context).textTheme.headlineMedium
@@ -123,6 +129,8 @@ class _DashboardContent extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 24),
+            if (dashboard.hasClass)
+              _ExamsDashboardCard(refreshedAt: dashboard.generatedAt),
             _PinnedAnnouncementCard(
               announcements: dashboard.pinnedAnnouncements,
               onTap: () => _openAnnouncementFeed(context),
@@ -571,7 +579,9 @@ class _ClassFeedSectionState extends State<_ClassFeedSection> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _future = _load());
+    setState(() {
+      _future = _load();
+    });
     await _future;
   }
 
@@ -1002,7 +1012,9 @@ class _ClassFeedFullListState extends State<_ClassFeedFullList> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _future = _load());
+    setState(() {
+      _future = _load();
+    });
     await _future;
   }
 
@@ -1063,6 +1075,113 @@ class _DashboardError extends StatelessWidget {
       message: 'Vérifie le réseau ou relance le backend, puis réessaie.',
       actionLabel: 'Réessayer',
       onAction: onRetry,
+    );
+  }
+}
+
+/// Partiels : la carte apparaît d'elle-même deux semaines avant. Un délégué
+/// voit aussi les partiels qu'il prépare, encore cachés à la classe.
+class _ExamsDashboardCard extends StatefulWidget {
+  const _ExamsDashboardCard({required this.refreshedAt});
+
+  final DateTime refreshedAt;
+
+  @override
+  State<_ExamsDashboardCard> createState() => _ExamsDashboardCardState();
+}
+
+class _ExamsDashboardCardState extends State<_ExamsDashboardCard> {
+  Future<List<ExamSession>>? _future;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _future ??= _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ExamsDashboardCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshedAt != widget.refreshedAt) _future = _load();
+  }
+
+  Future<List<ExamSession>> _load() async {
+    final appScope = AppScope.of(context);
+    try {
+      final accessToken = await appScope.sessionController.accessTokenForApi();
+      return await appScope.examRepository.listSessions(
+        accessToken: accessToken,
+      );
+    } on Exception {
+      // Carte facultative : sans réseau, l'accueil reste utilisable.
+      return const [];
+    }
+  }
+
+  Future<void> _open(ExamSession session) async {
+    await ExamsPage.open(context, sessionId: session.id);
+    if (mounted) {
+      setState(() {
+        _future = _load();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<ExamSession>>(
+      future: _future,
+      builder: (context, snapshot) {
+        final sessions = snapshot.data ?? const <ExamSession>[];
+        final open = sessions.where((x) => x.isOpen).firstOrNull;
+        if (open != null) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 18),
+            child: ExamCountdownHeader(
+              session: open,
+              compact: true,
+              onTap: () => _open(open),
+            ),
+          );
+        }
+
+        final preparing = sessions.firstOrNull;
+        if (preparing == null) return const SizedBox.shrink();
+        return ProtoCard(
+          onTap: () => _open(preparing),
+          margin: const EdgeInsets.only(bottom: 18),
+          child: Row(
+            children: [
+              ProtoIconBox(
+                icon: Icons.school_outlined,
+                backgroundColor: context.sfSharedSoft,
+                foregroundColor: context.sfShared,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${preparing.title} en préparation',
+                      style: TextStyle(
+                        color: context.sfText,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    ProtoMutedText(
+                      'Visible par la classe à partir du ${StudyFlowFormat.shortDay(preparing.opensOn)}',
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: context.sfChevron),
+            ],
+          ),
+        );
+      },
     );
   }
 }

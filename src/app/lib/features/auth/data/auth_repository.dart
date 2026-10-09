@@ -21,6 +21,9 @@ abstract interface class AuthRepository {
 
   Future<AuthTokenPair> refresh(String refreshToken);
 
+  /// Profil actuel côté serveur (classe et rôles à jour).
+  Future<UserSummary> currentUser(String accessToken);
+
   Future<PasswordResetRequestResult> requestPasswordReset({
     required String email,
   });

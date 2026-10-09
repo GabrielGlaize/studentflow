@@ -43,6 +43,14 @@ public sealed class DashboardController(
             ? []
             : await GetUpcomingHomeworkAsync(user.SchoolClassId.Value, user.Id, homeworkLimit, now, cancellationToken);
 
+        var schoolClass = user.SchoolClassId is null
+            ? null
+            : await dbContext.SchoolClasses
+                .AsNoTracking()
+                .Where(x => x.Id == user.SchoolClassId)
+                .Select(x => new { x.Name, x.SchoolYear })
+                .SingleOrDefaultAsync(cancellationToken);
+
         var response = new DashboardResponse(
             GeneratedAt: now,
             HasClass: user.SchoolClassId is not null,
@@ -54,7 +62,9 @@ public sealed class DashboardController(
                 : await GetPinnedAnnouncementsAsync(user.SchoolClassId.Value, cancellationToken),
             UpcomingHomework: homework,
             PersonalTasks: await GetPersonalTasksAsync(user.Id, taskLimit, cancellationToken),
-            TodayEvents: await GetTodayEventsAsync(user.Id, today, cancellationToken));
+            TodayEvents: await GetTodayEventsAsync(user.Id, today, cancellationToken),
+            ClassName: schoolClass?.Name,
+            SchoolYear: schoolClass?.SchoolYear);
 
         return Ok(response);
     }
@@ -208,7 +218,8 @@ public sealed class DashboardController(
         homework.ProgressItems.SingleOrDefault()?.NotificationsEnabled ?? true,
         homework.ProgressItems.SingleOrDefault()?.CompletedAt,
         homework.CreatedAt,
-        homework.UpdatedAt);
+        homework.UpdatedAt,
+        homework.ProgressItems.SingleOrDefault()?.ReminderMinutesBefore ?? ReminderDefaults.HomeworkMinutes);
 
     private static PersonalTaskResponse ToPersonalTaskResponse(PersonalTask task) => new(
         task.Id,
@@ -220,7 +231,8 @@ public sealed class DashboardController(
         task.NotificationsEnabled,
         task.CourseId,
         task.CreatedAt,
-        task.UpdatedAt);
+        task.UpdatedAt,
+        task.ReminderMinutesBefore);
 
     private PersonalEventResponse ToPersonalEventResponse(PersonalEvent personalEvent)
     {
@@ -239,7 +251,8 @@ public sealed class DashboardController(
             data.Notes,
             personalEvent.NotificationsEnabled,
             personalEvent.CreatedAt,
-            personalEvent.UpdatedAt);
+            personalEvent.UpdatedAt,
+            personalEvent.ReminderMinutesBefore);
     }
 
     private static string ToTaskCategoryName(PersonalTaskCategory category) =>

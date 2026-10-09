@@ -9,6 +9,7 @@ class HomeworkItem {
     this.courseId,
     this.subjectName,
     this.courseDay,
+    this.reminderMinutesBefore = ReminderDelays.homeworkDefault,
   });
 
   final String id;
@@ -23,6 +24,9 @@ class HomeworkItem {
   final bool isDone;
   final bool notificationsEnabled;
 
+  /// Délai du rappel avant l'échéance, propre à chaque élève.
+  final int reminderMinutesBefore;
+
   factory HomeworkItem.fromJson(Map<String, Object?> json) {
     return HomeworkItem(
       id: json['id'] as String,
@@ -36,6 +40,29 @@ class HomeworkItem {
           : DateTime.parse(json['courseDay'] as String),
       isDone: json['isDone'] as bool? ?? false,
       notificationsEnabled: json['notificationsEnabled'] as bool? ?? true,
+      reminderMinutesBefore:
+          (json['reminderMinutesBefore'] as num?)?.toInt() ??
+          ReminderDelays.homeworkDefault,
+    );
+  }
+
+  HomeworkItem copyWith({
+    bool? isDone,
+    bool? notificationsEnabled,
+    int? reminderMinutesBefore,
+  }) {
+    return HomeworkItem(
+      id: id,
+      title: title,
+      description: description,
+      deadline: deadline,
+      courseId: courseId,
+      subjectName: subjectName,
+      courseDay: courseDay,
+      isDone: isDone ?? this.isDone,
+      notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
+      reminderMinutesBefore:
+          reminderMinutesBefore ?? this.reminderMinutesBefore,
     );
   }
 
@@ -95,6 +122,7 @@ class AgendaTaskItem {
     this.description,
     this.deadline,
     this.courseId,
+    this.reminderMinutesBefore = ReminderDelays.taskDefault,
   });
 
   final String id;
@@ -105,6 +133,7 @@ class AgendaTaskItem {
   final bool isDone;
   final bool notificationsEnabled;
   final String? courseId;
+  final int reminderMinutesBefore;
 
   factory AgendaTaskItem.fromJson(Map<String, Object?> json) {
     return AgendaTaskItem(
@@ -118,6 +147,9 @@ class AgendaTaskItem {
       isDone: json['isDone'] as bool? ?? false,
       notificationsEnabled: json['notificationsEnabled'] as bool? ?? false,
       courseId: json['courseId'] as String?,
+      reminderMinutesBefore:
+          (json['reminderMinutesBefore'] as num?)?.toInt() ??
+          ReminderDelays.taskDefault,
     );
   }
 
@@ -130,10 +162,15 @@ class AgendaTaskItem {
       'isDone': isDone,
       'notificationsEnabled': notificationsEnabled,
       'courseId': courseId,
+      'reminderMinutesBefore': reminderMinutesBefore,
     };
   }
 
-  AgendaTaskItem copyWith({bool? isDone}) {
+  AgendaTaskItem copyWith({
+    bool? isDone,
+    bool? notificationsEnabled,
+    int? reminderMinutesBefore,
+  }) {
     return AgendaTaskItem(
       id: id,
       title: title,
@@ -141,8 +178,10 @@ class AgendaTaskItem {
       deadline: deadline,
       category: category,
       isDone: isDone ?? this.isDone,
-      notificationsEnabled: notificationsEnabled,
+      notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       courseId: courseId,
+      reminderMinutesBefore:
+          reminderMinutesBefore ?? this.reminderMinutesBefore,
     );
   }
 }
@@ -158,6 +197,7 @@ class PersonalEventItem {
     required this.notificationsEnabled,
     this.location,
     this.notes,
+    this.reminderMinutesBefore = ReminderDelays.eventDefault,
   });
 
   final String id;
@@ -169,6 +209,7 @@ class PersonalEventItem {
   final String? location;
   final String? notes;
   final bool notificationsEnabled;
+  final int reminderMinutesBefore;
 
   factory PersonalEventItem.fromJson(Map<String, Object?> json) {
     return PersonalEventItem(
@@ -181,6 +222,20 @@ class PersonalEventItem {
       location: json['location'] as String?,
       notes: json['notes'] as String?,
       notificationsEnabled: json['notificationsEnabled'] as bool? ?? false,
+      reminderMinutesBefore:
+          (json['reminderMinutesBefore'] as num?)?.toInt() ??
+          ReminderDelays.eventDefault,
+    );
+  }
+
+  DateTime get startDateTime {
+    final parts = startsAt.split(':');
+    return DateTime(
+      day.year,
+      day.month,
+      day.day,
+      int.tryParse(parts.first) ?? 0,
+      parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0,
     );
   }
 
@@ -194,6 +249,7 @@ class PersonalEventItem {
       location: location,
       notes: notes,
       notificationsEnabled: notificationsEnabled,
+      reminderMinutesBefore: reminderMinutesBefore,
     );
   }
 }
@@ -208,6 +264,7 @@ class CreatePersonalEventRequest {
     this.location,
     this.notes,
     this.notificationsEnabled = false,
+    this.reminderMinutesBefore = ReminderDelays.eventDefault,
   });
 
   final String title;
@@ -218,6 +275,7 @@ class CreatePersonalEventRequest {
   final String? location;
   final String? notes;
   final bool notificationsEnabled;
+  final int reminderMinutesBefore;
 
   Map<String, Object?> toJson() {
     return {
@@ -229,6 +287,7 @@ class CreatePersonalEventRequest {
       'location': _cleanOptional(location),
       'notes': _cleanOptional(notes),
       'notificationsEnabled': notificationsEnabled,
+      'reminderMinutesBefore': reminderMinutesBefore,
     };
   }
 
@@ -251,6 +310,7 @@ class CreateAgendaTaskRequest {
     this.description,
     this.deadline,
     this.notificationsEnabled = false,
+    this.reminderMinutesBefore = ReminderDelays.taskDefault,
   });
 
   final String title;
@@ -258,6 +318,7 @@ class CreateAgendaTaskRequest {
   final String? description;
   final DateTime? deadline;
   final bool notificationsEnabled;
+  final int reminderMinutesBefore;
 
   Map<String, Object?> toJson() {
     return {
@@ -267,6 +328,7 @@ class CreateAgendaTaskRequest {
       'category': category,
       'notificationsEnabled': notificationsEnabled,
       'courseId': null,
+      'reminderMinutesBefore': reminderMinutesBefore,
     };
   }
 }
@@ -281,4 +343,12 @@ class AgendaSummary {
   final List<HomeworkItem> homework;
   final List<AgendaTaskItem> tasks;
   final List<PersonalEventItem> events;
+}
+
+/// Délais de rappel par défaut, en minutes (alignés sur le serveur).
+abstract final class ReminderDelays {
+  static const homeworkDefault = 24 * 60;
+  static const taskDefault = 24 * 60;
+  static const eventDefault = 60;
+  static const max = 30 * 24 * 60;
 }

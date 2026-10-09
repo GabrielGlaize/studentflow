@@ -106,10 +106,10 @@ class DemoAgendaRepository implements AgendaRepository {
 
     final homework = DemoSessionState.hasNoClass(accessToken)
         ? <HomeworkItem>[]
-        : [
-            ..._createdHomework,
-            ...defaultHomework,
-          ].where((item) => !_deletedHomeworkIds.contains(item.id)).toList();
+        : [..._createdHomework, ...defaultHomework]
+              .where((item) => !_deletedHomeworkIds.contains(item.id))
+              .where((item) => includeDone || !item.isDone)
+              .toList();
 
     return AgendaSummary(homework: homework, tasks: tasks, events: events);
   }
@@ -129,6 +129,7 @@ class DemoAgendaRepository implements AgendaRepository {
       category: request.category,
       isDone: false,
       notificationsEnabled: request.notificationsEnabled,
+      reminderMinutesBefore: request.reminderMinutesBefore,
     );
     _createdTasks.insert(0, task);
     return task;
@@ -151,6 +152,7 @@ class DemoAgendaRepository implements AgendaRepository {
       location: _cleanOptional(request.location),
       notes: _cleanOptional(request.notes),
       notificationsEnabled: request.notificationsEnabled,
+      reminderMinutesBefore: request.reminderMinutesBefore,
     );
     _createdEvents.insert(0, event);
     return event;
@@ -174,6 +176,7 @@ class DemoAgendaRepository implements AgendaRepository {
       location: _cleanOptional(request.location),
       notes: _cleanOptional(request.notes),
       notificationsEnabled: request.notificationsEnabled,
+      reminderMinutesBefore: request.reminderMinutesBefore,
     );
     final createdIndex = _createdEvents.indexWhere(
       (item) => item.id == eventId,
@@ -289,6 +292,50 @@ class DemoAgendaRepository implements AgendaRepository {
     }
 
     return updatedTask;
+  }
+
+  @override
+  Future<AgendaTaskItem> updateTask({
+    required AgendaTaskItem task,
+    String? accessToken,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    _saveTask(task);
+    return task;
+  }
+
+  @override
+  Future<HomeworkItem> updateHomeworkProgress({
+    required HomeworkItem homework,
+    required bool isDone,
+    required bool notificationsEnabled,
+    required int reminderMinutesBefore,
+    String? accessToken,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    final updated = homework.copyWith(
+      isDone: isDone,
+      notificationsEnabled: notificationsEnabled,
+      reminderMinutesBefore: reminderMinutesBefore,
+    );
+    final createdIndex = _createdHomework.indexWhere(
+      (item) => item.id == homework.id,
+    );
+    if (createdIndex == -1) {
+      _updatedHomework[homework.id] = updated;
+    } else {
+      _createdHomework[createdIndex] = updated;
+    }
+    return updated;
+  }
+
+  void _saveTask(AgendaTaskItem task) {
+    final index = _createdTasks.indexWhere((item) => item.id == task.id);
+    if (index == -1) {
+      _updatedTasks[task.id] = task;
+    } else {
+      _createdTasks[index] = task;
+    }
   }
 
   @override

@@ -39,6 +39,9 @@ class PushNotificationService {
 
   bool get isAvailable => _firebaseOptions != null;
 
+  /// Cet appareil est enregistré côté serveur : les rappels arrivent en push.
+  bool get isRegistered => _deviceId != null;
+
   Future<void> start() async {
     final options = _firebaseOptions;
     if (options == null || _started) return;

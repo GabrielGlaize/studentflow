@@ -154,7 +154,9 @@ class _HomeworkFormPageState extends State<HomeworkFormPage> {
                 title: 'Cours indisponibles',
                 message: 'Impossible de charger le planning de la classe.',
                 actionLabel: 'Réessayer',
-                onAction: () => setState(() => _choicesFuture = _loadChoices()),
+                onAction: () => setState(() {
+                  _choicesFuture = _loadChoices();
+                }),
               );
             }
 
@@ -436,7 +438,9 @@ class _HomeworkFormPageState extends State<HomeworkFormPage> {
     if (created != true || !mounted) return;
 
     final future = _loadChoices();
-    setState(() => _choicesFuture = future);
+    setState(() {
+      _choicesFuture = future;
+    });
     final reloaded = await future;
     if (!mounted) return;
     final next = reloaded

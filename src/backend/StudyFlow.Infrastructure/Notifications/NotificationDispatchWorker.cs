@@ -74,6 +74,11 @@ public sealed class NotificationDispatchWorker(
                 await DispatchOnceAsync(dbContext, sender, reminder, cancellationToken);
             }
         }
+
+        foreach (var reminder in await planner.PlanPersonalRemindersAsync(windowStart, windowEnd, cancellationToken))
+        {
+            await DispatchOnceAsync(dbContext, sender, reminder, cancellationToken);
+        }
     }
 
     private static async Task DispatchOnceAsync(

@@ -64,6 +64,24 @@ public sealed class CourseBatchTests(ApiFixture fixture)
         ]));
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var problem = await response.Content.ReadAsStringAsync();
+        Assert.Contains(subject.Name, problem);
+        Assert.Contains("lundi 23/11", problem);
+    }
+
+    [Fact]
+    public async Task A_conflict_names_the_course_already_on_that_slot()
+    {
+        var scenario = await fixture.Api.CreateClassWithStudentAsync();
+        var subject = await fixture.Api.CreateSubjectAsync(scenario.Delegate);
+        await fixture.Api.CreateCourseAsync(scenario.Student, subject.Id, Monday, new TimeOnly(8, 0));
+
+        var response = await fixture.Api.As(scenario.Student).PostAsJsonAsync("/api/v1/courses", Slot(subject.Id, Monday, 8, 30, 10, 0));
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<Microsoft.AspNetCore.Mvc.ProblemDetails>();
+        Assert.Equal("Il y a déjà un cours sur ce créneau.", problem!.Title);
+        Assert.Equal($"{subject.Name} a lieu de 08:00 à 09:00 ce jour-là. Choisis un autre horaire.", problem.Detail);
     }
 
     private static CourseRequest Slot(Guid subjectId, DateOnly day, int startHour, int startMinute, int endHour, int endMinute) =>

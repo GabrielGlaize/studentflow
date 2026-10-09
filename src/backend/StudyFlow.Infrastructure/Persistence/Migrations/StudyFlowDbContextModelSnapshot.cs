@@ -367,6 +367,237 @@ namespace StudyFlow.Infrastructure.Persistence.Migrations
                     b.ToTable("contribution_revisions", (string)null);
                 });
 
+            modelBuilder.Entity("StudyFlow.Domain.Exams.ExamSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<DateOnly>("EndsOn")
+                        .HasColumnType("date")
+                        .HasColumnName("ends_on");
+
+                    b.Property<Guid>("SchoolClassId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("school_class_id");
+
+                    b.Property<DateOnly>("StartsOn")
+                        .HasColumnType("date")
+                        .HasColumnName("starts_on");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("SchoolClassId", "StartsOn");
+
+                    b.ToTable("exam_sessions", (string)null);
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Exams.ExamSubject", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Details")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("details");
+
+                    b.Property<DateOnly?>("ExamDay")
+                        .HasColumnType("date")
+                        .HasColumnName("exam_day");
+
+                    b.Property<Guid>("ExamSessionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("exam_session_id");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer")
+                        .HasColumnName("position");
+
+                    b.Property<TimeOnly?>("StartsAt")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("starts_at");
+
+                    b.Property<Guid>("SubjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subject_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubjectId");
+
+                    b.HasIndex("ExamSessionId", "SubjectId")
+                        .IsUnique();
+
+                    b.ToTable("exam_subjects", (string)null);
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Exams.RevisionItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AuthorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("author_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("ExamSubjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("exam_subject_id");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("text");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuthorId");
+
+                    b.HasIndex("ExamSubjectId", "CreatedAt");
+
+                    b.ToTable("revision_items", (string)null);
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Exams.RevisionItemCheck", b =>
+                {
+                    b.Property<Guid>("RevisionItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("revision_item_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<DateTimeOffset>("CheckedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("checked_at");
+
+                    b.HasKey("RevisionItemId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("revision_item_checks", (string)null);
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Exams.RevisionResource", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AuthorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("author_id");
+
+                    b.Property<string>("ContentType")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("ExamSubjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("exam_subject_id");
+
+                    b.Property<string>("FileName")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("file_name");
+
+                    b.Property<string>("FileType")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("file_type");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("kind");
+
+                    b.Property<long?>("SizeBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("size_bytes");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("Url")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("url");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuthorId");
+
+                    b.HasIndex("ExamSubjectId", "CreatedAt");
+
+                    b.ToTable("revision_resources", (string)null);
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Exams.RevisionResourceFile", b =>
+                {
+                    b.Property<Guid>("RevisionResourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("revision_resource_id");
+
+                    b.Property<byte[]>("Content")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("content");
+
+                    b.HasKey("RevisionResourceId");
+
+                    b.ToTable("revision_resource_files", (string)null);
+                });
+
             modelBuilder.Entity("StudyFlow.Domain.Notifications.NotificationDelivery", b =>
                 {
                     b.Property<Guid>("Id")
@@ -799,6 +1030,10 @@ namespace StudyFlow.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("notifications_enabled");
 
+                    b.Property<int>("ReminderMinutesBefore")
+                        .HasColumnType("integer")
+                        .HasColumnName("reminder_minutes_before");
+
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
@@ -842,6 +1077,10 @@ namespace StudyFlow.Infrastructure.Persistence.Migrations
                     b.Property<bool>("NotificationsEnabled")
                         .HasColumnType("boolean")
                         .HasColumnName("notifications_enabled");
+
+                    b.Property<int>("ReminderMinutesBefore")
+                        .HasColumnType("integer")
+                        .HasColumnName("reminder_minutes_before");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -898,6 +1137,10 @@ namespace StudyFlow.Infrastructure.Persistence.Migrations
                     b.Property<bool>("NotificationsEnabled")
                         .HasColumnType("boolean")
                         .HasColumnName("notifications_enabled");
+
+                    b.Property<int>("ReminderMinutesBefore")
+                        .HasColumnType("integer")
+                        .HasColumnName("reminder_minutes_before");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -1420,6 +1663,102 @@ namespace StudyFlow.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("StudyFlow.Domain.Exams.ExamSession", b =>
+                {
+                    b.HasOne("StudyFlow.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("StudyFlow.Domain.School.SchoolClass", "SchoolClass")
+                        .WithMany()
+                        .HasForeignKey("SchoolClassId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SchoolClass");
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Exams.ExamSubject", b =>
+                {
+                    b.HasOne("StudyFlow.Domain.Exams.ExamSession", "Session")
+                        .WithMany("Subjects")
+                        .HasForeignKey("ExamSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("StudyFlow.Domain.School.Subject", "Subject")
+                        .WithMany()
+                        .HasForeignKey("SubjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Session");
+
+                    b.Navigation("Subject");
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Exams.RevisionItem", b =>
+                {
+                    b.HasOne("StudyFlow.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("StudyFlow.Domain.Exams.ExamSubject", "ExamSubject")
+                        .WithMany("Items")
+                        .HasForeignKey("ExamSubjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ExamSubject");
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Exams.RevisionItemCheck", b =>
+                {
+                    b.HasOne("StudyFlow.Domain.Exams.RevisionItem", "Item")
+                        .WithMany("Checks")
+                        .HasForeignKey("RevisionItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("StudyFlow.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Item");
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Exams.RevisionResource", b =>
+                {
+                    b.HasOne("StudyFlow.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("StudyFlow.Domain.Exams.ExamSubject", "ExamSubject")
+                        .WithMany("Resources")
+                        .HasForeignKey("ExamSubjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ExamSubject");
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Exams.RevisionResourceFile", b =>
+                {
+                    b.HasOne("StudyFlow.Domain.Exams.RevisionResource", null)
+                        .WithOne("File")
+                        .HasForeignKey("StudyFlow.Domain.Exams.RevisionResourceFile", "RevisionResourceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("StudyFlow.Domain.Notifications.NotificationDelivery", b =>
                 {
                     b.HasOne("StudyFlow.Infrastructure.Identity.ApplicationUser", null)
@@ -1717,6 +2056,28 @@ namespace StudyFlow.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Exams.ExamSession", b =>
+                {
+                    b.Navigation("Subjects");
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Exams.ExamSubject", b =>
+                {
+                    b.Navigation("Items");
+
+                    b.Navigation("Resources");
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Exams.RevisionItem", b =>
+                {
+                    b.Navigation("Checks");
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Exams.RevisionResource", b =>
+                {
+                    b.Navigation("File");
                 });
 
             modelBuilder.Entity("StudyFlow.Domain.School.Course", b =>

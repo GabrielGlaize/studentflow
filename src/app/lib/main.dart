@@ -35,8 +35,12 @@ import 'package:studyflow_app/features/company/application/company_documents_con
 import 'package:studyflow_app/features/dashboard/data/dashboard_repository.dart';
 import 'package:studyflow_app/features/dashboard/data/demo_dashboard_repository.dart';
 import 'package:studyflow_app/features/dashboard/data/http_dashboard_repository.dart';
+import 'package:studyflow_app/features/exams/data/demo_exam_repository.dart';
+import 'package:studyflow_app/features/exams/data/exam_repository.dart';
+import 'package:studyflow_app/features/exams/data/http_exam_repository.dart';
 import 'package:studyflow_app/features/notifications/application/local_notification_scheduler.dart';
 import 'package:studyflow_app/features/notifications/application/push_notification_service.dart';
+import 'package:studyflow_app/features/notifications/application/reminder_sync.dart';
 import 'package:studyflow_app/features/notifications/data/notification_device_repository.dart';
 import 'package:studyflow_app/features/profile/data/app_preferences_repository.dart';
 import 'package:studyflow_app/features/profile/data/demo_app_preferences_repository.dart';
@@ -66,7 +70,8 @@ class StudyFlowApp extends StatefulWidget {
   State<StudyFlowApp> createState() => _StudyFlowAppState();
 }
 
-class _StudyFlowAppState extends State<StudyFlowApp> {
+class _StudyFlowAppState extends State<StudyFlowApp>
+    with WidgetsBindingObserver {
   static const _useDemoAuthOverride = String.fromEnvironment(
     'STUDYFLOW_USE_DEMO_AUTH',
   );
@@ -97,6 +102,9 @@ class _StudyFlowAppState extends State<StudyFlowApp> {
   static const _useDemoAppPreferencesOverride = String.fromEnvironment(
     'STUDYFLOW_USE_DEMO_APP_PREFERENCES',
   );
+  static const _useDemoExamsOverride = String.fromEnvironment(
+    'STUDYFLOW_USE_DEMO_EXAMS',
+  );
 
   late final SessionController _sessionController;
   late final AppSettingsController _settingsController;
@@ -117,7 +125,10 @@ class _StudyFlowAppState extends State<StudyFlowApp> {
   late final NotificationPreferencesRepository
   _notificationPreferencesRepository;
   late final CourseRepository _courseRepository;
+  late final ExamRepository _examRepository;
   late final PushNotificationService _pushNotifications;
+  late final ReminderSync _reminderSync;
+  String? _syncedUserId;
 
   @override
   void initState() {
@@ -132,7 +143,6 @@ class _StudyFlowAppState extends State<StudyFlowApp> {
       storage: SecureCompanyDocumentsStorage(),
     );
     _notificationScheduler = NativeLocalNotificationScheduler();
-    unawaited(_notificationScheduler.replaceAll(const []));
     final authRepository = _buildAuthRepository();
     _sessionController = SessionController(
       authRepository: authRepository,
@@ -150,6 +160,7 @@ class _StudyFlowAppState extends State<StudyFlowApp> {
     _notificationPreferencesRepository =
         _buildNotificationPreferencesRepository();
     _courseRepository = _buildCourseRepository();
+    _examRepository = _buildExamRepository();
     _pushNotifications = PushNotificationService(
       sessionController: _sessionController,
       deviceRepository: HttpNotificationDeviceRepository(apiClient: _apiClient),
@@ -159,6 +170,18 @@ class _StudyFlowAppState extends State<StudyFlowApp> {
           : FirebaseConfig.currentPlatform,
     );
     _sessionController.beforeLogout = _pushNotifications.unregister;
+    _reminderSync = ReminderSync(
+      sessionController: _sessionController,
+      settingsController: _settingsController,
+      courseRepository: _courseRepository,
+      agendaRepository: _agendaRepository,
+      scheduler: _notificationScheduler,
+      deliveredByPush: () => _pushNotifications.isRegistered,
+      autoSync: !_useDemoRepository(_useDemoAgendaOverride),
+    );
+    // Connexion, déconnexion ou changement de compte : on reprogramme.
+    _sessionController.addListener(_syncRemindersOnSessionChange);
+    WidgetsBinding.instance.addObserver(this);
     unawaited(_pushNotifications.start());
     unawaited(_sessionController.restoreSession());
     unawaited(_settingsController.restore());
@@ -186,6 +209,8 @@ class _StudyFlowAppState extends State<StudyFlowApp> {
           notificationPreferencesRepository: _notificationPreferencesRepository,
           notificationScheduler: _notificationScheduler,
           courseRepository: _courseRepository,
+          examRepository: _examRepository,
+          reminderSync: _reminderSync,
           child: MaterialApp(
             title: 'StudyFlow',
             debugShowCheckedModeBanner: false,
@@ -208,7 +233,25 @@ class _StudyFlowAppState extends State<StudyFlowApp> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Au retour dans l'app, la classe a pu ajouter ou déplacer des cours.
+    if (state == AppLifecycleState.resumed) _reminderSync.requestSync();
+  }
+
+  void _syncRemindersOnSessionChange() {
+    final userId = _sessionController.session?.user.id;
+    if (_sessionController.status == SessionStatus.checkingSession ||
+        userId == _syncedUserId) {
+      return;
+    }
+    _syncedUserId = userId;
+    _reminderSync.requestSync();
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _sessionController.removeListener(_syncRemindersOnSessionChange);
     _sessionController.dispose();
     _settingsController.dispose();
     _companyContactsController.dispose();
@@ -273,6 +316,14 @@ class _StudyFlowAppState extends State<StudyFlowApp> {
     if (useDemoCourses) return const DemoCourseRepository();
 
     return HttpCourseRepository(apiClient: _apiClient);
+  }
+
+  ExamRepository _buildExamRepository() {
+    if (_useDemoRepository(_useDemoExamsOverride)) {
+      return const DemoExamRepository();
+    }
+
+    return HttpExamRepository(apiClient: _apiClient);
   }
 
   ClassManagementRepository _buildClassManagementRepository() {

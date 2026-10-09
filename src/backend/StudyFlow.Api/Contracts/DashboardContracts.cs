@@ -7,4 +7,6 @@ public sealed record DashboardResponse(
     IReadOnlyCollection<ClassAnnouncementResponse> PinnedAnnouncements,
     IReadOnlyCollection<HomeworkResponse> UpcomingHomework,
     IReadOnlyCollection<PersonalTaskResponse> PersonalTasks,
-    IReadOnlyCollection<PersonalEventResponse> TodayEvents);
+    IReadOnlyCollection<PersonalEventResponse> TodayEvents,
+    string? ClassName = null,
+    string? SchoolYear = null);

@@ -142,7 +142,8 @@ public sealed class CoursesController(
                 item.Room,
                 item.IsCancelled,
                 excludedCourseId: null,
-                cancellationToken);
+                cancellationToken,
+                mentionDay: ordered.Select(x => x.Day).Distinct().Count() > 1);
             if (validationProblem is not null) return validationProblem;
         }
 
@@ -155,8 +156,8 @@ public sealed class CoursesController(
         if (clash != default)
         {
             return ConflictProblem(
-                "Deux créneaux se chevauchent.",
-                $"Le {clash.First.Day:dd/MM}, {clash.First.StartsAt:HH:mm}–{clash.First.EndsAt:HH:mm} chevauche {clash.Second.StartsAt:HH:mm}–{clash.Second.EndsAt:HH:mm}.");
+                "Deux de tes créneaux se chevauchent.",
+                $"{FrenchCalendar.Time(clash.First.StartsAt)}–{FrenchCalendar.Time(clash.First.EndsAt)} et {FrenchCalendar.Time(clash.Second.StartsAt)}–{FrenchCalendar.Time(clash.Second.EndsAt)} le {FrenchCalendar.ShortDay(clash.First.Day)}. Décale l'un des deux.");
         }
 
         var seriesId = ordered.Length > 1 ? Guid.NewGuid() : (Guid?)null;
@@ -338,9 +339,12 @@ public sealed class CoursesController(
         if (!restoresDeletedState && !snapshot.IsCancelled)
         {
             var data = ReadCourseData(snapshot.EncryptedData);
-            if (await HasScheduleConflictAsync(user.SchoolClassId.Value, snapshot.Day, data.StartsAt, data.EndsAt, course.Id, cancellationToken))
+            var clash = await FindScheduleConflictAsync(user.SchoolClassId.Value, snapshot.Day, data.StartsAt, data.EndsAt, course.Id, cancellationToken);
+            if (clash is not null)
             {
-                return ConflictProblem("Impossible d'annuler : l'ancien horaire chevauche un autre cours.");
+                return ConflictProblem(
+                    "Impossible de revenir à la version précédente.",
+                    $"Son horaire est maintenant pris par {clash.SubjectName} ({FrenchCalendar.Time(clash.StartsAt)}–{FrenchCalendar.Time(clash.EndsAt)}).");
             }
         }
 
@@ -372,7 +376,8 @@ public sealed class CoursesController(
         string room,
         bool isCancelled,
         Guid? excludedCourseId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool mentionDay = false)
     {
         if (endsAt <= startsAt)
         {
@@ -397,11 +402,15 @@ public sealed class CoursesController(
             if (!teacherExists) return BadRequestProblem("L'intervenant n'existe pas dans votre classe.");
         }
 
-        if (!isCancelled && await HasScheduleConflictAsync(schoolClassId, day, startsAt, endsAt, excludedCourseId, cancellationToken))
+        var clash = isCancelled
+            ? null
+            : await FindScheduleConflictAsync(schoolClassId, day, startsAt, endsAt, excludedCourseId, cancellationToken);
+        if (clash is not null)
         {
+            var when = mentionDay ? $"le {FrenchCalendar.ShortDay(day)}" : "ce jour-là";
             return ConflictProblem(
-                "Ce cours chevauche déjà un autre cours.",
-                "Corrigez l'horaire ou modifiez le cours existant.");
+                "Il y a déjà un cours sur ce créneau.",
+                $"{clash.SubjectName} a lieu de {FrenchCalendar.Time(clash.StartsAt)} à {FrenchCalendar.Time(clash.EndsAt)} {when}. Choisis un autre horaire.");
         }
 
         return null;
@@ -420,7 +429,8 @@ public sealed class CoursesController(
         if (!linked) dbContext.SubjectTeachers.Add(new SubjectTeacher { SubjectId = subjectId, TeacherId = teacherId.Value });
     }
 
-    private async Task<bool> HasScheduleConflictAsync(
+    /// <summary>Premier cours du même jour qui chevauche le créneau, pour l'indiquer à l'élève.</summary>
+    private async Task<ScheduleConflict?> FindScheduleConflictAsync(
         Guid schoolClassId,
         DateOnly day,
         TimeOnly startsAt,
@@ -430,18 +440,22 @@ public sealed class CoursesController(
     {
         var coursesSameDay = await dbContext.Courses
             .AsNoTracking()
+            .Include(x => x.Subject)
             .Where(x => x.SchoolClassId == schoolClassId
                 && x.Day == day
                 && !x.IsCancelled
                 && x.Id != excludedCourseId)
             .ToListAsync(cancellationToken);
 
-        return coursesSameDay.Any(course =>
-        {
-            var data = ReadCourseData(course.EncryptedData);
-            return startsAt < data.EndsAt && endsAt > data.StartsAt;
-        });
+        return coursesSameDay
+            .Select(course => (course, data: ReadCourseData(course.EncryptedData)))
+            .Where(x => startsAt < x.data.EndsAt && endsAt > x.data.StartsAt)
+            .OrderBy(x => x.data.StartsAt)
+            .Select(x => new ScheduleConflict(x.course.Subject.Name, x.data.StartsAt, x.data.EndsAt))
+            .FirstOrDefault();
     }
+
+    private sealed record ScheduleConflict(string SubjectName, TimeOnly StartsAt, TimeOnly EndsAt);
 
     private CourseProtectedData ReadCourseData(string encryptedData) =>
         JsonSerializer.Deserialize<CourseProtectedData>(

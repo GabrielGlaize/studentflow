@@ -7,6 +7,8 @@ class DashboardSummary {
     required this.upcomingHomework,
     required this.personalTasks,
     required this.todayEvents,
+    this.className,
+    this.schoolYear,
   });
 
   final DateTime generatedAt;
@@ -16,6 +18,18 @@ class DashboardSummary {
   final List<HomeworkSummary> upcomingHomework;
   final List<PersonalTaskSummary> personalTasks;
   final List<PersonalEventSummary> todayEvents;
+
+  /// Classe de l'élève (« ESGI2 ») et année scolaire (« 2026-2027 »).
+  final String? className;
+  final String? schoolYear;
+
+  /// « ESGI2 · 2026–2027 », ou nul sans classe.
+  String? get classLabel {
+    final name = className?.trim();
+    if (name == null || name.isEmpty) return null;
+    final year = schoolYear?.replaceAll('-', '–');
+    return year == null || year.isEmpty ? name : '$name · $year';
+  }
 
   factory DashboardSummary.fromJson(Map<String, Object?> json) {
     return DashboardSummary(
@@ -40,6 +54,8 @@ class DashboardSummary {
         json['todayEvents'],
         PersonalEventSummary.fromJson,
       ),
+      className: json['className'] as String?,
+      schoolYear: json['schoolYear'] as String?,
     );
   }
 }

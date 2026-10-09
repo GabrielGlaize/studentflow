@@ -59,6 +59,53 @@ class _ClassResourcesEntryCard extends StatelessWidget {
   }
 }
 
+class _ExamsEntryCard extends StatelessWidget {
+  const _ExamsEntryCard({required this.isDelegate, required this.onOpen});
+
+  final bool isDelegate;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    return ProtoCard(
+      onTap: onOpen,
+      child: Row(
+        children: [
+          ProtoIconBox(
+            icon: Icons.school_outlined,
+            backgroundColor: context.sfSharedSoft,
+            foregroundColor: context.sfShared,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              key: const ValueKey('exams-entry'),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Partiels',
+                  style: TextStyle(
+                    color: context.sfText,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                ProtoMutedText(
+                  isDelegate
+                      ? 'Dates, matières et fiches de révision'
+                      : 'Fiches de révision, ouvertes 2 semaines avant',
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.chevron_right, color: context.sfChevron),
+        ],
+      ),
+    );
+  }
+}
+
 class _ClassMembersCard extends StatelessWidget {
   const _ClassMembersCard({
     required this.members,
@@ -251,26 +298,31 @@ class _PendingRequestRow extends StatelessWidget {
                   request.displayName,
                   style: TextStyle(
                     color: context.sfText,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   request.email,
-                  style: TextStyle(color: context.sfMuted, fontSize: 11),
+                  style: TextStyle(color: context.sfMuted, fontSize: 13),
                 ),
                 const SizedBox(height: 8),
+                // Deux boutons de même largeur : ils tiennent sur un iPhone.
                 Row(
                   children: [
-                    FilledButton(
-                      onPressed: onApprove,
-                      child: const Text('Approuver'),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: onApprove,
+                        child: const Text('Approuver'),
+                      ),
                     ),
                     const SizedBox(width: 8),
-                    OutlinedButton(
-                      onPressed: onReject,
-                      child: const Text('Refuser'),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: onReject,
+                        child: const Text('Refuser'),
+                      ),
                     ),
                   ],
                 ),

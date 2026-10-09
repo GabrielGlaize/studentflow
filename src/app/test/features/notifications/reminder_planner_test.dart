@@ -91,6 +91,60 @@ void main() {
     expect(reminders.single.scheduledAt, DateTime(2026, 6, 26, 18));
   });
 
+  test('chaque devoir, tâche ou événement suit son propre délai', () {
+    final reminders = planner.plan(
+      courses: const [],
+      homework: [
+        HomeworkItem(
+          id: 'homework-2',
+          title: 'Exposé',
+          deadline: DateTime(2026, 6, 27, 18),
+          isDone: false,
+          notificationsEnabled: true,
+          reminderMinutesBefore: 180,
+        ),
+      ],
+      tasks: [
+        AgendaTaskItem(
+          id: 'task-1',
+          title: 'Relire le rapport',
+          category: 'school',
+          isDone: false,
+          notificationsEnabled: true,
+          deadline: DateTime(2026, 6, 28, 12),
+          reminderMinutesBefore: 2880,
+        ),
+        const AgendaTaskItem(
+          id: 'task-without-deadline',
+          title: 'Sans échéance',
+          category: 'school',
+          isDone: false,
+          notificationsEnabled: true,
+        ),
+      ],
+      events: [
+        PersonalEventItem(
+          id: 'event-1',
+          title: 'Entretien',
+          day: DateTime(2026, 6, 26),
+          startsAt: '14:00',
+          endsAt: '15:00',
+          category: 'apprenticeship',
+          notificationsEnabled: true,
+          reminderMinutesBefore: 30,
+        ),
+      ],
+      settings: _settings(),
+      now: DateTime(2026, 6, 25, 8),
+    );
+
+    expect(reminders.map((x) => (x.type, x.scheduledAt)), [
+      (ReminderType.task, DateTime(2026, 6, 26, 12)),
+      (ReminderType.event, DateTime(2026, 6, 26, 13, 30)),
+      (ReminderType.homework, DateTime(2026, 6, 27, 15)),
+    ]);
+  });
+
   test('le scheduler mémoire remplace les rappels précédents', () async {
     final scheduler = MemoryLocalNotificationScheduler();
     await scheduler.replaceAll([
