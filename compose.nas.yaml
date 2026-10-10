@@ -7,6 +7,9 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: studyflow-nas-postgres
+    # Plafonds memoire : le NAS n'a que 1,8 Go de RAM partages entre plusieurs applications.
+    mem_limit: 256m
+    memswap_limit: 512m
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${STUDYFLOW_POSTGRES_DB:-studyflow}
@@ -30,6 +33,8 @@ services:
       dockerfile: Dockerfile.api
     image: studyflow-api:nas
     container_name: studyflow-nas-api
+    mem_limit: 384m
+    memswap_limit: 768m
     restart: unless-stopped
     depends_on:
       postgres:
@@ -37,6 +42,8 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
+      # GC Workstation : le GC serveur reserve beaucoup plus de memoire, inutile sur ce NAS.
+      DOTNET_gcServer: "0"
       ConnectionStrings__PostgreSql: Host=postgres;Port=5432;Database=${STUDYFLOW_POSTGRES_DB:-studyflow};Username=${STUDYFLOW_POSTGRES_USER:-studyflow};Password=${STUDYFLOW_POSTGRES_PASSWORD}
       Database__ApplyMigrationsOnStartup: "true"
       Jwt__SigningKey: ${STUDYFLOW_JWT_SIGNING_KEY:?Set STUDYFLOW_JWT_SIGNING_KEY in .env.nas}
