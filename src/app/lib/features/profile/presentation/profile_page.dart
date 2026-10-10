@@ -18,6 +18,7 @@ import 'package:studyflow_app/features/classes/domain/class_resource_models.dart
 import 'package:studyflow_app/features/company/application/company_documents_controller.dart';
 import 'package:studyflow_app/features/exams/presentation/exams_page.dart';
 import 'package:studyflow_app/features/notifications/domain/notification_models.dart';
+import 'package:studyflow_app/features/onboarding/presentation/welcome_tutorial_page.dart';
 import 'package:studyflow_app/features/profile/domain/app_preferences.dart';
 import 'package:studyflow_app/features/profile/domain/notification_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -99,7 +100,10 @@ class ProfilePage extends StatelessWidget {
               ),
               const _AppPreferencesLoader(),
               const _NotificationPreferencesLoader(),
-              _ClassManagementSection(isDelegate: user?.isDelegate == true),
+              _ClassManagementSection(
+                isDelegate: user?.isDelegate == true,
+                compact: true,
+              ),
               const SizedBox(height: 4),
               _SettingsEntry(
                 onOpen: () => ProfileSettingsPage.open(context),

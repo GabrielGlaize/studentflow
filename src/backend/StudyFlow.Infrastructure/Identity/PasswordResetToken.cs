@@ -11,5 +11,8 @@ public sealed class PasswordResetToken
     public DateTimeOffset? RevokedAt { get; set; }
     public string? RequestIpHash { get; set; }
 
+    /// <summary>Codes faux tapés : au-delà de la limite, le code est annulé.</summary>
+    public int FailedAttempts { get; set; }
+
     public ApplicationUser User { get; set; } = null!;
 }

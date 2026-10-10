@@ -160,12 +160,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('open-settings-button')), findsOneWidget);
+    // Profil : seulement la grande carte ; la gestion est sur sa page.
+    expect(find.text('1 demande'), findsOneWidget);
     await tester.scrollUntilVisible(
-      find.text('Gestion de classe'),
+      find.byKey(const ValueKey('open-class-management')),
       180,
-      scrollable: find.byType(Scrollable).last,
+      scrollable: find.byType(Scrollable).first,
       maxScrolls: 10,
     );
+    await tester.tap(find.byKey(const ValueKey('open-class-management')));
     await tester.pumpAndSettle();
     expect(find.text('Gestion de classe'), findsOneWidget);
     expect(find.text('Code classe : SIO1-42'), findsOneWidget);
@@ -176,6 +179,11 @@ void main() {
     await tester.tap(find.text('Approuver'));
     await tester.pumpAndSettle();
     expect(find.text('Lina Moreau'), findsNothing);
+    await tester.tap(find.byType(BackButton));
+    // Le dépôt de démo simule la latence : on laisse la carte se recharger.
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    expect(find.text('1 demande'), findsNothing);
 
     // Les réglages ont leur propre page, ouverte depuis le bas du profil.
     await tester.scrollUntilVisible(
@@ -343,6 +351,7 @@ void main() {
     await tester.tap(find.text('Se connecter ou créer un compte'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Bienvenue sur StudyFlow'), findsOneWidget);
+    // Retour à l'écran de connexion (resté défilé : on vérifie le formulaire).
+    expect(find.byKey(const ValueKey('login-email-field')), findsOneWidget);
   });
 }

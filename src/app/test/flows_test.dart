@@ -175,6 +175,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('open-class-management')));
+    await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(
       find.byKey(const ValueKey('class-resources-entry')),
@@ -332,5 +334,71 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('note-line-number-1')), findsOneWidget);
     expect(find.textContaining('Rendre le badge'), findsOneWidget);
+  });
+
+  testWidgets('un nouveau compte découvre l’app avec la présentation', (
+    tester,
+  ) async {
+    FlutterSecureStorage.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      const StudyFlowApp(
+        environment: AppEnvironment.dev(useDemoRepositories: true),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Créer un compte ou une classe'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Créer mon compte'));
+    await tester.pumpAndSettle();
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(0), 'Lina');
+    await tester.enterText(fields.at(1), 'Moreau');
+    await tester.enterText(fields.at(2), 'lina@studyflow.dev');
+    await tester.enterText(fields.at(3), 'Motdepasse123!');
+    await tester.ensureVisible(
+      find.widgetWithText(FilledButton, 'Créer mon compte'),
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Créer mon compte'));
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+
+    // La présentation s'ouvre d'elle-même, page après page.
+    expect(find.text('Salut Lina, voici StudyFlow'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('tutorial-next')));
+    await tester.pumpAndSettle();
+    expect(find.text('On s’organise ensemble'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('tutorial-next')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('tutorial-next')));
+    await tester.pumpAndSettle();
+
+    // Page entreprise : le choix adapte le contenu (et l'onglet).
+    expect(find.text('Tu as déjà une entreprise ?'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('tutorial-has-company')));
+    await tester.pumpAndSettle();
+    expect(find.text('Documents importants'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('tutorial-next')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('C’est parti'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Bonjour Lina'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.text('Entreprise'),
+      ),
+      findsOneWidget,
+    );
+
+    // Une seule fois : elle ne revient pas toute seule.
+    await tester.tap(find.text('Planning'));
+    await tester.pumpAndSettle();
+    expect(find.text('Salut Lina, voici StudyFlow'), findsNothing);
   });
 }

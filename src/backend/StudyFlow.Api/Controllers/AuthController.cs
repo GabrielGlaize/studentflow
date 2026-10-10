@@ -150,7 +150,7 @@ public sealed class AuthController(
         var result = await passwordResetService.RequestResetAsync(request.Email, cancellationToken);
 
         return Ok(new ForgotPasswordResponse(
-            "Si un compte existe avec cet e-mail, un lien de réinitialisation a été préparé.",
+            "Si un compte existe avec cette adresse, un code vient d'y être envoyé (pense à regarder les spams). Il est valable 30 minutes.",
             result.DevelopmentToken,
             result.ExpiresAt));
     }

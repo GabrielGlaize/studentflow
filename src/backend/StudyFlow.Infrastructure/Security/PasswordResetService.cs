@@ -6,7 +6,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 using StudyFlow.Application.Security;
 using StudyFlow.Infrastructure.Identity;
 using StudyFlow.Infrastructure.Persistence;
@@ -21,7 +20,14 @@ public sealed class PasswordResetService(
     IPasswordResetEmailSender emailSender,
     ILogger<PasswordResetService> logger) : IPasswordResetService
 {
-    private const int TokenBytes = 32;
+    /// <summary>
+    /// Code court à taper sur le téléphone : 8 caractères sans ambiguïté (ni 0/O,
+    /// ni 1/I/L), soit ~8·10¹¹ possibilités. Avec la limite de requêtes et
+    /// <see cref="MaxFailedAttempts"/> essais par code, il ne se devine pas.
+    /// </summary>
+    private const string CodeAlphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+    private const int CodeLength = 8;
+    private const int MaxFailedAttempts = 5;
     private readonly SecurityOptions _securityOptions = securityOptions.Value;
 
     public async Task<PasswordResetRequestResult> RequestResetAsync(
@@ -38,7 +44,7 @@ public sealed class PasswordResetService(
         }
 
         var now = DateTimeOffset.UtcNow;
-        var rawToken = Base64UrlEncoder.Encode(RandomNumberGenerator.GetBytes(TokenBytes));
+        var rawToken = RandomNumberGenerator.GetString(CodeAlphabet, CodeLength);
         var token = new PasswordResetToken
         {
             UserId = user.Id,
@@ -63,13 +69,13 @@ public sealed class PasswordResetService(
 
         await emailSender.SendPasswordResetAsync(
             user.Email ?? email.Trim(),
-            rawToken,
+            FormatCode(rawToken),
             token.ExpiresAt,
             cancellationToken);
 
         return new PasswordResetRequestResult(
             IsAccepted: true,
-            DevelopmentToken: environment.IsDevelopment() ? rawToken : null,
+            DevelopmentToken: environment.IsDevelopment() ? FormatCode(rawToken) : null,
             ExpiresAt: token.ExpiresAt);
     }
 
@@ -82,17 +88,27 @@ public sealed class PasswordResetService(
         var user = await userManager.FindByEmailAsync(email.Trim());
         if (user is null || !user.IsActive) return false;
 
-        var tokenHash = HashToken(resetToken);
+        var tokenHash = HashToken(NormalizeCode(resetToken));
         var now = DateTimeOffset.UtcNow;
+        // Un seul code actif par compte : le dernier demandé.
         var storedToken = await dbContext.PasswordResetTokens
-            .SingleOrDefaultAsync(
-                x => x.UserId == user.Id
-                    && x.TokenHash == tokenHash
-                    && x.UsedAt == null
-                    && x.RevokedAt == null,
-                cancellationToken);
+            .Where(x => x.UserId == user.Id
+                && x.UsedAt == null
+                && x.RevokedAt == null
+                && x.ExpiresAt > now)
+            .OrderByDescending(x => x.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (storedToken is null) return false;
 
-        if (storedToken is null || storedToken.ExpiresAt <= now) return false;
+        if (!CryptographicOperations.FixedTimeEquals(
+                Encoding.ASCII.GetBytes(storedToken.TokenHash),
+                Encoding.ASCII.GetBytes(tokenHash)))
+        {
+            storedToken.FailedAttempts++;
+            if (storedToken.FailedAttempts >= MaxFailedAttempts) storedToken.RevokedAt = now;
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return false;
+        }
 
         var identityToken = await userManager.GeneratePasswordResetTokenAsync(user);
         var result = await userManager.ResetPasswordAsync(user, identityToken, newPassword);
@@ -119,6 +135,14 @@ public sealed class PasswordResetService(
         await dbContext.SaveChangesAsync(cancellationToken);
         return true;
     }
+
+    /// <summary>« abcd efgh », « ABCD-EFGH » : même code.</summary>
+    private static string NormalizeCode(string code) =>
+        new(code.Where(char.IsLetterOrDigit).Select(char.ToUpperInvariant).ToArray());
+
+    /// <summary>« ABCDEFGH » → « ABCD-EFGH », plus lisible dans l'e-mail.</summary>
+    private static string FormatCode(string code) =>
+        code.Length == CodeLength ? $"{code[..4]}-{code[4..]}" : code;
 
     private string HashToken(string token)
     {

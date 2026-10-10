@@ -59,30 +59,30 @@ public sealed class PasswordResetEmailSender(
         await client.SendMailAsync(message, cancellationToken);
     }
 
-    private string BuildBody(string resetToken, DateTimeOffset expiresAt)
+    private string BuildBody(string resetCode, DateTimeOffset expiresAt)
     {
+        // Heure de l'école (Paris), pas l'heure UTC du serveur.
+        var localExpiry = TimeZoneInfo.ConvertTime(expiresAt, ParisTimeZone);
         var resetLink = string.IsNullOrWhiteSpace(_options.PasswordResetUrlBase)
             ? null
-            : $"{_options.PasswordResetUrlBase.TrimEnd('/')}?token={Uri.EscapeDataString(resetToken)}";
+            : $"{_options.PasswordResetUrlBase.TrimEnd('/')}?token={Uri.EscapeDataString(resetCode)}";
 
-        return resetLink is null
-            ? $"""
-              Voici ton code de réinitialisation StudyFlow :
+        return $"""
+            Bonjour,
 
-              {resetToken}
+            Voici ton code pour choisir un nouveau mot de passe StudyFlow :
 
-              Il expire le {expiresAt:dd/MM/yyyy à HH:mm}.
-              Si tu n'es pas à l'origine de cette demande, ignore cet e-mail.
-              """
-            : $"""
-              Voici ton code de réinitialisation StudyFlow :
+                {resetCode}
 
-              {resetToken}
+            Dans l'app : « Mot de passe oublié ? », puis saisis ce code et ton nouveau mot de passe.
+            {(resetLink is null ? "" : $"Lien direct : {resetLink}\n")}
+            Il est valable jusqu'au {localExpiry:dd/MM/yyyy à HH:mm}.
+            Si tu n'es pas à l'origine de cette demande, ignore cet e-mail : ton mot de passe ne change pas.
 
-              Lien direct : {resetLink}
-
-              Il expire le {expiresAt:dd/MM/yyyy à HH:mm}.
-              Si tu n'es pas à l'origine de cette demande, ignore cet e-mail.
-              """;
+            L'équipe StudyFlow
+            """;
     }
+
+    private static readonly TimeZoneInfo ParisTimeZone =
+        TimeZoneInfo.TryFindSystemTimeZoneById("Europe/Paris", out var zone) ? zone : TimeZoneInfo.Utc;
 }

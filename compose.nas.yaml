@@ -50,6 +50,13 @@ services:
       # Notifications push : vide = notifications seulement journalisées.
       Firebase__CredentialsPath: ${STUDYFLOW_FIREBASE_CREDENTIALS_PATH:-}
       NotificationWorker__Enabled: ${STUDYFLOW_NOTIFICATIONS_ENABLED:-true}
+      # E-mails (réinitialisation de mot de passe). Vide = aucun e-mail envoyé.
+      Email__From: ${STUDYFLOW_EMAIL_FROM:-}
+      Email__Host: ${STUDYFLOW_EMAIL_HOST:-}
+      Email__Port: ${STUDYFLOW_EMAIL_PORT:-587}
+      Email__UseSsl: ${STUDYFLOW_EMAIL_USE_SSL:-true}
+      Email__UserName: ${STUDYFLOW_EMAIL_USERNAME:-}
+      Email__Password: ${STUDYFLOW_EMAIL_PASSWORD:-}
       # Le reverse proxy Synology passe par le réseau Docker : on lui fait confiance pour
       # transmettre la vraie IP du client (limites de requêtes par utilisateur, pas globales).
       ReverseProxy__KnownNetworks__0: ${STUDYFLOW_TRUSTED_PROXY_NETWORK:-172.16.0.0/12}

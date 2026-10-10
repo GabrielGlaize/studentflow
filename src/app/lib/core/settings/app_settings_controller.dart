@@ -26,6 +26,7 @@ class AppSettingsController extends ChangeNotifier {
   bool _dailyNotesEnabled = true;
   bool _dailyNoteReminderEnabled = true;
   int _dailyNoteReminderMinutes = 19 * 60;
+  bool _tutorialPending = false;
 
   ThemeMode get themeMode => _themeMode;
   bool get hasCompany => _hasCompany;
@@ -43,6 +44,23 @@ class AppSettingsController extends ChangeNotifier {
   /// Rappel du soir pour relire la note du jour.
   bool get dailyNoteReminderEnabled =>
       _dailyNotesEnabled && _dailyNoteReminderEnabled;
+
+  /// Présentation à montrer (compte tout juste créé sur ce téléphone).
+  bool get tutorialPending => _tutorialPending;
+
+  void requestTutorial() {
+    if (_tutorialPending) return;
+    _tutorialPending = true;
+    _save();
+    notifyListeners();
+  }
+
+  void completeTutorial() {
+    if (!_tutorialPending) return;
+    _tutorialPending = false;
+    _save();
+    notifyListeners();
+  }
 
   /// Heure du rappel du soir, en minutes depuis minuit.
   int get dailyNoteReminderMinutes => _dailyNoteReminderMinutes;
@@ -64,6 +82,7 @@ class AppSettingsController extends ChangeNotifier {
     _dailyNotesEnabled = settings.dailyNotesEnabled;
     _dailyNoteReminderEnabled = settings.dailyNoteReminderEnabled;
     _dailyNoteReminderMinutes = settings.dailyNoteReminderMinutes;
+    _tutorialPending = _tutorialPending || settings.tutorialPending;
     notifyListeners();
   }
 
@@ -202,6 +221,7 @@ class AppSettingsController extends ChangeNotifier {
       dailyNotesEnabled: _dailyNotesEnabled,
       dailyNoteReminderEnabled: _dailyNoteReminderEnabled,
       dailyNoteReminderMinutes: _dailyNoteReminderMinutes,
+      tutorialPending: _tutorialPending,
     );
   }
 
@@ -224,6 +244,7 @@ class AppSettings {
     this.dailyNotesEnabled = true,
     this.dailyNoteReminderEnabled = true,
     this.dailyNoteReminderMinutes = 19 * 60,
+    this.tutorialPending = false,
   });
 
   final ThemeMode themeMode;
@@ -237,6 +258,7 @@ class AppSettings {
   final bool dailyNotesEnabled;
   final bool dailyNoteReminderEnabled;
   final int dailyNoteReminderMinutes;
+  final bool tutorialPending;
 
   factory AppSettings.fromJson(Map<String, Object?> json) {
     return AppSettings(
@@ -256,6 +278,7 @@ class AppSettings {
           json['dailyNoteReminderEnabled'] as bool? ?? true,
       dailyNoteReminderMinutes:
           (json['dailyNoteReminderMinutes'] as num?)?.toInt() ?? 19 * 60,
+      tutorialPending: json['tutorialPending'] as bool? ?? false,
     );
   }
 
@@ -272,6 +295,7 @@ class AppSettings {
       'dailyNotesEnabled': dailyNotesEnabled,
       'dailyNoteReminderEnabled': dailyNoteReminderEnabled,
       'dailyNoteReminderMinutes': dailyNoteReminderMinutes,
+      'tutorialPending': tutorialPending,
     };
   }
 

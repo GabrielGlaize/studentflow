@@ -165,6 +165,14 @@ class ProfileSettingsPage extends StatelessWidget {
             const _SettingsGroupTitle(title: 'Application'),
             _SettingsGroup(
               children: [
+                ListTile(
+                  key: const ValueKey('replay-tutorial'),
+                  leading: const Icon(Icons.school_outlined),
+                  title: const Text('Revoir la présentation'),
+                  subtitle: const Text('Les fonctions de l’app en 5 pages.'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => WelcomeTutorialPage.open(context),
+                ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
                   child: DropdownButtonFormField<ThemeMode>(

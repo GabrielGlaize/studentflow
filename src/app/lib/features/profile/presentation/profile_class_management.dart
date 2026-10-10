@@ -1,9 +1,16 @@
 part of 'profile_page.dart';
 
 class _ClassManagementSection extends StatefulWidget {
-  const _ClassManagementSection({required this.isDelegate});
+  const _ClassManagementSection({
+    required this.isDelegate,
+    this.compact = false,
+  });
 
   final bool isDelegate;
+
+  /// Profil : seulement la grande carte de la classe ; le reste (demandes,
+  /// membres, matières, partiels…) est sur la page « Gestion de classe ».
+  final bool compact;
 
   @override
   State<_ClassManagementSection> createState() =>
@@ -67,13 +74,13 @@ class _ClassManagementSectionState extends State<_ClassManagementSection> {
 
         final currentClass = state!.currentClass!;
         final isDelegate = widget.isDelegate || currentClass.isDelegate;
+        if (widget.compact) {
+          return _buildCompactCard(state, isDelegate: isDelegate);
+        }
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _SettingsGroupTitle(
-              title: isDelegate ? 'Gestion de classe' : 'Ma classe',
-            ),
             if (isDelegate)
               ProtoGradientCard(
                 child: Column(
@@ -224,6 +231,114 @@ class _ClassManagementSectionState extends State<_ClassManagementSection> {
         );
       },
     );
+  }
+
+  /// Grande carte du profil : la classe, son code pour le délégué, et
+  /// l'entrée vers tout le reste.
+  Widget _buildCompactCard(
+    _ClassManagementState state, {
+    required bool isDelegate,
+  }) {
+    final currentClass = state.currentClass!;
+    final pending = state.pendingRequests.length;
+    final manageButton = FilledButton.icon(
+      key: const ValueKey('open-class-management'),
+      style: FilledButton.styleFrom(
+        backgroundColor: Colors.white,
+        foregroundColor: AppColors.petrol,
+      ),
+      onPressed: () => _openFullPage(isDelegate: isDelegate),
+      icon: Badge(
+        isLabelVisible: pending > 0,
+        label: Text('$pending'),
+        child: const Icon(Icons.tune, size: 18),
+      ),
+      label: Text(isDelegate ? 'Gérer la classe' : 'Voir la classe'),
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: ProtoGradientCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: ProtoOverline(
+                    isDelegate ? 'Ma classe · délégué' : 'Ma classe',
+                    color: Colors.white70,
+                  ),
+                ),
+                if (pending > 0)
+                  ProtoChip(
+                    label: '$pending demande${pending > 1 ? 's' : ''}',
+                    backgroundColor: AppColors.mint,
+                    foregroundColor: AppColors.petrol,
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              currentClass.name,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            Text(
+              [
+                currentClass.schoolYear,
+                if (isDelegate) 'Code ${currentClass.accessCode ?? '—'}',
+                '${state.members.length} membre${state.members.length > 1 ? 's' : ''}',
+              ].join(' · '),
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                manageButton,
+                if (isDelegate && currentClass.accessCode != null)
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Colors.white54),
+                    ),
+                    onPressed: () => _copyAccessCode(currentClass.accessCode!),
+                    icon: const Icon(Icons.copy_outlined, size: 16),
+                    label: const Text('Copier le code'),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openFullPage({required bool isDelegate}) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => Scaffold(
+          appBar: AppBar(
+            title: Text(isDelegate ? 'Gestion de classe' : 'Ma classe'),
+          ),
+          body: ListView(
+            padding: const EdgeInsets.fromLTRB(18, 8, 18, 40),
+            children: [_ClassManagementSection(isDelegate: isDelegate)],
+          ),
+        ),
+      ),
+    );
+    // Demandes approuvées, code changé… : la carte du profil se met à jour.
+    if (!mounted) return;
+    setState(() {
+      _future = _load();
+    });
   }
 
   Future<_ClassManagementState> _load() async {

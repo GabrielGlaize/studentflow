@@ -121,7 +121,7 @@ class DemoAuthRepository implements AuthRepository {
 
     return PasswordResetRequestResult(
       message: 'Code de démonstration généré.',
-      developmentToken: 'DEMO-RESET',
+      developmentToken: 'DEMO-2026',
       expiresAt: DateTime.now().toUtc().add(const Duration(minutes: 30)),
     );
   }

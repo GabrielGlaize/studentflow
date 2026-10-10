@@ -333,6 +333,8 @@ class _RegisterWithoutClassPageState extends State<RegisterWithoutClassPage> {
 
   void _closeOnboardingFlow() {
     if (!mounted) return;
+    // Compte tout neuf : une courte présentation s'ouvre sur l'accueil.
+    AppScope.of(context).settingsController.requestTutorial();
     Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
@@ -470,6 +472,7 @@ class _CreateClassPageState extends State<CreateClassPage> {
           content: Text('Compte créé. Ta classe est prête à partager.'),
         ),
       );
+    AppScope.of(context).settingsController.requestTutorial();
     Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
@@ -570,58 +573,69 @@ class _AccountFields extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: TextFormField(
-                controller: firstNameController,
-                decoration: const InputDecoration(labelText: 'Prénom'),
-                validator: _required,
+    // Inscription : le gestionnaire de mots de passe propose un mot de passe
+    // fort, puis l'enregistre avec l'e-mail quand le compte est créé.
+    return AutofillGroup(
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: firstNameController,
+                  autofillHints: const [AutofillHints.givenName],
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(labelText: 'Prénom'),
+                  validator: _required,
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextFormField(
-                controller: lastNameController,
-                decoration: const InputDecoration(labelText: 'Nom'),
-                validator: _required,
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextFormField(
+                  controller: lastNameController,
+                  autofillHints: const [AutofillHints.familyName],
+                  textCapitalization: TextCapitalization.words,
+                  decoration: const InputDecoration(labelText: 'Nom'),
+                  validator: _required,
+                ),
               ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: emailController,
+            keyboardType: TextInputType.emailAddress,
+            autocorrect: false,
+            autofillHints: const [AutofillHints.username, AutofillHints.email],
+            decoration: const InputDecoration(
+              labelText: 'Adresse e-mail',
+              prefixIcon: Icon(Icons.mail_outline),
             ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        TextFormField(
-          controller: emailController,
-          keyboardType: TextInputType.emailAddress,
-          decoration: const InputDecoration(
-            labelText: 'Adresse e-mail',
-            prefixIcon: Icon(Icons.mail_outline),
+            validator: (value) {
+              final email = value?.trim() ?? '';
+              if (email.isEmpty) return 'Entre ton adresse e-mail.';
+              if (!email.contains('@')) return 'Adresse e-mail invalide.';
+              return null;
+            },
           ),
-          validator: (value) {
-            final email = value?.trim() ?? '';
-            if (email.isEmpty) return 'Entre ton adresse e-mail.';
-            if (!email.contains('@')) return 'Adresse e-mail invalide.';
-            return null;
-          },
-        ),
-        const SizedBox(height: 12),
-        TextFormField(
-          controller: passwordController,
-          obscureText: true,
-          decoration: const InputDecoration(
-            labelText: 'Mot de passe',
-            prefixIcon: Icon(Icons.lock_outline),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: passwordController,
+            obscureText: true,
+            autofillHints: const [AutofillHints.newPassword],
+            decoration: const InputDecoration(
+              labelText: 'Mot de passe',
+              prefixIcon: Icon(Icons.lock_outline),
+            ),
+            validator: (value) {
+              final password = value ?? '';
+              if (password.trim().isEmpty) return 'Champ obligatoire.';
+              if (password.length < 6) return 'Au moins 6 caractères.';
+              return null;
+            },
           ),
-          validator: (value) {
-            final password = value ?? '';
-            if (password.trim().isEmpty) return 'Champ obligatoire.';
-            if (password.length < 6) return 'Au moins 6 caractères.';
-            return null;
-          },
-        ),
-      ],
+        ],
+      ),
     );
   }
 

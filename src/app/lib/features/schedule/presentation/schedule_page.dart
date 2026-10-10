@@ -985,6 +985,7 @@ class _DayTimeline extends StatelessWidget {
             _BreakSeparator(
               minutes: gap.inMinutes,
               isLunch: _isLunch(before.endDateTime, course.startDateTime),
+              compact: compact,
             ),
           );
         }
@@ -1070,43 +1071,57 @@ class _DayTimeline extends StatelessWidget {
   }
 }
 
+/// Pause entre deux cours : discrète et alignée sur les cartes (pas sous la
+/// colonne des horaires), pour ne pas ressembler à une séparation de jours.
 class _BreakSeparator extends StatelessWidget {
-  const _BreakSeparator({required this.minutes, required this.isLunch});
+  const _BreakSeparator({
+    required this.minutes,
+    required this.isLunch,
+    required this.compact,
+  });
+
+  /// Largeur de la colonne des horaires à gauche des cartes (vue jour).
+  static const _timeColumn = 58.0;
 
   final int minutes;
   final bool isLunch;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final color = context.sfMuted;
-    final line = Expanded(child: Container(height: 1.5, color: context.sfLine));
+    final line = Expanded(child: Container(height: 1, color: context.sfLine));
 
     return Padding(
       key: const ValueKey('long-break'),
-      padding: const EdgeInsets.fromLTRB(0, 10, 0, 22),
+      padding: EdgeInsets.fromLTRB(
+        compact ? 24 : _timeColumn + 12,
+        2,
+        compact ? 24 : 12,
+        compact ? 10 : 14,
+      ),
       child: Row(
         children: [
           line,
           // Compressible : sur un écran étroit, l'étiquette se raccourcit.
           Flexible(
-            flex: 4,
+            flex: 10,
             child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 10),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              margin: const EdgeInsets.symmetric(horizontal: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
               decoration: BoxDecoration(
                 color: context.sfSoftCard,
                 borderRadius: BorderRadius.circular(99),
-                border: Border.all(color: context.sfLine),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     isLunch ? Icons.restaurant_outlined : Icons.coffee_outlined,
-                    size: 16,
+                    size: 13,
                     color: color,
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 5),
                   Flexible(
                     child: Text(
                       '${isLunch ? 'Pause déjeuner' : 'Pause'} · ${StudyFlowFormat.duration(minutes)}',
@@ -1114,8 +1129,8 @@ class _BreakSeparator extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: color,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),

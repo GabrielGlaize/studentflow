@@ -3,6 +3,7 @@ import 'package:studyflow_app/core/app_scope.dart';
 import 'package:studyflow_app/core/theme/app_colors.dart';
 import 'package:studyflow_app/core/theme/prototype_widgets.dart';
 import 'package:studyflow_app/features/auth/application/session_controller.dart';
+import 'package:studyflow_app/features/auth/data/remembered_credentials_store.dart';
 import 'package:studyflow_app/features/apprenticeships/presentation/apprenticeships_page.dart';
 import 'package:studyflow_app/features/auth/presentation/onboarding_page.dart';
 
@@ -27,6 +28,24 @@ class _LoginPageState extends State<LoginPage> {
   late final _passwordController = TextEditingController(
     text: _prefillDevelopmentCredentials ? 'Password1234!' : '',
   );
+  final _credentialsStore = RememberedCredentialsStore();
+  bool _rememberMe = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _restoreCredentials();
+  }
+
+  Future<void> _restoreCredentials() async {
+    final saved = await _credentialsStore.read();
+    if (saved == null || !mounted) return;
+    setState(() {
+      _rememberMe = true;
+      _emailController.text = saved.email;
+      _passwordController.text = saved.password;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -118,89 +137,129 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: 16),
               ProtoCard(
                 padding: const EdgeInsets.all(18),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      TextFormField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        autofillHints: const [AutofillHints.email],
-                        decoration: const InputDecoration(
-                          labelText: 'Adresse e-mail',
-                          prefixIcon: Icon(Icons.mail_outline),
+                // Groupe d'autoremplissage : le gestionnaire de mots de passe
+                // (trousseau iCloud, Google…) propose ses identifiants, puis
+                // d'enregistrer les nouveaux quand la connexion réussit et que
+                // cet écran disparaît.
+                child: AutofillGroup(
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      children: [
+                        TextFormField(
+                          key: const ValueKey('login-email-field'),
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
+                          autocorrect: false,
+                          autofillHints: const [
+                            AutofillHints.username,
+                            AutofillHints.email,
+                          ],
+                          decoration: const InputDecoration(
+                            labelText: 'Adresse e-mail',
+                            prefixIcon: Icon(Icons.mail_outline),
+                          ),
+                          validator: _validateEmail,
                         ),
-                        validator: _validateEmail,
-                      ),
-                      const SizedBox(height: 14),
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: !_isPasswordVisible,
-                        autofillHints: const [AutofillHints.password],
-                        decoration: InputDecoration(
-                          labelText: 'Mot de passe',
-                          prefixIcon: const Icon(Icons.lock_outline),
-                          suffixIcon: IconButton(
-                            tooltip: _isPasswordVisible
-                                ? 'Masquer le mot de passe'
-                                : 'Afficher le mot de passe',
-                            onPressed: () => setState(
-                              () => _isPasswordVisible = !_isPasswordVisible,
-                            ),
-                            icon: Icon(
-                              _isPasswordVisible
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          key: const ValueKey('login-password-field'),
+                          controller: _passwordController,
+                          obscureText: !_isPasswordVisible,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _submit(),
+                          autofillHints: const [AutofillHints.password],
+                          decoration: InputDecoration(
+                            labelText: 'Mot de passe',
+                            prefixIcon: const Icon(Icons.lock_outline),
+                            suffixIcon: IconButton(
+                              tooltip: _isPasswordVisible
+                                  ? 'Masquer le mot de passe'
+                                  : 'Afficher le mot de passe',
+                              onPressed: () => setState(
+                                () => _isPasswordVisible = !_isPasswordVisible,
+                              ),
+                              icon: Icon(
+                                _isPasswordVisible
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
+                              ),
                             ),
                           ),
+                          validator: _validatePassword,
                         ),
-                        validator: _validatePassword,
-                      ),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: _showPasswordResetInfo,
-                          child: const Text('Mot de passe oublié ?'),
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      AnimatedBuilder(
-                        animation: session,
-                        builder: (context, _) {
-                          final isLoading =
-                              session.status == SessionStatus.signingIn;
-
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                        const SizedBox(height: 4),
+                        InkWell(
+                          key: const ValueKey('remember-me'),
+                          borderRadius: BorderRadius.circular(8),
+                          onTap: () =>
+                              setState(() => _rememberMe = !_rememberMe),
+                          child: Row(
                             children: [
-                              if (session.errorMessage != null) ...[
-                                Text(
-                                  session.errorMessage!,
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.error,
-                                  ),
+                              Checkbox(
+                                value: _rememberMe,
+                                onChanged: (value) => setState(
+                                  () => _rememberMe = value ?? false,
                                 ),
-                                const SizedBox(height: 12),
-                              ],
-                              FilledButton.icon(
-                                onPressed: isLoading ? null : _submit,
-                                icon: isLoading
-                                    ? const SizedBox.square(
-                                        dimension: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : const Icon(Icons.login),
-                                label: Text(
-                                  isLoading ? 'Connexion...' : 'Se connecter',
+                              ),
+                              const Expanded(
+                                child: Text(
+                                  'Mémoriser mes identifiants',
+                                  style: TextStyle(fontSize: 13),
                                 ),
                               ),
                             ],
-                          );
-                        },
-                      ),
-                    ],
+                          ),
+                        ),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: _showPasswordResetInfo,
+                            child: const Text('Mot de passe oublié ?'),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        AnimatedBuilder(
+                          animation: session,
+                          builder: (context, _) {
+                            final isLoading =
+                                session.status == SessionStatus.signingIn;
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                if (session.errorMessage != null) ...[
+                                  Text(
+                                    session.errorMessage!,
+                                    style: TextStyle(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.error,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                ],
+                                FilledButton.icon(
+                                  onPressed: isLoading ? null : _submit,
+                                  icon: isLoading
+                                      ? const SizedBox.square(
+                                          dimension: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : const Icon(Icons.login),
+                                  label: Text(
+                                    isLoading ? 'Connexion...' : 'Se connecter',
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -240,13 +299,24 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    AppScope.of(context).sessionController.login(
-      email: _emailController.text,
-      password: _passwordController.text,
-    );
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final remember = _rememberMe;
+    final signedIn = await AppScope.of(
+      context,
+    ).sessionController.login(email: email, password: password);
+    if (!signedIn) return;
+
+    if (remember) {
+      await _credentialsStore.save(
+        RememberedCredentials(email: email, password: password),
+      );
+    } else {
+      await _credentialsStore.clear();
+    }
   }
 
   void _openOnboarding() {
@@ -360,19 +430,38 @@ class _PasswordResetSheetState extends State<_PasswordResetSheet> {
               if (_hasRequestedToken) ...[
                 const SizedBox(height: 12),
                 TextFormField(
+                  key: const ValueKey('reset-code-field'),
                   controller: _tokenController,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  textCapitalization: TextCapitalization.characters,
+                  // iOS propose le code reçu par e-mail au-dessus du clavier.
+                  autofillHints: const [AutofillHints.oneTimeCode],
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 2,
+                  ),
                   decoration: const InputDecoration(
-                    labelText: 'Code reçu',
+                    labelText: 'Code reçu par e-mail',
+                    hintText: 'ABCD-EFGH',
                     prefixIcon: Icon(Icons.key_outlined),
                   ),
-                  validator: (value) => (value ?? '').trim().isEmpty
-                      ? 'Entre le code de réinitialisation.'
-                      : null,
+                  validator: (value) {
+                    final code = (value ?? '').replaceAll(
+                      RegExp('[^A-Za-z0-9]'),
+                      '',
+                    );
+                    return code.length == 8
+                        ? null
+                        : 'Le code fait 8 caractères (ex. ABCD-EFGH).';
+                  },
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _passwordController,
                   obscureText: !_isPasswordVisible,
+                  autofillHints: const [AutofillHints.newPassword],
                   decoration: InputDecoration(
                     labelText: 'Nouveau mot de passe',
                     prefixIcon: const Icon(Icons.lock_reset_outlined),
@@ -393,6 +482,15 @@ class _PasswordResetSheetState extends State<_PasswordResetSheet> {
                   validator: _validatePassword,
                 ),
               ],
+              if (_hasRequestedToken)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: _isLoading ? null : _requestToken,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: const Text('Renvoyer un code'),
+                  ),
+                ),
               if (_message != null) ...[
                 const SizedBox(height: 10),
                 ProtoCard(

@@ -5,6 +5,7 @@ import 'package:studyflow_app/features/agenda/presentation/agenda_page.dart';
 import 'package:studyflow_app/features/apprenticeships/presentation/apprenticeships_page.dart';
 import 'package:studyflow_app/features/company/presentation/company_page.dart';
 import 'package:studyflow_app/features/dashboard/presentation/dashboard_page.dart';
+import 'package:studyflow_app/features/onboarding/presentation/welcome_tutorial_page.dart';
 import 'package:studyflow_app/features/profile/presentation/profile_page.dart';
 import 'package:studyflow_app/features/schedule/presentation/schedule_page.dart';
 
@@ -18,6 +19,23 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _selectedIndex = 0;
   String _agendaInitialCategory = 'school';
+  bool _tutorialOpen = false;
+
+  /// Compte tout juste créé : la présentation s'ouvre par-dessus l'accueil.
+  void _showTutorialIfPending() {
+    final settings = AppScope.of(context).settingsController;
+    if (!settings.tutorialPending || _tutorialOpen) return;
+    _tutorialOpen = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      // Le message « Compte créé » masquerait le bouton « Suivant ».
+      ScaffoldMessenger.of(context).clearSnackBars();
+      await WelcomeTutorialPage.open(context);
+      // Fermée autrement (retour système) : on ne la remontre pas.
+      if (mounted) AppScope.of(context).settingsController.completeTutorial();
+      _tutorialOpen = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,6 +44,7 @@ class _MainShellState extends State<MainShell> {
     return AnimatedBuilder(
       animation: settingsController,
       builder: (context, _) {
+        _showTutorialIfPending();
         return LayoutBuilder(
           builder: (context, constraints) {
             final useRail = constraints.maxWidth >= 840;

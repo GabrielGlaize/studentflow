@@ -1562,6 +1562,10 @@ namespace StudyFlow.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
 
+                    b.Property<int>("FailedAttempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("failed_attempts");
+
                     b.Property<string>("RequestIpHash")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
