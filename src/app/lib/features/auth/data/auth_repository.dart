@@ -3,11 +3,17 @@ import 'package:studyflow_app/features/auth/domain/auth_models.dart';
 abstract interface class AuthRepository {
   Future<AuthSession> login({required String email, required String password});
 
+  /// Envoie à [email] le code à saisir pour créer le compte.
+  Future<EmailVerificationResult> requestEmailVerification({
+    required String email,
+  });
+
   Future<AuthSession> register({
     required String email,
     required String password,
     required String firstName,
     required String lastName,
+    String? emailCode,
   });
 
   Future<AuthSession> registerAndCreateClass({
@@ -17,6 +23,7 @@ abstract interface class AuthRepository {
     required String lastName,
     required String schoolClassName,
     required String schoolYear,
+    String? emailCode,
   });
 
   Future<AuthTokenPair> refresh(String refreshToken);

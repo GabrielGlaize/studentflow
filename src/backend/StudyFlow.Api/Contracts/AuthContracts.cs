@@ -7,14 +7,18 @@ public sealed record RegisterRequest(
     [StringLength(320, ErrorMessage = "E-mail : 320 caractères maximum.")] string Email,
     [StringLength(128, ErrorMessage = "Mot de passe : 128 caractères maximum.")] string Password,
     [StringLength(80, ErrorMessage = "Prénom : 80 caractères maximum.")] string FirstName,
-    [StringLength(80, ErrorMessage = "Nom : 80 caractères maximum.")] string LastName);
+    [StringLength(80, ErrorMessage = "Nom : 80 caractères maximum.")] string LastName,
+    [StringLength(12, ErrorMessage = "Code de vérification : 12 caractères maximum.")] string? EmailCode = null);
 public sealed record RegisterAndCreateClassRequest(
     [StringLength(320, ErrorMessage = "E-mail : 320 caractères maximum.")] string Email,
     [StringLength(128, ErrorMessage = "Mot de passe : 128 caractères maximum.")] string Password,
     [StringLength(80, ErrorMessage = "Prénom : 80 caractères maximum.")] string FirstName,
     [StringLength(80, ErrorMessage = "Nom : 80 caractères maximum.")] string LastName,
     [StringLength(80, ErrorMessage = "Nom de la classe : 80 caractères maximum.")] string SchoolClassName,
-    [StringLength(9, ErrorMessage = "L'année scolaire doit être au format 2026-2027.")] string SchoolYear);
+    [StringLength(9, ErrorMessage = "L'année scolaire doit être au format 2026-2027.")] string SchoolYear,
+    [StringLength(12, ErrorMessage = "Code de vérification : 12 caractères maximum.")] string? EmailCode = null);
+public sealed record EmailVerificationRequest([StringLength(320, ErrorMessage = "E-mail : 320 caractères maximum.")] string Email);
+public sealed record EmailVerificationResponse(string Message, bool Required, string? DevelopmentCode = null, DateTimeOffset? ExpiresAt = null);
 public sealed record CreateClassRequest(
     [StringLength(80, ErrorMessage = "Nom de la classe : 80 caractères maximum.")] string SchoolClassName,
     [StringLength(9, ErrorMessage = "L'année scolaire doit être au format 2026-2027.")] string SchoolYear);

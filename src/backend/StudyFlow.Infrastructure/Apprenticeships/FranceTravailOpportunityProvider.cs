@@ -9,7 +9,7 @@ namespace StudyFlow.Infrastructure.Apprenticeships;
 public sealed class FranceTravailOpportunityProvider(
     HttpClient httpClient,
     IOptions<FranceTravailOptions> options,
-    FranceTravailTokenCache tokenCache) : IApprenticeshipOpportunityProvider
+    FranceTravailTokenCache tokenCache) : IExternalOpportunitySource
 {
     private readonly FranceTravailOptions _options = options.Value;
 
@@ -17,10 +17,7 @@ public sealed class FranceTravailOpportunityProvider(
         ApprenticeshipOpportunitySearchQuery query,
         CancellationToken cancellationToken = default)
     {
-        if (!IsConfigured())
-        {
-            return _options.UseDemoWhenNotConfigured ? DemoResults(query) : [];
-        }
+        if (!IsConfigured) return [];
 
         var token = await tokenCache.GetOrRequestAsync(RequestAccessTokenAsync, cancellationToken);
         using var request = new HttpRequestMessage(HttpMethod.Get, BuildSearchUri(query));
@@ -29,12 +26,15 @@ public sealed class FranceTravailOpportunityProvider(
         using var response = await httpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
 
+        // 204 : aucune offre. 206 : une partie des résultats (pagination), c'est le cas normal.
+        if (response.StatusCode == System.Net.HttpStatusCode.NoContent) return [];
+
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
         return MapResponse(document.RootElement);
     }
 
-    private bool IsConfigured() =>
+    public bool IsConfigured =>
         !string.IsNullOrWhiteSpace(_options.TokenUrl)
         && !string.IsNullOrWhiteSpace(_options.SearchUrl)
         && !string.IsNullOrWhiteSpace(_options.ClientId)
@@ -75,24 +75,27 @@ public sealed class FranceTravailOpportunityProvider(
     private Uri BuildSearchUri(ApprenticeshipOpportunitySearchQuery query)
     {
         var builder = new UriBuilder(_options.SearchUrl!);
-        var keywords = query.Keywords.Contains("alternance", StringComparison.OrdinalIgnoreCase)
-            ? query.Keywords.Trim()
-            : $"alternance {query.Keywords.Trim()}";
+
+        // « alternance=true » garde les contrats d'apprentissage et de professionnalisation ;
+        // les mots-clés se séparent par des virgules (une espace ferait chercher la phrase entière).
+        var keywords = string.Join(',', query.Keywords
+            .Split([' ', ','], StringSplitOptions.RemoveEmptyEntries)
+            .Where(word => word.Length >= 2 && !word.Equals("alternance", StringComparison.OrdinalIgnoreCase)));
 
         var parameters = new List<string>
         {
-            $"motsCles={Uri.EscapeDataString(keywords)}",
-            $"range=0-{Math.Clamp(_options.ResultsPerPage, 1, 50) - 1}"
+            "alternance=true",
+            $"range=0-{Math.Clamp(_options.ResultsPerPage, 1, 50) - 1}",
+            "sort=1"
         };
 
-        if (!string.IsNullOrWhiteSpace(query.Location))
-        {
-            parameters.Add($"lieu={Uri.EscapeDataString(query.Location)}");
-        }
+        if (keywords.Length > 0) parameters.Add($"motsCles={Uri.EscapeDataString(keywords)}");
 
-        if (query.DistanceKm is not null)
+        // France Travail ne comprend pas une ville en texte : il lui faut le code INSEE de la commune.
+        if (!string.IsNullOrWhiteSpace(query.CityCode))
         {
-            parameters.Add($"distance={Math.Clamp(query.DistanceKm.Value, 0, 100)}");
+            parameters.Add($"commune={Uri.EscapeDataString(query.CityCode)}");
+            parameters.Add($"distance={Math.Clamp(SearchDefaults.DistanceOrDefault(query), 0, 100)}");
         }
 
         if (query.RomeCodes.Count > 0)
@@ -139,44 +142,14 @@ public sealed class FranceTravailOpportunityProvider(
                     : ["alternance"],
                 TargetDiploma: null,
                 RemoteMode: ReadString(item, "modeTravailLibelle"),
-                Summary: CleanSummary(ReadString(item, "description")),
+                Summary: SearchDefaults.CleanSummary(ReadString(item, "description")),
                 ApplicationUrl: applicationUrl));
         }
 
         return results;
     }
 
-    private static IReadOnlyCollection<ApprenticeshipOpportunity> DemoResults(ApprenticeshipOpportunitySearchQuery query) =>
-        [
-            new ApprenticeshipOpportunity(
-                Source: "demo-france-travail",
-                ExternalId: "demo-france-travail-1",
-                OpportunityType: "offer",
-                Title: $"Alternance {query.Keywords}",
-                Company: "Entreprise partenaire",
-                Location: query.Location ?? "France",
-                DistanceKm: null,
-                PublishedAt: DateTimeOffset.UtcNow.AddDays(-1),
-                ExpiresAt: null,
-                ContractTypes: ["alternance"],
-                TargetDiploma: null,
-                RemoteMode: null,
-                Summary: "Résultat de démonstration utilisé tant que France Travail n'est pas configuré.",
-                ApplicationUrl: "https://candidat.francetravail.fr/offres/recherche")
-        ];
 
-    private static string? CleanSummary(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value)) return null;
-
-        var clean = value
-            .Replace("<br>", " ", StringComparison.OrdinalIgnoreCase)
-            .Replace("<br/>", " ", StringComparison.OrdinalIgnoreCase)
-            .Replace("<br />", " ", StringComparison.OrdinalIgnoreCase)
-            .Trim();
-
-        return clean.Length <= 500 ? clean : $"{clean[..500]}…";
-    }
 
     private static JsonElement? TryGetArray(JsonElement root, string propertyName) =>
         root.TryGetProperty(propertyName, out var value) && value.ValueKind == JsonValueKind.Array ? value : null;

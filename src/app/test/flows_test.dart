@@ -75,6 +75,19 @@ void main() {
     await tester.tap(find.text('Planning'));
     await tester.pumpAndSettle();
 
+    // Le planning s'ouvre sur la semaine : le bouton parle de la semaine et
+    // la pause de midi est bien visible.
+    expect(find.text('Cette semaine'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('long-break')),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
+    expect(find.text('Pause déjeuner · 2 h'), findsOneWidget);
+
+    // Vue jour : on démarre sur le jour affiché, puis on balaie.
+    await tester.tap(find.text('Jour'));
+    await tester.pumpAndSettle();
     final shown = _firstShownDay();
     expect(
       find.text(StudyFlowFormat.longDay(shown).toUpperCase()),
@@ -93,20 +106,6 @@ void main() {
       find.text(StudyFlowFormat.longDay(_nextWeekday(shown)).toUpperCase()),
       findsOneWidget,
     );
-
-    // Retour au jour affiché au départ, puis vue semaine : le bouton parle
-    // de la semaine et la pause de midi est bien visible.
-    await tester.tap(find.byKey(const ValueKey('planning-today-button')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Semaine'));
-    await tester.pumpAndSettle();
-    expect(find.text('Cette semaine'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('long-break')),
-      200,
-      scrollable: find.byType(Scrollable).last,
-    );
-    expect(find.text('Pause déjeuner · 2 h'), findsOneWidget);
   });
 
   testWidgets('la fiche de révision des partiels se remplit et se coche', (
@@ -238,6 +237,9 @@ void main() {
     await _signIn(tester);
     await tester.tap(find.text('Planning'));
     await tester.pumpAndSettle();
+    // Vue jour : un seul jour de cours affiché.
+    await tester.tap(find.text('Jour'));
+    await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Semaine suivante'));
     await tester.pumpAndSettle();
     expect(find.text('Physique'), findsOneWidget);
@@ -359,6 +361,10 @@ void main() {
     await tester.enterText(fields.at(1), 'Moreau');
     await tester.enterText(fields.at(2), 'lina@studyflow.dev');
     await tester.enterText(fields.at(3), 'Motdepasse123!');
+    await tester.enterText(
+      find.byKey(const ValueKey('register-confirm-password-field')),
+      'Motdepasse123!',
+    );
     await tester.ensureVisible(
       find.widgetWithText(FilledButton, 'Créer mon compte'),
     );

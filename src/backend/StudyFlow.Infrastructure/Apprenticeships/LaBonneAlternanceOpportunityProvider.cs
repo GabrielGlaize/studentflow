@@ -6,22 +6,28 @@ using StudyFlow.Application.Apprenticeships;
 
 namespace StudyFlow.Infrastructure.Apprenticeships;
 
+/// <summary>
+/// GET /job/v1/search de l'API La bonne alternance. Elle cherche autour d'un point GPS et par codes ROME ;
+/// sans code ROME reconnu, les offres de la zone sont filtrées sur les mots-clés.
+/// </summary>
 public sealed class LaBonneAlternanceOpportunityProvider(
     HttpClient httpClient,
-    IOptions<LaBonneAlternanceOptions> options) : IApprenticeshipOpportunityProvider
+    IOptions<LaBonneAlternanceOptions> options) : IExternalOpportunitySource
 {
+    private const string WebsiteUrl = "https://labonnealternance.apprentissage.beta.gouv.fr";
     private readonly LaBonneAlternanceOptions _options = options.Value;
+
+    public bool IsConfigured =>
+        !string.IsNullOrWhiteSpace(_options.BaseUrl) && !string.IsNullOrWhiteSpace(_options.AccessToken);
 
     public async Task<IReadOnlyCollection<ApprenticeshipOpportunity>> SearchAsync(
         ApprenticeshipOpportunitySearchQuery query,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(_options.BaseUrl) || string.IsNullOrWhiteSpace(_options.AccessToken))
-        {
-            return _options.UseDemoWhenNotConfigured ? DemoResults(query) : [];
-        }
+        if (!IsConfigured) return [];
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, BuildSearchUri(query));
+        var romeCodes = query.RomeCodes.Count > 0 ? query.RomeCodes : RomeCodeCatalog.Match(query.Keywords);
+        using var request = new HttpRequestMessage(HttpMethod.Get, BuildSearchUri(query, romeCodes));
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.AccessToken);
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
@@ -29,89 +35,92 @@ public sealed class LaBonneAlternanceOpportunityProvider(
 
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
         using var document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-        return MapResponse(document.RootElement);
+        var offers = MapResponse(document.RootElement, query);
+
+        // Les codes ROME ciblent déjà le métier ; sinon, on garde les offres qui citent les mots-clés.
+        if (romeCodes.Count == 0) offers = FilterByKeywords(offers, query.Keywords);
+
+        return offers.Take(Math.Clamp(_options.MaxResults, 1, 150)).ToArray();
     }
 
-    private Uri BuildSearchUri(ApprenticeshipOpportunitySearchQuery query)
+    private Uri BuildSearchUri(ApprenticeshipOpportunitySearchQuery query, IReadOnlyCollection<string> romeCodes)
     {
-        var baseUri = new Uri(_options.BaseUrl!, UriKind.Absolute);
-        var builder = new UriBuilder(new Uri(baseUri, _options.SearchPath));
-        var parameters = new List<string> { $"keywords={Uri.EscapeDataString(query.Keywords)}" };
+        var builder = new UriBuilder($"{_options.BaseUrl.TrimEnd('/')}/job/v1/search");
+        var parameters = new List<string>();
 
-        if (!string.IsNullOrWhiteSpace(query.Location)) parameters.Add($"location={Uri.EscapeDataString(query.Location)}");
-        if (query.Latitude is not null) parameters.Add($"latitude={query.Latitude.Value.ToString(CultureInfo.InvariantCulture)}");
-        if (query.Longitude is not null) parameters.Add($"longitude={query.Longitude.Value.ToString(CultureInfo.InvariantCulture)}");
-        if (query.DistanceKm is not null) parameters.Add($"radius={query.DistanceKm.Value.ToString(CultureInfo.InvariantCulture)}");
-        if (query.RomeCodes.Count > 0) parameters.Add($"romes={Uri.EscapeDataString(string.Join(",", query.RomeCodes))}");
+        if (query.Latitude is not null && query.Longitude is not null)
+        {
+            parameters.Add($"latitude={query.Latitude.Value.ToString(CultureInfo.InvariantCulture)}");
+            parameters.Add($"longitude={query.Longitude.Value.ToString(CultureInfo.InvariantCulture)}");
+            parameters.Add($"radius={Math.Clamp(SearchDefaults.DistanceOrDefault(query), 1, 200)}");
+        }
+
+        if (romeCodes.Count > 0) parameters.Add($"romes={Uri.EscapeDataString(string.Join(",", romeCodes))}");
 
         builder.Query = string.Join("&", parameters);
         return builder.Uri;
     }
 
-    private static IReadOnlyCollection<ApprenticeshipOpportunity> MapResponse(JsonElement root)
+    public static List<ApprenticeshipOpportunity> MapResponse(JsonElement root, ApprenticeshipOpportunitySearchQuery query)
     {
-        var items = TryGetArray(root, "results")
-            ?? TryGetArray(root, "jobs")
-            ?? TryGetArray(root, "data")
-            ?? (root.ValueKind == JsonValueKind.Array ? root : default);
-
-        if (items.ValueKind != JsonValueKind.Array) return [];
-
         var results = new List<ApprenticeshipOpportunity>();
-        foreach (var item in items.EnumerateArray())
+        if (!root.TryGetProperty("jobs", out var jobs) || jobs.ValueKind != JsonValueKind.Array) return results;
+
+        foreach (var job in jobs.EnumerateArray())
         {
+            var title = ReadString(job, "offer.title");
+            if (string.IsNullOrWhiteSpace(title)) continue;
+
+            var coordinates = ReadElement(job, "workplace.location.geopoint.coordinates");
+            decimal? longitude = null, latitude = null;
+            if (coordinates is { ValueKind: JsonValueKind.Array } point && point.GetArrayLength() >= 2
+                && point[0].TryGetDecimal(out var lon) && point[1].TryGetDecimal(out var lat))
+            {
+                longitude = lon;
+                latitude = lat;
+            }
+
+            var contractTypes = ReadStringArray(job, "contract.type");
             results.Add(new ApprenticeshipOpportunity(
                 Source: "la-bonne-alternance",
-                ExternalId: ReadString(item, "id") ?? ReadString(item, "job.id") ?? Guid.NewGuid().ToString("N"),
-                OpportunityType: ReadString(item, "opportunityType") ?? ReadString(item, "type") ?? "offer",
-                Title: ReadString(item, "title") ?? ReadString(item, "intitule") ?? ReadString(item, "job.title") ?? "Offre d'alternance",
-                Company: ReadString(item, "company.name") ?? ReadString(item, "company") ?? ReadString(item, "etablissement.name"),
-                Location: ReadString(item, "location") ?? ReadString(item, "place.city") ?? ReadString(item, "workplace.address.label"),
-                DistanceKm: ReadDecimal(item, "distanceKm") ?? ReadDecimal(item, "distance"),
-                PublishedAt: ReadDate(item, "publishedAt") ?? ReadDate(item, "createdAt"),
-                ExpiresAt: ReadDate(item, "expiresAt"),
-                ContractTypes: ReadStringArray(item, "contractTypes"),
-                TargetDiploma: ReadString(item, "targetDiploma") ?? ReadString(item, "diploma"),
-                RemoteMode: ReadString(item, "remoteMode"),
-                Summary: ReadString(item, "summary") ?? ReadString(item, "description"),
-                ApplicationUrl: ReadString(item, "url") ?? ReadString(item, "applicationUrl") ?? ReadString(item, "applyUrl") ?? "https://labonnealternance.apprentissage.beta.gouv.fr"));
+                ExternalId: ReadString(job, "identifier.id") ?? ReadString(job, "identifier.partner_job_id") ?? Guid.NewGuid().ToString("N"),
+                OpportunityType: "offer",
+                Title: title.Trim(),
+                Company: ReadString(job, "workplace.name") ?? ReadString(job, "workplace.brand") ?? ReadString(job, "workplace.legal_name"),
+                Location: ReadString(job, "workplace.location.address"),
+                DistanceKm: SearchDefaults.DistanceKmFrom(query, latitude, longitude),
+                PublishedAt: ReadDate(job, "offer.publication.creation"),
+                ExpiresAt: ReadDate(job, "offer.publication.expiration"),
+                ContractTypes: contractTypes.Count > 0 ? contractTypes : ["alternance"],
+                TargetDiploma: ReadString(job, "offer.target_diploma.label"),
+                RemoteMode: ReadString(job, "contract.remote"),
+                Summary: SearchDefaults.CleanSummary(ReadString(job, "offer.description")),
+                ApplicationUrl: ReadString(job, "apply.url") ?? WebsiteUrl));
         }
 
         return results;
     }
 
-    private static IReadOnlyCollection<ApprenticeshipOpportunity> DemoResults(ApprenticeshipOpportunitySearchQuery query) =>
-        [
-            new ApprenticeshipOpportunity(
-                Source: "demo",
-                ExternalId: "demo-opportunity-1",
-                OpportunityType: "offer",
-                Title: $"Alternance {query.Keywords}",
-                Company: "Entreprise locale",
-                Location: query.Location ?? "France",
-                DistanceKm: null,
-                PublishedAt: DateTimeOffset.UtcNow.AddDays(-2),
-                ExpiresAt: DateTimeOffset.UtcNow.AddDays(30),
-                ContractTypes: ["apprentissage"],
-                TargetDiploma: null,
-                RemoteMode: null,
-                Summary: "Résultat local utilisé tant que La Bonne Alternance n'est pas configurée sur le backend.",
-                ApplicationUrl: "https://labonnealternance.apprentissage.beta.gouv.fr")
-        ];
+    public static List<ApprenticeshipOpportunity> FilterByKeywords(
+        List<ApprenticeshipOpportunity> offers,
+        string keywords)
+    {
+        var words = RomeCodeCatalog.Words(keywords);
+        if (words.Length == 0) return offers;
 
-    private static JsonElement? TryGetArray(JsonElement root, string propertyName) =>
-        root.TryGetProperty(propertyName, out var value) && value.ValueKind == JsonValueKind.Array ? value : null;
+        return offers
+            .Where(offer =>
+            {
+                var text = RomeCodeCatalog.RemoveDiacritics($"{offer.Title} {offer.Summary}".ToLowerInvariant());
+                return words.Any(word => text.Contains(word, StringComparison.Ordinal));
+            })
+            .ToList();
+    }
 
     private static string? ReadString(JsonElement element, string path)
     {
         var value = ReadElement(element, path);
         return value is { ValueKind: JsonValueKind.String } ? value.Value.GetString() : null;
-    }
-
-    private static decimal? ReadDecimal(JsonElement element, string path)
-    {
-        var value = ReadElement(element, path);
-        return value is { ValueKind: JsonValueKind.Number } && value.Value.TryGetDecimal(out var number) ? number : null;
     }
 
     private static DateTimeOffset? ReadDate(JsonElement element, string path)

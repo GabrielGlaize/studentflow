@@ -9,5 +9,4 @@ public sealed class AdzunaOptions
     public string? AppId { get; set; }
     public string? AppKey { get; set; }
     public int ResultsPerPage { get; set; } = 10;
-    public bool UseDemoWhenNotConfigured { get; set; } = true;
 }

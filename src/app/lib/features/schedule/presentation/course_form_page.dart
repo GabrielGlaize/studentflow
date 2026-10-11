@@ -545,8 +545,15 @@ class _CourseFormPageState extends State<CourseFormPage> {
     FocusManager.instance.primaryFocus?.unfocus();
     final created = await showSubjectFormSheet(context, resources: resources);
     if (created is! ClassSubject || !mounted) return;
-    await _reloadResources();
-    if (mounted) setState(() => _subjectId = created.id);
+    final reloaded = await _reloadResources();
+    if (!mounted) return;
+    // L'intervenant rattaché pendant la création de la matière est sélectionné
+    // d'office (le premier s'il y en a plusieurs).
+    _selectSubject(reloaded, created.id);
+    final linked = reloaded.teachersOf(created.id);
+    if (_teacherId == null && linked.isNotEmpty) {
+      setState(() => _teacherId = linked.first.id);
+    }
   }
 
   Future<void> _createTeacher(ClassResources resources) async {
@@ -561,12 +568,12 @@ class _CourseFormPageState extends State<CourseFormPage> {
     if (mounted) setState(() => _teacherId = created.id);
   }
 
-  Future<void> _reloadResources() async {
+  Future<ClassResources> _reloadResources() async {
     final future = ClassResources.load(context);
     setState(() {
       _resourcesFuture = future;
     });
-    await future;
+    return future;
   }
 
   Future<void> _pickDay() async {

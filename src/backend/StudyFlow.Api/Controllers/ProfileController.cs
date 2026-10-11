@@ -21,6 +21,9 @@ public sealed class ProfileController(
 {
     private static readonly int[] AllowedCourseReminderMinutes = [0, 5, 10, 15, 30, 60];
 
+    /// <summary>Réglages d'app jamais enregistrés par l'utilisateur (ligne créée par une simple lecture).</summary>
+    private static readonly DateTimeOffset NeverSavedAt = DateTimeOffset.UnixEpoch;
+
     [HttpGet]
     public async Task<ActionResult<ProfileResponse>> Get(CancellationToken cancellationToken)
     {
@@ -122,7 +125,8 @@ public sealed class ProfileController(
         var settings = await dbContext.UserAppSettings.SingleOrDefaultAsync(x => x.UserId == userId, cancellationToken);
         if (settings is not null) return settings;
 
-        settings = new UserAppSettings { UserId = userId };
+        // Créés à la lecture, avec les valeurs par défaut : « jamais enregistrés » (voir NeverSavedAt).
+        settings = new UserAppSettings { UserId = userId, UpdatedAt = NeverSavedAt };
         dbContext.UserAppSettings.Add(settings);
         return settings;
     }
@@ -160,7 +164,8 @@ public sealed class ProfileController(
         settings.Theme.ToString().ToLowerInvariant(),
         settings.HasCompany,
         settings.CompanyName,
-        settings.ProfessionalMode.ToString().ToLowerInvariant());
+        settings.ProfessionalMode.ToString().ToLowerInvariant(),
+        settings.UpdatedAt <= NeverSavedAt ? null : settings.UpdatedAt);
 
     private NotificationSettingsResponse ToNotificationSettingsResponse(NotificationPreference settings) =>
         NotificationSettingsMapper.ToResponse(settings, clock.UtcNow);

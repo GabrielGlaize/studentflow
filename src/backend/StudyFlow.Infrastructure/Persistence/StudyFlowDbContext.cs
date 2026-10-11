@@ -44,6 +44,7 @@ public sealed class StudyFlowDbContext(
     public DbSet<RevisionResourceFile> RevisionResourceFiles => Set<RevisionResourceFile>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+    public DbSet<EmailVerificationCode> EmailVerificationCodes => Set<EmailVerificationCode>();
 
     /// <summary>Membres actifs d'une classe qui ont le rôle Délégué, en une seule requête SQL.</summary>
     public IQueryable<ApplicationUser> ActiveDelegatesOfClass(Guid schoolClassId) =>
@@ -96,6 +97,14 @@ public sealed class StudyFlowDbContext(
             entity.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(x => x.TokenHash).IsUnique();
             entity.HasIndex(x => new { x.UserId, x.ExpiresAt });
+        });
+
+        modelBuilder.Entity<EmailVerificationCode>(entity =>
+        {
+            entity.ToTable("email_verification_codes");
+            entity.Property(x => x.Email).HasMaxLength(320).IsRequired();
+            entity.Property(x => x.CodeHash).HasMaxLength(64).IsRequired();
+            entity.HasIndex(x => new { x.Email, x.ExpiresAt });
         });
 
         modelBuilder.Entity<PasswordResetToken>(entity =>

@@ -6,12 +6,17 @@ class RemoteAppPreferences {
     required this.hasCompany,
     this.companyName,
     this.professionalMode = ProfessionalMode.apprenticeship,
+    this.updatedAt,
   });
 
   final ThemeMode themeMode;
   final bool hasCompany;
   final String? companyName;
   final ProfessionalMode professionalMode;
+
+  /// Dernier enregistrement par l'élève ; nul si le serveur n'a que les valeurs
+  /// par défaut (jamais enregistrées) : l'app garde alors ses propres réglages.
+  final DateTime? updatedAt;
 
   factory RemoteAppPreferences.fromJson(Map<String, Object?> json) {
     return RemoteAppPreferences(
@@ -21,6 +26,7 @@ class RemoteAppPreferences {
       professionalMode: _professionalModeFromApi(
         json['professionalMode'] as String?,
       ),
+      updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? ''),
     );
   }
 

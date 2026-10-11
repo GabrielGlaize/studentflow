@@ -20,11 +20,14 @@ public sealed record AppSettingsRequest(
     [StringLength(160, ErrorMessage = "Nom de l'entreprise : 160 caractères maximum.")] string? CompanyName,
     [StringLength(30, ErrorMessage = "Mode professionnel : 30 caractères maximum.")] string ProfessionalMode);
 
+/// <param name="UpdatedAt">Dernier enregistrement par l'utilisateur ; nul s'il n'a jamais rien enregistré
+/// (valeurs par défaut) : l'app garde alors ses réglages locaux au lieu de les écraser.</param>
 public sealed record AppSettingsResponse(
     string Theme,
     bool HasCompany,
     string? CompanyName,
-    string ProfessionalMode);
+    string ProfessionalMode,
+    DateTimeOffset? UpdatedAt = null);
 
 /// <param name="QuietHoursEnabled">Plage calme quotidienne ; nul pour garder le réglage actuel.</param>
 /// <param name="MutedUntil">Pause jusqu'à cet instant ; nul pour garder la pause actuelle, un instant passé pour l'arrêter.</param>

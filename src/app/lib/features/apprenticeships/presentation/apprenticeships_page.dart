@@ -1,8 +1,8 @@
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:studyflow_app/core/app_scope.dart';
 import 'package:studyflow_app/core/theme/app_colors.dart';
 import 'package:studyflow_app/core/theme/prototype_widgets.dart';
+import 'package:studyflow_app/core/widgets/attachment_picker.dart';
 import 'package:studyflow_app/features/apprenticeships/domain/apprenticeship_models.dart';
 import 'package:studyflow_app/features/company/application/company_documents_controller.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -159,6 +159,26 @@ class _ApprenticeshipsPageState extends State<ApprenticeshipsPage> {
                         ],
                       ),
                     ),
+                  ],
+                ),
+              ),
+              // Les offres juste sous la recherche : avant, il fallait faire défiler
+              // documents, favoris et entraide pour les voir.
+              FutureBuilder<List<FavoriteApprenticeshipOffer>>(
+                future: _favoriteOffersFuture,
+                builder: (context, snapshot) {
+                  return _ResultsSection(
+                    future: _resultsFuture,
+                    favorites: snapshot.data ?? const [],
+                    onRetry: _submitSearch,
+                    onToggleFavorite: _toggleFavoriteOrAskToSignIn,
+                  );
+                },
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
+                child: Column(
+                  children: [
                     if (!_isPublicVisitor) ...[
                       _ApplicationDocumentsSection(
                         documents: applicationDocuments,
@@ -206,17 +226,6 @@ class _ApprenticeshipsPageState extends State<ApprenticeshipsPage> {
                     ],
                   ],
                 ),
-              ),
-              FutureBuilder<List<FavoriteApprenticeshipOffer>>(
-                future: _favoriteOffersFuture,
-                builder: (context, snapshot) {
-                  return _ResultsSection(
-                    future: _resultsFuture,
-                    favorites: snapshot.data ?? const [],
-                    onRetry: _submitSearch,
-                    onToggleFavorite: _toggleFavoriteOrAskToSignIn,
-                  );
-                },
               ),
             ],
           );
@@ -311,6 +320,7 @@ class _ApprenticeshipsPageState extends State<ApprenticeshipsPage> {
   }
 
   void _submitSearch() {
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _resultsFuture = _search();
     });
@@ -575,7 +585,8 @@ class _ApplicationDocumentsSection extends StatelessWidget {
     CompanyDocument document,
   ) async {
     final link = document.link?.trim();
-    final localPath = document.filePath?.trim();
+    final localPath = await AttachmentPicker.resolve(document.filePath?.trim());
+    if (!context.mounted) return;
     final uri = localPath != null && localPath.isNotEmpty
         ? Uri.file(localPath)
         : link != null && link.isNotEmpty
@@ -698,7 +709,7 @@ class _AddApplicationDocumentSheetState
   final _linkController = TextEditingController();
   final _noteController = TextEditingController();
   String _kind = 'CV';
-  PlatformFile? _selectedFile;
+  PickedAttachment? _attachment;
 
   @override
   Widget build(BuildContext context) {
@@ -765,15 +776,17 @@ class _AddApplicationDocumentSheetState
               keyboardType: TextInputType.url,
             ),
             const SizedBox(height: 10),
-            OutlinedButton.icon(
-              onPressed: _pickFile,
-              icon: const Icon(Icons.upload_file_outlined),
-              label: Text(
-                _selectedFile == null
-                    ? 'Importer un fichier'
-                    : 'Fichier : ${_selectedFile!.name}',
-                overflow: TextOverflow.ellipsis,
-              ),
+            AttachmentButtons(
+              attachment: _attachment,
+              allowedExtensions: const [
+                'pdf',
+                'doc',
+                'docx',
+                'png',
+                'jpg',
+                'jpeg',
+              ],
+              onPicked: _attach,
             ),
             const SizedBox(height: 12),
             TextFormField(
@@ -822,29 +835,22 @@ class _AddApplicationDocumentSheetState
       scope: 'apprenticeship',
       link: _linkController.text,
       note: _noteController.text,
-      fileName: _selectedFile?.name,
-      filePath: _selectedFile?.path,
-      fileSizeBytes: _selectedFile?.size,
+      fileName: _attachment?.name,
+      filePath: _attachment?.path,
+      fileSizeBytes: _attachment?.sizeBytes,
     );
 
     Navigator.pop(context);
   }
 
-  Future<void> _pickFile() async {
-    final result = await FilePicker.platform.pickFiles(
-      allowMultiple: false,
-      withData: false,
-      type: FileType.custom,
-      allowedExtensions: const ['pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg'],
-    );
-    final files = result?.files;
-    final file = files == null || files.isEmpty ? null : files.first;
-    if (file == null || !mounted) return;
+  void _attach(PickedAttachment attachment) {
+    if (!mounted) return;
     setState(() {
-      _selectedFile = file;
-      if (_titleController.text.trim().isEmpty ||
-          _titleController.text == _kind) {
-        _titleController.text = file.name;
+      _attachment = attachment;
+      if (!attachment.isPhoto &&
+          (_titleController.text.trim().isEmpty ||
+              _titleController.text == _kind)) {
+        _titleController.text = attachment.name;
       }
     });
   }
@@ -1332,7 +1338,10 @@ class _OpportunityCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ProtoOverline(opportunity.source, color: AppColors.green),
+                    ProtoOverline(
+                      opportunity.sourceLabel,
+                      color: AppColors.green,
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       opportunity.title,

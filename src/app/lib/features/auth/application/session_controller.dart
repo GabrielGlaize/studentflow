@@ -107,11 +107,25 @@ class SessionController extends ChangeNotifier {
     return false;
   }
 
+  Future<EmailVerificationResult> requestEmailVerification({
+    required String email,
+  }) {
+    return _authRepository.requestEmailVerification(email: email);
+  }
+
+  /// Efface l'erreur affichée (par exemple quand l'élève corrige son adresse).
+  void clearError() {
+    if (_errorMessage == null) return;
+    _errorMessage = null;
+    notifyListeners();
+  }
+
   Future<bool> register({
     required String email,
     required String password,
     required String firstName,
     required String lastName,
+    String? emailCode,
   }) async {
     _status = SessionStatus.signingIn;
     _errorMessage = null;
@@ -123,6 +137,7 @@ class SessionController extends ChangeNotifier {
         password: password,
         firstName: firstName,
         lastName: lastName,
+        emailCode: emailCode,
       );
       await _sessionStorage.save(_session!);
       _status = SessionStatus.signedIn;
@@ -145,6 +160,7 @@ class SessionController extends ChangeNotifier {
     required String lastName,
     required String schoolClassName,
     required String schoolYear,
+    String? emailCode,
   }) async {
     _status = SessionStatus.signingIn;
     _errorMessage = null;
@@ -158,6 +174,7 @@ class SessionController extends ChangeNotifier {
         lastName: lastName,
         schoolClassName: schoolClassName,
         schoolYear: schoolYear,
+        emailCode: emailCode,
       );
       await _sessionStorage.save(_session!);
       _status = SessionStatus.signedIn;

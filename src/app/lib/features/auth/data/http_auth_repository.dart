@@ -26,11 +26,35 @@ class HttpAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<EmailVerificationResult> requestEmailVerification({
+    required String email,
+  }) async {
+    try {
+      final json = await _apiClient.postJson(
+        '/api/v1/auth/email-verification',
+        body: {'email': email.trim()},
+      );
+
+      return EmailVerificationResult.fromJson(json);
+    } on ApiException catch (error) {
+      // Serveur pas encore mis à jour : il crée le compte sans code.
+      if (error.statusCode == 404) {
+        return const EmailVerificationResult(
+          isRequired: false,
+          message: 'Aucun code nécessaire.',
+        );
+      }
+      throw AuthException(error.message, statusCode: error.statusCode);
+    }
+  }
+
+  @override
   Future<AuthSession> register({
     required String email,
     required String password,
     required String firstName,
     required String lastName,
+    String? emailCode,
   }) async {
     try {
       final json = await _apiClient.postJson(
@@ -40,6 +64,7 @@ class HttpAuthRepository implements AuthRepository {
           'password': password,
           'firstName': firstName.trim(),
           'lastName': lastName.trim(),
+          if (emailCode != null) 'emailCode': emailCode.trim(),
         },
       );
 
@@ -57,6 +82,7 @@ class HttpAuthRepository implements AuthRepository {
     required String lastName,
     required String schoolClassName,
     required String schoolYear,
+    String? emailCode,
   }) async {
     try {
       final json = await _apiClient.postJson(
@@ -68,6 +94,7 @@ class HttpAuthRepository implements AuthRepository {
           'lastName': lastName.trim(),
           'schoolClassName': schoolClassName.trim(),
           'schoolYear': schoolYear.trim(),
+          if (emailCode != null) 'emailCode': emailCode.trim(),
         },
       );
 

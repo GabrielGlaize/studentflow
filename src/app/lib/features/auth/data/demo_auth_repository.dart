@@ -44,11 +44,23 @@ class DemoAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<EmailVerificationResult> requestEmailVerification({
+    required String email,
+  }) async {
+    // Pas d'e-mail en démo : le compte se crée directement.
+    return const EmailVerificationResult(
+      isRequired: false,
+      message: 'Aucun code en mode démo.',
+    );
+  }
+
+  @override
   Future<AuthSession> register({
     required String email,
     required String password,
     required String firstName,
     required String lastName,
+    String? emailCode,
   }) async {
     await Future<void>.delayed(const Duration(milliseconds: 350));
     _validateAccount(email: email, password: password);
@@ -70,6 +82,7 @@ class DemoAuthRepository implements AuthRepository {
     required String lastName,
     required String schoolClassName,
     required String schoolYear,
+    String? emailCode,
   }) async {
     await Future<void>.delayed(const Duration(milliseconds: 450));
     _validateAccount(email: email, password: password);

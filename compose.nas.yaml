@@ -54,10 +54,14 @@ services:
       Adzuna__AppKey: ${ADZUNA_APP_KEY:-}
       FranceTravail__ClientId: ${FRANCE_TRAVAIL_CLIENT_ID:-}
       FranceTravail__ClientSecret: ${FRANCE_TRAVAIL_CLIENT_SECRET:-}
+      # Clé gratuite : https://api.apprentissage.beta.gouv.fr/compte/profil
+      LaBonneAlternance__AccessToken: ${LBA_API_KEY:-}
       # Notifications push : vide = notifications seulement journalisées.
       Firebase__CredentialsPath: ${STUDYFLOW_FIREBASE_CREDENTIALS_PATH:-}
       NotificationWorker__Enabled: ${STUDYFLOW_NOTIFICATIONS_ENABLED:-true}
-      # E-mails (réinitialisation de mot de passe). Vide = aucun e-mail envoyé.
+      # Code envoyé par e-mail pour créer un compte : exige le SMTP ci-dessous.
+      Security__RequireEmailVerification: ${STUDYFLOW_REQUIRE_EMAIL_VERIFICATION:-true}
+      # E-mails (code d'inscription, réinitialisation de mot de passe). Vide = aucun e-mail envoyé.
       Email__From: ${STUDYFLOW_EMAIL_FROM:-}
       Email__Host: ${STUDYFLOW_EMAIL_HOST:-}
       Email__Port: ${STUDYFLOW_EMAIL_PORT:-587}

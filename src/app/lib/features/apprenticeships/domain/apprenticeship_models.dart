@@ -32,6 +32,15 @@ class ApprenticeshipOpportunity {
   final String? summary;
   final String applicationUrl;
 
+  /// Nom lisible de la source (« france-travail » → « France Travail »).
+  String get sourceLabel => switch (source) {
+    'adzuna' => 'Adzuna',
+    'france-travail' => 'France Travail',
+    'la-bonne-alternance' => 'La bonne alternance',
+    final value when value.startsWith('demo') => 'Démo',
+    final value => value,
+  };
+
   /// Offre fictive renvoyée tant qu'aucune source réelle n'est configurée.
   final bool isDemo;
 

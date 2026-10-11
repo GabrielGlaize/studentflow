@@ -27,6 +27,8 @@ class AppSettingsController extends ChangeNotifier {
   bool _dailyNoteReminderEnabled = true;
   int _dailyNoteReminderMinutes = 19 * 60;
   bool _tutorialPending = false;
+  bool _scheduleWeekView = true;
+  DateTime? _appPreferencesUpdatedAt;
 
   ThemeMode get themeMode => _themeMode;
   bool get hasCompany => _hasCompany;
@@ -44,6 +46,13 @@ class AppSettingsController extends ChangeNotifier {
   /// Rappel du soir pour relire la note du jour.
   bool get dailyNoteReminderEnabled =>
       _dailyNotesEnabled && _dailyNoteReminderEnabled;
+
+  /// Planning ouvert en vue semaine (par défaut) ou jour : le dernier choix.
+  bool get scheduleWeekView => _scheduleWeekView;
+
+  /// Dernière modification du thème ou de l'entreprise, sur ce téléphone ou
+  /// reprise du serveur : la plus récente des deux versions l'emporte.
+  DateTime? get appPreferencesUpdatedAt => _appPreferencesUpdatedAt;
 
   /// Présentation à montrer (compte tout juste créé sur ce téléphone).
   bool get tutorialPending => _tutorialPending;
@@ -83,6 +92,16 @@ class AppSettingsController extends ChangeNotifier {
     _dailyNoteReminderEnabled = settings.dailyNoteReminderEnabled;
     _dailyNoteReminderMinutes = settings.dailyNoteReminderMinutes;
     _tutorialPending = _tutorialPending || settings.tutorialPending;
+    _scheduleWeekView = settings.scheduleWeekView;
+    _appPreferencesUpdatedAt = settings.appPreferencesUpdatedAt;
+    notifyListeners();
+  }
+
+  void setScheduleWeekView(bool value) {
+    if (_scheduleWeekView == value) return;
+
+    _scheduleWeekView = value;
+    _save();
     notifyListeners();
   }
 
@@ -90,6 +109,7 @@ class AppSettingsController extends ChangeNotifier {
     if (_themeMode == value) return;
 
     _themeMode = value;
+    _touchAppPreferences();
     _save();
     notifyListeners();
   }
@@ -99,20 +119,35 @@ class AppSettingsController extends ChangeNotifier {
 
     _hasCompany = value;
     if (!value) _companyName = null;
+    _touchAppPreferences();
     _save();
     notifyListeners();
   }
 
+  /// Réglages repris du serveur, plus récents que ceux du téléphone.
   void applyAppPreferences({
     required ThemeMode themeMode,
     required bool hasCompany,
     String? companyName,
+    DateTime? updatedAt,
   }) {
     _themeMode = themeMode;
     _hasCompany = hasCompany;
     _companyName = hasCompany ? _cleanOptional(companyName) : null;
+    _appPreferencesUpdatedAt = updatedAt ?? _appPreferencesUpdatedAt;
     _save();
     notifyListeners();
+  }
+
+  /// Le serveur a enregistré les réglages : son horodatage devient la référence.
+  void markAppPreferencesSynced(DateTime? updatedAt) {
+    if (updatedAt == null || updatedAt == _appPreferencesUpdatedAt) return;
+    _appPreferencesUpdatedAt = updatedAt;
+    _save();
+  }
+
+  void _touchAppPreferences() {
+    _appPreferencesUpdatedAt = DateTime.now().toUtc();
   }
 
   void setCompanyName(String? value) {
@@ -120,6 +155,7 @@ class AppSettingsController extends ChangeNotifier {
     if (_companyName == cleanedValue) return;
 
     _companyName = cleanedValue;
+    _touchAppPreferences();
     _save();
     notifyListeners();
   }
@@ -222,6 +258,8 @@ class AppSettingsController extends ChangeNotifier {
       dailyNoteReminderEnabled: _dailyNoteReminderEnabled,
       dailyNoteReminderMinutes: _dailyNoteReminderMinutes,
       tutorialPending: _tutorialPending,
+      scheduleWeekView: _scheduleWeekView,
+      appPreferencesUpdatedAt: _appPreferencesUpdatedAt,
     );
   }
 
@@ -245,6 +283,8 @@ class AppSettings {
     this.dailyNoteReminderEnabled = true,
     this.dailyNoteReminderMinutes = 19 * 60,
     this.tutorialPending = false,
+    this.scheduleWeekView = true,
+    this.appPreferencesUpdatedAt,
   });
 
   final ThemeMode themeMode;
@@ -259,6 +299,8 @@ class AppSettings {
   final bool dailyNoteReminderEnabled;
   final int dailyNoteReminderMinutes;
   final bool tutorialPending;
+  final bool scheduleWeekView;
+  final DateTime? appPreferencesUpdatedAt;
 
   factory AppSettings.fromJson(Map<String, Object?> json) {
     return AppSettings(
@@ -279,6 +321,10 @@ class AppSettings {
       dailyNoteReminderMinutes:
           (json['dailyNoteReminderMinutes'] as num?)?.toInt() ?? 19 * 60,
       tutorialPending: json['tutorialPending'] as bool? ?? false,
+      scheduleWeekView: json['scheduleWeekView'] as bool? ?? true,
+      appPreferencesUpdatedAt: DateTime.tryParse(
+        json['appPreferencesUpdatedAt'] as String? ?? '',
+      ),
     );
   }
 
@@ -296,6 +342,8 @@ class AppSettings {
       'dailyNoteReminderEnabled': dailyNoteReminderEnabled,
       'dailyNoteReminderMinutes': dailyNoteReminderMinutes,
       'tutorialPending': tutorialPending,
+      'scheduleWeekView': scheduleWeekView,
+      'appPreferencesUpdatedAt': appPreferencesUpdatedAt?.toIso8601String(),
     };
   }
 

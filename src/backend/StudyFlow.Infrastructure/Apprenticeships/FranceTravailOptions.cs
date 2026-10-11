@@ -11,5 +11,4 @@ public sealed class FranceTravailOptions
     public string? ClientSecret { get; set; }
     public string Scope { get; set; } = "api_offresdemploiv2 o2dsoffre";
     public int ResultsPerPage { get; set; } = 10;
-    public bool UseDemoWhenNotConfigured { get; set; } = false;
 }

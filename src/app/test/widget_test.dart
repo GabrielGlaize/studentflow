@@ -147,14 +147,19 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Alternances'), findsWidgets);
-    expect(find.text('Offres partagées par la classe'), findsOneWidget);
-    expect(find.textContaining('Atelier Numérique'), findsWidgets);
-
-    await tester.drag(find.byType(ListView), const Offset(0, -900));
-    await tester.pumpAndSettle();
-
+    // Les offres s'affichent juste sous la recherche, l'entraide de classe ensuite.
     expect(find.text('Alternance développeur Flutter'), findsOneWidget);
     expect(find.text('Voir l’offre'), findsWidgets);
+
+    await tester.scrollUntilVisible(
+      find.text('Offres partagées par la classe'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Offres partagées par la classe'), findsOneWidget);
+    expect(find.textContaining('Atelier Numérique'), findsWidgets);
 
     await tester.tap(find.text('Profil'));
     await tester.pumpAndSettle();

@@ -1,13 +1,13 @@
 import 'dart:async';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:studyflow_app/core/app_scope.dart';
 import 'package:studyflow_app/core/theme/app_colors.dart';
 import 'package:studyflow_app/core/theme/prototype_widgets.dart';
+import 'package:studyflow_app/core/widgets/attachment_picker.dart';
 import 'package:studyflow_app/features/company/application/company_contacts_controller.dart';
 import 'package:studyflow_app/features/company/application/company_documents_controller.dart';
-import 'package:studyflow_app/features/profile/domain/app_preferences.dart';
+import 'package:studyflow_app/features/profile/application/app_preferences_sync.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class CompanyPage extends StatefulWidget {
@@ -262,26 +262,9 @@ class _CompanyNameSheetState extends State<_CompanyNameSheet> {
 
   void _save() {
     final appScope = AppScope.of(context);
-    final settings = appScope.settingsController;
-    settings.setCompanyName(_nameController.text);
+    appScope.settingsController.setCompanyName(_nameController.text);
 
-    unawaited(() async {
-      try {
-        final accessToken = await appScope.sessionController
-            .accessTokenForApi();
-        await appScope.appPreferencesRepository.updatePreferences(
-          preferences: RemoteAppPreferences(
-            themeMode: settings.themeMode,
-            hasCompany: settings.hasCompany,
-            companyName: settings.companyName,
-            professionalMode: ProfessionalMode.company,
-          ),
-          accessToken: accessToken,
-        );
-      } on Exception {
-        // The local preference is already saved; syncing can be retried later.
-      }
-    }());
+    unawaited(AppPreferencesSync.push(appScope));
 
     Navigator.pop(context);
   }
@@ -490,7 +473,8 @@ class _DocumentsSection extends StatelessWidget {
     CompanyDocument document,
   ) async {
     final link = document.link?.trim();
-    final localPath = document.filePath?.trim();
+    final localPath = await AttachmentPicker.resolve(document.filePath?.trim());
+    if (!context.mounted) return;
     final uri = localPath != null && localPath.isNotEmpty
         ? Uri.file(localPath)
         : link != null && link.isNotEmpty
@@ -598,7 +582,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
   bool _addingKind = false;
   final _linkController = TextEditingController();
   final _noteController = TextEditingController();
-  PlatformFile? _selectedFile;
+  PickedAttachment? _attachment;
 
   @override
   Widget build(BuildContext context) {
@@ -646,16 +630,7 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
                 keyboardType: TextInputType.url,
               ),
               const SizedBox(height: 10),
-              OutlinedButton.icon(
-                onPressed: _pickFile,
-                icon: const Icon(Icons.upload_file_outlined),
-                label: Text(
-                  _selectedFile == null
-                      ? 'Importer depuis fichiers'
-                      : 'Fichier : ${_selectedFile!.name}',
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
+              AttachmentButtons(attachment: _attachment, onPicked: _attach),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _noteController,
@@ -809,26 +784,20 @@ class _AddDocumentSheetState extends State<_AddDocumentSheet> {
       kind: _kind,
       link: _linkController.text,
       note: _noteController.text,
-      fileName: _selectedFile?.name,
-      filePath: _selectedFile?.path,
-      fileSizeBytes: _selectedFile?.size,
+      fileName: _attachment?.name,
+      filePath: _attachment?.path,
+      fileSizeBytes: _attachment?.sizeBytes,
     );
 
     Navigator.pop(context);
   }
 
-  Future<void> _pickFile() async {
-    final result = await FilePicker.platform.pickFiles(
-      allowMultiple: false,
-      withData: false,
-    );
-    final files = result?.files;
-    final file = files == null || files.isEmpty ? null : files.first;
-    if (file == null || !mounted) return;
+  void _attach(PickedAttachment attachment) {
+    if (!mounted) return;
     setState(() {
-      _selectedFile = file;
+      _attachment = attachment;
       if (_titleController.text.trim().isEmpty) {
-        _titleController.text = file.name;
+        _titleController.text = attachment.isPhoto ? _kind : attachment.name;
       }
     });
   }

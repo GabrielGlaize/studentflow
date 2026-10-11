@@ -1,12 +1,14 @@
 namespace StudyFlow.Application.Apprenticeships;
 
+/// <param name="CityCode">Code INSEE de la commune, trouvé à partir de <paramref name="Location"/>.</param>
 public sealed record ApprenticeshipOpportunitySearchQuery(
     string Keywords,
     string? Location,
     decimal? Latitude,
     decimal? Longitude,
     int? DistanceKm,
-    IReadOnlyCollection<string> RomeCodes);
+    IReadOnlyCollection<string> RomeCodes,
+    string? CityCode = null);
 
 public sealed record ApprenticeshipOpportunity(
     string Source,

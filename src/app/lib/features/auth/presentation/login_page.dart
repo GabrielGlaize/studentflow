@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:studyflow_app/core/app_scope.dart';
 import 'package:studyflow_app/core/theme/app_colors.dart';
 import 'package:studyflow_app/core/theme/prototype_widgets.dart';
+import 'package:studyflow_app/core/widgets/grouped_code_formatter.dart';
+import 'package:studyflow_app/core/widgets/password_rules.dart';
 import 'package:studyflow_app/features/auth/application/session_controller.dart';
 import 'package:studyflow_app/features/auth/data/remembered_credentials_store.dart';
 import 'package:studyflow_app/features/apprenticeships/presentation/apprenticeships_page.dart';
@@ -435,6 +437,7 @@ class _PasswordResetSheetState extends State<_PasswordResetSheet> {
                   autocorrect: false,
                   enableSuggestions: false,
                   textCapitalization: TextCapitalization.characters,
+                  inputFormatters: const [GroupedCodeFormatter()],
                   // iOS propose le code reçu par e-mail au-dessus du clavier.
                   autofillHints: const [AutofillHints.oneTimeCode],
                   style: const TextStyle(
@@ -479,8 +482,10 @@ class _PasswordResetSheetState extends State<_PasswordResetSheet> {
                       ),
                     ),
                   ),
-                  validator: _validatePassword,
+                  validator: PasswordRules.validate,
                 ),
+                const SizedBox(height: 8),
+                PasswordChecklist(controller: _passwordController),
               ],
               if (_hasRequestedToken)
                 Align(
@@ -610,18 +615,6 @@ class _PasswordResetSheetState extends State<_PasswordResetSheet> {
     final email = value?.trim() ?? '';
     if (email.isEmpty) return 'Entre ton adresse e-mail.';
     if (!email.contains('@')) return 'Adresse e-mail invalide.';
-    return null;
-  }
-
-  String? _validatePassword(String? value) {
-    final password = value ?? '';
-    if (password.length < 10) return 'Au moins 10 caractères.';
-    if (!RegExp('[A-Z]').hasMatch(password)) return 'Ajoute une majuscule.';
-    if (!RegExp('[a-z]').hasMatch(password)) return 'Ajoute une minuscule.';
-    if (!RegExp('[0-9]').hasMatch(password)) return 'Ajoute un chiffre.';
-    if (!RegExp(r'[^A-Za-z0-9]').hasMatch(password)) {
-      return 'Ajoute un caractère spécial.';
-    }
     return null;
   }
 

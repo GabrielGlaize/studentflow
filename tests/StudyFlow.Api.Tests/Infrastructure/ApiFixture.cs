@@ -68,6 +68,8 @@ public sealed class ApiFactory(
             ["Security:LookupKey"] = "tests-only-lookup-key-0123456789abcdef",
             ["Security:DataProtectionKeysPath"] = dataProtectionKeysPath,
             ["Database:ApplyMigrationsOnStartup"] = "true",
+            // Les tests d'inscription par code (EmailVerificationTests) le réactivent.
+            ["Security:RequireEmailVerification"] = "false",
             ["NotificationWorker:Enabled"] = "false",
             ["RateLimiting:Credentials:PermitLimit"] = "100000",
             ["RateLimiting:Refresh:PermitLimit"] = "100000",

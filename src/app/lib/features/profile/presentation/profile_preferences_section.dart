@@ -183,22 +183,7 @@ class _AppPreferencesLoaderState extends State<_AppPreferencesLoader> {
   @override
   Widget build(BuildContext context) => const SizedBox.shrink();
 
-  Future<void> _load() async {
-    final appScope = AppScope.of(context);
-    try {
-      final accessToken = await appScope.sessionController.accessTokenForApi();
-      final preferences = await appScope.appPreferencesRepository
-          .getPreferences(accessToken: accessToken);
-      if (!mounted) return;
-      appScope.settingsController.applyAppPreferences(
-        themeMode: preferences.themeMode,
-        hasCompany: preferences.hasCompany,
-        companyName: preferences.companyName,
-      );
-    } on Exception {
-      // Local settings remain usable if the API is unavailable.
-    }
-  }
+  Future<void> _load() => AppPreferencesSync.reconcile(AppScope.of(context));
 }
 
 class _NotificationPreferencesLoader extends StatefulWidget {
@@ -245,27 +230,7 @@ class _NotificationPreferencesLoaderState
 }
 
 void _syncAppPreferences(BuildContext context) {
-  final appScope = AppScope.of(context);
-  final settings = appScope.settingsController;
-
-  unawaited(() async {
-    try {
-      final accessToken = await appScope.sessionController.accessTokenForApi();
-      await appScope.appPreferencesRepository.updatePreferences(
-        preferences: RemoteAppPreferences(
-          themeMode: settings.themeMode,
-          hasCompany: settings.hasCompany,
-          companyName: settings.companyName,
-          professionalMode: settings.hasCompany
-              ? ProfessionalMode.company
-              : ProfessionalMode.apprenticeship,
-        ),
-        accessToken: accessToken,
-      );
-    } on Exception {
-      // The local preference is already saved; syncing can be retried later.
-    }
-  }());
+  unawaited(AppPreferencesSync.push(AppScope.of(context)));
 }
 
 void _syncNotificationPreferences(BuildContext context) {

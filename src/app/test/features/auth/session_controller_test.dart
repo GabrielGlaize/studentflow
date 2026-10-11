@@ -279,11 +279,19 @@ class _FakeAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<EmailVerificationResult> requestEmailVerification({
+    required String email,
+  }) async {
+    return const EmailVerificationResult(isRequired: false, message: 'ok');
+  }
+
+  @override
   Future<AuthSession> register({
     required String email,
     required String password,
     required String firstName,
     required String lastName,
+    String? emailCode,
   }) async {
     return _session;
   }
@@ -296,6 +304,7 @@ class _FakeAuthRepository implements AuthRepository {
     required String lastName,
     required String schoolClassName,
     required String schoolYear,
+    String? emailCode,
   }) async {
     return _session;
   }
@@ -339,11 +348,19 @@ class _FailingLogoutAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<EmailVerificationResult> requestEmailVerification({
+    required String email,
+  }) async {
+    return const EmailVerificationResult(isRequired: false, message: 'ok');
+  }
+
+  @override
   Future<AuthSession> register({
     required String email,
     required String password,
     required String firstName,
     required String lastName,
+    String? emailCode,
   }) async {
     return _session;
   }
@@ -356,6 +373,7 @@ class _FailingLogoutAuthRepository implements AuthRepository {
     required String lastName,
     required String schoolClassName,
     required String schoolYear,
+    String? emailCode,
   }) async {
     return _session;
   }
@@ -401,11 +419,19 @@ class _RefreshingAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<EmailVerificationResult> requestEmailVerification({
+    required String email,
+  }) async {
+    return const EmailVerificationResult(isRequired: false, message: 'ok');
+  }
+
+  @override
   Future<AuthSession> register({
     required String email,
     required String password,
     required String firstName,
     required String lastName,
+    String? emailCode,
   }) async {
     return _session;
   }
@@ -418,6 +444,7 @@ class _RefreshingAuthRepository implements AuthRepository {
     required String lastName,
     required String schoolClassName,
     required String schoolYear,
+    String? emailCode,
   }) async {
     return _session;
   }
@@ -466,11 +493,19 @@ class _FailingRefreshAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<EmailVerificationResult> requestEmailVerification({
+    required String email,
+  }) async {
+    return const EmailVerificationResult(isRequired: false, message: 'ok');
+  }
+
+  @override
   Future<AuthSession> register({
     required String email,
     required String password,
     required String firstName,
     required String lastName,
+    String? emailCode,
   }) async {
     return _session;
   }
@@ -483,6 +518,7 @@ class _FailingRefreshAuthRepository implements AuthRepository {
     required String lastName,
     required String schoolClassName,
     required String schoolYear,
+    String? emailCode,
   }) async {
     return _session;
   }

@@ -30,7 +30,9 @@ class _SchedulePageState extends State<SchedulePage> {
 
   late final DateTime _anchorMonday;
   late DateTime _selectedDay;
-  bool _showWholeWeek = false;
+  /// Vue semaine par défaut ; sinon le dernier choix (gardé dans les réglages).
+  bool _showWholeWeek = true;
+  bool _viewRestored = false;
   late PageController _dayController;
   late PageController _weekController;
   final Map<DateTime, Future<List<CourseItem>>> _weeks = {};
@@ -56,6 +58,10 @@ class _SchedulePageState extends State<SchedulePage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (!_viewRestored) {
+      _viewRestored = true;
+      _showWholeWeek = AppScope.of(context).settingsController.scheduleWeekView;
+    }
     _hasClass =
         AppScope.of(context).sessionController.session?.user.schoolClassId !=
         null;
@@ -202,7 +208,7 @@ class _SchedulePageState extends State<SchedulePage> {
                 padding: const EdgeInsets.fromLTRB(18, 12, 18, 4),
                 child: _PlanningViewSwitch(
                   showWholeWeek: _showWholeWeek,
-                  onChanged: _setWholeWeek,
+                  onChanged: _chooseView,
                 ),
               ),
               Expanded(
@@ -452,6 +458,12 @@ class _SchedulePageState extends State<SchedulePage> {
         .toList();
     if (names.length == 1) return names.single;
     return '${names.take(names.length - 1).join(', ')} et ${names.last}';
+  }
+
+  /// Choix explicite Jour / Semaine : retenu pour la prochaine ouverture.
+  void _chooseView(bool wholeWeek) {
+    AppScope.of(context).settingsController.setScheduleWeekView(wholeWeek);
+    _setWholeWeek(wholeWeek);
   }
 
   void _setWholeWeek(bool value) {

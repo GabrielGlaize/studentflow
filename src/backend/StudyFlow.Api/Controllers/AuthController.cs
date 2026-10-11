@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -20,6 +21,7 @@ public sealed class AuthController(
     StudyFlowDbContext dbContext,
     IAuthTokenService tokenService,
     IPasswordResetService passwordResetService,
+    IEmailVerificationService emailVerificationService,
     IClassCodeService classCodeService,
     IAccountDeletionService accountDeletionService) : StudyFlowControllerBase(userManager)
 {
@@ -29,10 +31,13 @@ public sealed class AuthController(
     {
         var namesProblem = ValidateNames(request.FirstName, request.LastName);
         if (namesProblem is not null) return namesProblem;
+        var codeProblem = await CheckEmailCodeAsync(request.Email, request.EmailCode, cancellationToken);
+        if (codeProblem is not null) return codeProblem;
 
         var user = NewUser(request.Email, request.FirstName, request.LastName);
         var result = await UserManager.CreateAsync(user, request.Password);
         if (!result.Succeeded) return IdentityValidationProblem(result);
+        await ConfirmEmailAsync(user, cancellationToken);
 
         return Ok(await CreateResponseAsync(user, cancellationToken));
     }
@@ -54,6 +59,8 @@ public sealed class AuthController(
         {
             return ConflictProblem("Ce nom de classe est deja utilise.");
         }
+        var codeProblem = await CheckEmailCodeAsync(request.Email, request.EmailCode, cancellationToken);
+        if (codeProblem is not null) return codeProblem;
 
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         var user = NewUser(request.Email, request.FirstName, request.LastName);
@@ -74,6 +81,7 @@ public sealed class AuthController(
         user.SchoolClassId = schoolClass.Id;
         user.UpdatedAt = DateTimeOffset.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
+        await ConfirmEmailAsync(user, cancellationToken);
 
         result = await UserManager.AddToRolesAsync(user, [nameof(UserRole.Eleve), nameof(UserRole.Delegue)]);
         if (!result.Succeeded) return IdentityValidationProblem(result);
@@ -129,6 +137,46 @@ public sealed class AuthController(
             AccountDeletionResult.LastDelegate => ConflictProblem(
                 "Nommez un autre delegue avant de supprimer votre compte."),
             _ => Unauthorized()
+        };
+    }
+
+    /// <summary>Envoie le code à saisir pour créer le compte : il prouve que l'adresse est bien la sienne.</summary>
+    [EnableRateLimiting(RateLimiting.Credentials)]
+    [HttpPost("email-verification")]
+    public async Task<ActionResult<EmailVerificationResponse>> RequestEmailVerification(
+        EmailVerificationRequest request,
+        CancellationToken cancellationToken)
+    {
+        var email = request.Email?.Trim() ?? "";
+        if (!new EmailAddressAttribute().IsValid(email)) return BadRequestProblem("Adresse e-mail invalide.");
+        if (!emailVerificationService.IsRequired)
+        {
+            return Ok(new EmailVerificationResponse("Aucun code n'est nécessaire sur ce serveur.", Required: false));
+        }
+
+        var result = await emailVerificationService.RequestCodeAsync(email, cancellationToken);
+        return result.Status switch
+        {
+            EmailVerificationRequestStatus.Sent => Ok(new EmailVerificationResponse(
+                $"Code envoyé à {email} (pense à regarder les spams). Il est valable 15 minutes.",
+                Required: true,
+                result.DevelopmentCode,
+                result.ExpiresAt)),
+            EmailVerificationRequestStatus.AlreadyRegistered => ConflictProblem(
+                "Un compte existe déjà avec cette adresse e-mail.",
+                "Connecte-toi ou utilise « Mot de passe oublié ? »."),
+            EmailVerificationRequestStatus.TooSoon => StatusCode(StatusCodes.Status429TooManyRequests, new ProblemDetails
+            {
+                Title = "Un code vient d'être envoyé.",
+                Detail = "Attends une minute avant d'en redemander un.",
+                Status = StatusCodes.Status429TooManyRequests
+            }),
+            _ => StatusCode(StatusCodes.Status503ServiceUnavailable, new ProblemDetails
+            {
+                Title = "L'envoi d'e-mails n'est pas disponible pour le moment.",
+                Detail = "Réessaie plus tard.",
+                Status = StatusCodes.Status503ServiceUnavailable
+            })
         };
     }
 
@@ -209,6 +257,26 @@ public sealed class AuthController(
         Detail = "E-mail ou mot de passe incorrect. Après 5 essais ratés, le compte est bloqué 15 minutes.",
         Status = StatusCodes.Status401Unauthorized
     });
+
+    private async Task<ObjectResult?> CheckEmailCodeAsync(string email, string? code, CancellationToken cancellationToken)
+    {
+        if (!emailVerificationService.IsRequired) return null;
+        if (string.IsNullOrWhiteSpace(code)) return BadRequestProblem("Saisis le code reçu par e-mail.");
+
+        return await emailVerificationService.CheckCodeAsync(email, code, cancellationToken)
+            ? null
+            : BadRequestProblem("Code de vérification incorrect ou expiré. Vérifie-le ou demande un nouveau code.");
+    }
+
+    /// <summary>Le code vient d'être vérifié : l'adresse est confirmée et le code ne resservira pas.</summary>
+    private async Task ConfirmEmailAsync(ApplicationUser user, CancellationToken cancellationToken)
+    {
+        if (!emailVerificationService.IsRequired) return;
+
+        await emailVerificationService.ConsumeCodeAsync(user.Email!, cancellationToken);
+        user.EmailConfirmed = true;
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
 
     private ObjectResult? ValidateNames(string firstName, string lastName)
     {

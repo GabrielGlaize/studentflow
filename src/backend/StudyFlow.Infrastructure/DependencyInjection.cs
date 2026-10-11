@@ -64,6 +64,7 @@ public static class DependencyInjection
                 options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
             })
             .AddRoles<IdentityRole<Guid>>()
+            .AddErrorDescriber<FrenchIdentityErrorDescriber>()
             .AddEntityFrameworkStores<StudyFlowDbContext>()
             .AddDefaultTokenProviders();
 
@@ -86,6 +87,7 @@ public static class DependencyInjection
         services.Configure<AdzunaOptions>(configuration.GetSection(AdzunaOptions.SectionName));
         services.Configure<LaBonneAlternanceOptions>(configuration.GetSection(LaBonneAlternanceOptions.SectionName));
         services.Configure<FranceTravailOptions>(configuration.GetSection(FranceTravailOptions.SectionName));
+        services.Configure<GeocodingOptions>(configuration.GetSection(GeocodingOptions.SectionName));
         services.Configure<NotificationWorkerOptions>(configuration.GetSection(NotificationWorkerOptions.SectionName));
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
         services.Configure<SchoolTimeOptions>(configuration.GetSection(SchoolTimeOptions.SectionName));
@@ -162,7 +164,10 @@ public static class DependencyInjection
         services.AddScoped<IClassCodeService, ClassCodeService>();
         services.AddScoped<IAuthTokenService, AuthTokenService>();
         services.AddScoped<IPasswordResetService, PasswordResetService>();
-        services.AddScoped<IPasswordResetEmailSender, PasswordResetEmailSender>();
+        services.AddScoped<IEmailVerificationService, EmailVerificationService>();
+        services.AddScoped<SmtpEmailSender>();
+        services.AddScoped<IPasswordResetEmailSender>(provider => provider.GetRequiredService<SmtpEmailSender>());
+        services.AddScoped<IEmailVerificationSender>(provider => provider.GetRequiredService<SmtpEmailSender>());
         services.AddScoped<IAccountDeletionService, AccountDeletionService>();
         services.AddScoped<INotificationReminderPlanner, NotificationReminderPlanner>();
         AddPushNotifications(services, configuration);
@@ -172,6 +177,7 @@ public static class DependencyInjection
         services.AddHttpClient<LaBonneAlternanceOpportunityProvider>(client => client.Timeout = ApprenticeshipProviderTimeout);
         services.AddHttpClient<AdzunaOpportunityProvider>(client => client.Timeout = ApprenticeshipProviderTimeout);
         services.AddHttpClient<FranceTravailOpportunityProvider>(client => client.Timeout = ApprenticeshipProviderTimeout);
+        services.AddHttpClient<CityGeocoder>(client => client.Timeout = ApprenticeshipProviderTimeout);
         services.AddSingleton<FranceTravailTokenCache>();
         services.AddSingleton<ApprenticeshipSearchCache>();
         services.AddScoped<CompositeApprenticeshipOpportunityProvider>();

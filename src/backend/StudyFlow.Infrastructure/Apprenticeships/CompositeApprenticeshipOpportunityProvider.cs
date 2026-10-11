@@ -7,9 +7,12 @@ public sealed class CompositeApprenticeshipOpportunityProvider(
     LaBonneAlternanceOpportunityProvider laBonneAlternanceProvider,
     AdzunaOpportunityProvider adzunaProvider,
     FranceTravailOpportunityProvider franceTravailProvider,
+    CityGeocoder geocoder,
     ILogger<CompositeApprenticeshipOpportunityProvider> logger) : IApprenticeshipOpportunityProvider
 {
-    private readonly IApprenticeshipOpportunityProvider[] _providers =
+    private const int MaxResults = 40;
+
+    private readonly IExternalOpportunitySource[] _sources =
     [
         laBonneAlternanceProvider,
         adzunaProvider,
@@ -20,16 +23,47 @@ public sealed class CompositeApprenticeshipOpportunityProvider(
         ApprenticeshipOpportunitySearchQuery query,
         CancellationToken cancellationToken = default)
     {
-        var searches = _providers.Select(provider => SearchSafelyAsync(provider, query, cancellationToken));
+        // Les offres fictives ne se mélangent jamais aux vraies : seulement si aucune source n'est configurée.
+        var sources = _sources.Where(source => source.IsConfigured).ToArray();
+        if (sources.Length == 0) return DemoOpportunities.For(query);
+
+        var locatedQuery = await LocateAsync(query, cancellationToken);
+        var searches = sources.Select(source => SearchSafelyAsync(source, locatedQuery, cancellationToken));
         var providerResults = await Task.WhenAll(searches);
 
-        return providerResults
-            .SelectMany(x => x)
-            .GroupBy(DeduplicationKey, StringComparer.OrdinalIgnoreCase)
-            .Select(group => group.OrderByDescending(x => x.PublishedAt ?? DateTimeOffset.MinValue).First())
-            .OrderByDescending(x => x.PublishedAt ?? DateTimeOffset.MinValue)
-            .Take(30)
-            .ToArray();
+        // Chaque source renvoie ses offres les plus pertinentes d'abord : on les alterne pour garder
+        // cet ordre, au lieu de trier par date (une offre récente mais hors sujet passerait devant).
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var merged = new List<ApprenticeshipOpportunity>();
+        var longest = providerResults.Length == 0 ? 0 : providerResults.Max(x => x.Count);
+        for (var rank = 0; rank < longest && merged.Count < MaxResults; rank++)
+        {
+            foreach (var results in providerResults)
+            {
+                var offer = results.ElementAtOrDefault(rank);
+                if (offer is not null && seen.Add(DeduplicationKey(offer))) merged.Add(offer);
+            }
+        }
+
+        return merged.Take(MaxResults).ToArray();
+    }
+
+    private async Task<ApprenticeshipOpportunitySearchQuery> LocateAsync(
+        ApprenticeshipOpportunitySearchQuery query,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(query.Location)) return query;
+
+        var city = await geocoder.FindAsync(query.Location, cancellationToken);
+        if (city is null) return query;
+
+        return query with
+        {
+            Location = city.Label,
+            CityCode = city.CityCode,
+            Latitude = query.Latitude ?? city.Latitude,
+            Longitude = query.Longitude ?? city.Longitude
+        };
     }
 
     private async Task<IReadOnlyCollection<ApprenticeshipOpportunity>> SearchSafelyAsync(

@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Swikko utilise l’appareil photo pour photographier un document (contrat, fiche de paie…) que tu joins à ton espace entreprise.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Swikko accède à tes photos pour joindre une image à un document ou à ta carte étudiante.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

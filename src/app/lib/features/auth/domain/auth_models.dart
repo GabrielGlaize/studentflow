@@ -135,3 +135,25 @@ class PasswordResetRequestResult {
     );
   }
 }
+
+/// Réponse à la demande de code d'inscription envoyé par e-mail.
+class EmailVerificationResult {
+  const EmailVerificationResult({
+    required this.isRequired,
+    required this.message,
+    this.developmentCode,
+  });
+
+  /// Faux sur un serveur qui n'exige pas de code (démo, ancienne version).
+  final bool isRequired;
+  final String message;
+  final String? developmentCode;
+
+  factory EmailVerificationResult.fromJson(Map<String, Object?> json) {
+    return EmailVerificationResult(
+      isRequired: json['required'] as bool? ?? true,
+      message: json['message'] as String? ?? 'Code envoyé.',
+      developmentCode: json['developmentCode'] as String?,
+    );
+  }
+}

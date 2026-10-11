@@ -11,6 +11,7 @@ import 'package:studyflow_app/core/settings/app_settings_controller.dart';
 import 'package:studyflow_app/core/settings/quiet_hours.dart';
 import 'package:studyflow_app/core/theme/prototype_widgets.dart';
 import 'package:studyflow_app/core/widgets/date_time_pickers.dart';
+import 'package:studyflow_app/core/widgets/grouped_code_formatter.dart';
 import 'package:studyflow_app/core/widgets/image_crop_page.dart';
 import 'package:studyflow_app/features/classes/domain/class_models.dart';
 import 'package:studyflow_app/features/classes/presentation/class_resources_page.dart';
@@ -19,7 +20,7 @@ import 'package:studyflow_app/features/company/application/company_documents_con
 import 'package:studyflow_app/features/exams/presentation/exams_page.dart';
 import 'package:studyflow_app/features/notifications/domain/notification_models.dart';
 import 'package:studyflow_app/features/onboarding/presentation/welcome_tutorial_page.dart';
-import 'package:studyflow_app/features/profile/domain/app_preferences.dart';
+import 'package:studyflow_app/features/profile/application/app_preferences_sync.dart';
 import 'package:studyflow_app/features/profile/domain/notification_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 

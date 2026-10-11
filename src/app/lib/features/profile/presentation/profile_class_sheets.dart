@@ -186,15 +186,19 @@ class _JoinClassSheetState extends State<_JoinClassSheet> {
             TextFormField(
               controller: _codeController,
               textCapitalization: TextCapitalization.characters,
-              inputFormatters: const [_UpperCaseTextFormatter()],
+              autocorrect: false,
+              enableSuggestions: false,
+              inputFormatters: const [GroupedCodeFormatter()],
               decoration: const InputDecoration(
                 labelText: 'Code de classe',
                 prefixIcon: Icon(Icons.password_outlined),
               ),
               validator: (value) {
-                return (value ?? '').trim().isEmpty
-                    ? 'Entre le code de classe.'
-                    : null;
+                final code = (value ?? '').replaceAll('-', '').trim();
+                if (code.isEmpty) return 'Entre le code de classe.';
+                return code.length == 8
+                    ? null
+                    : 'Le code fait 8 caractères (ex. ABCD-EFGH).';
               },
             ),
             if (_errorMessage != null) ...[
@@ -262,18 +266,6 @@ class _JoinClassSheetState extends State<_JoinClassSheet> {
   void dispose() {
     _codeController.dispose();
     super.dispose();
-  }
-}
-
-class _UpperCaseTextFormatter extends TextInputFormatter {
-  const _UpperCaseTextFormatter();
-
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    return newValue.copyWith(text: newValue.text.toUpperCase());
   }
 }
 
