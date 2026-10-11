@@ -4,7 +4,7 @@ Dernière mise à jour : 4 juillet 2026.
 
 ## Objectif
 
-StudyFlow manipule des données de classe : cours, salles, horaires, professeurs, devoirs, messages internes et informations personnelles.
+Swikko manipule des données de classe : cours, salles, horaires, professeurs, devoirs, messages internes et informations personnelles.
 
 Le but n’est pas seulement d’empêcher un utilisateur non autorisé d’appeler une route API. Il faut aussi limiter les dégâts si une base PostgreSQL est copiée ou consultée par erreur.
 
@@ -100,7 +100,7 @@ déjà stockées.
 
 Pour retrouver une donnée sans la stocker en clair, le backend utilise parfois un hash HMAC.
 
-Règle retenue pour StudyFlow :
+Règle retenue pour Swikko :
 
 - secret à vérifier mais jamais à relire : hash ;
 - donnée à réafficher ou réutiliser : chiffrement applicatif ;
@@ -116,7 +116,7 @@ SearchNameHash = HMAC(Security:LookupKey, "teacher-search-name:NOM")
 
 La clé `Security:LookupKey` doit être différente de la clé JWT.
 
-Important : une donnée hachée ne peut pas être relue. StudyFlow hache donc les secrets et les valeurs utilisées uniquement pour chercher ou vérifier : mots de passe via ASP.NET Identity, refresh tokens, codes de classe de recherche, noms de professeurs normalisés, codes de réinitialisation de mot de passe et tokens techniques de notification. Les données qui doivent être affichées ou réutilisées restent chiffrées, pas hachées.
+Important : une donnée hachée ne peut pas être relue. Swikko hache donc les secrets et les valeurs utilisées uniquement pour chercher ou vérifier : mots de passe via ASP.NET Identity, refresh tokens, codes de classe de recherche, noms de professeurs normalisés, codes de réinitialisation de mot de passe et tokens techniques de notification. Les données qui doivent être affichées ou réutilisées restent chiffrées, pas hachées.
 
 ## Code de classe
 

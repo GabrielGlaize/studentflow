@@ -1,15 +1,15 @@
-# Présentation du projet annuel — StudyFlow Pro
+# Présentation du projet annuel — Swikko Pro
 
 > Préparation orale pour Gabriel et Garance — 1re année  
 > Dernière mise à jour : 4 juillet 2026
 
 ## 1. Positionnement à donner au jury
 
-StudyFlow Pro doit être présenté comme un **MVP fonctionnel avancé**, pas comme une application déjà prête à publier sur l’App Store.
+Swikko Pro doit être présenté comme un **MVP fonctionnel avancé**, pas comme une application déjà prête à publier sur l’App Store.
 
 La formulation la plus juste :
 
-> StudyFlow est une application Flutter connectée à une API ASP.NET Core et une base PostgreSQL. Elle aide une classe à s’organiser de manière collaborative : planning, devoirs, annonces, tâches personnelles et recherche d’alternance. Le projet est suffisamment avancé pour être démontré localement avec un backend réel, mais il nécessiterait encore une phase de production pour être ouvert publiquement.
+> Swikko est une application Flutter connectée à une API ASP.NET Core et une base PostgreSQL. Elle aide une classe à s’organiser de manière collaborative : planning, devoirs, annonces, tâches personnelles et recherche d’alternance. Le projet est suffisamment avancé pour être démontré localement avec un backend réel, mais il nécessiterait encore une phase de production pour être ouvert publiquement.
 
 Ce positionnement est crédible : il valorise le travail réalisé sans promettre une production complète.
 
@@ -86,14 +86,14 @@ L’objectif n’est pas seulement de lister les fonctionnalités. Il faut racon
 
 Contenu :
 
-- StudyFlow Pro ;
+- Swikko Pro ;
 - gestion de classe et recherche d’alternance ;
 - noms : Gabriel et Garance ;
 - projet annuel de première année.
 
 À dire :
 
-> StudyFlow Pro est notre projet annuel. C’est une application pensée pour aider une classe à gérer son organisation quotidienne et sa recherche d’alternance.
+> Swikko Pro est notre projet annuel. C’est une application pensée pour aider une classe à gérer son organisation quotidienne et sa recherche d’alternance.
 
 ### Slide 2 — Contexte réel
 
@@ -294,7 +294,7 @@ Ce passage permet de montrer que le projet n’est pas choisi au hasard. Il vien
 
 > Au lieu de créer une application très administrative, on a choisi un modèle collaboratif. Les élèves approuvés peuvent corriger les cours et créer les devoirs. Le délégué garde seulement un rôle léger : gérer l’accès, les listes communes et les annonces officielles.
 
-Ce passage explique ce qui rend StudyFlow différent d’un simple agenda.
+Ce passage explique ce qui rend Swikko différent d’un simple agenda.
 
 ### 3. La construction technique
 
@@ -421,11 +421,11 @@ Vous pouvez vous entraîner avec ce script court, puis improviser autour.
 
 ### Introduction
 
-> Bonjour, nous allons vous présenter StudyFlow Pro. C’est une application de gestion de classe et de recherche d’alternance. Le projet part d’un besoin très concret : dans une classe, les informations importantes sont souvent dispersées. Nous avons donc voulu créer une application simple, collaborative et utilisable au quotidien.
+> Bonjour, nous allons vous présenter Swikko Pro. C’est une application de gestion de classe et de recherche d’alternance. Le projet part d’un besoin très concret : dans une classe, les informations importantes sont souvent dispersées. Nous avons donc voulu créer une application simple, collaborative et utilisable au quotidien.
 
 ### Transition vers le produit
 
-> La particularité de StudyFlow, c’est que la classe est autosuffisante. Les élèves approuvés peuvent corriger le planning et créer les devoirs. Le délégué ne contrôle pas tout : il gère l’accès à la classe, les annonces importantes et les informations communes.
+> La particularité de Swikko, c’est que la classe est autosuffisante. Les élèves approuvés peuvent corriger le planning et créer les devoirs. Le délégué ne contrôle pas tout : il gère l’accès à la classe, les annonces importantes et les informations communes.
 
 ### Transition vers la technique
 
@@ -441,7 +441,7 @@ Vous pouvez vous entraîner avec ce script court, puis improviser autour.
 
 ### Conclusion
 
-> StudyFlow n’est pas encore une application publiée en production, mais c’est un MVP fonctionnel avancé. Le projet nous a permis de travailler sur toute la chaîne : besoin utilisateur, maquettes, Flutter, API, base de données, sécurité, documentation et démonstration sur téléphone réel.
+> Swikko n’est pas encore une application publiée en production, mais c’est un MVP fonctionnel avancé. Le projet nous a permis de travailler sur toute la chaîne : besoin utilisateur, maquettes, Flutter, API, base de données, sécurité, documentation et démonstration sur téléphone réel.
 
 ## 9. Scénario de démo recommandé
 
@@ -739,7 +739,7 @@ Réponse :
 
 Réponse :
 
-> Non, c’est volontairement hors périmètre. StudyFlow est pensé comme un outil étudiant. Les professeurs sont seulement des informations associées aux cours, pas des utilisateurs de l’application.
+> Non, c’est volontairement hors périmètre. Swikko est pensé comme un outil étudiant. Les professeurs sont seulement des informations associées aux cours, pas des utilisateurs de l’application.
 
 ### Pourquoi le projet n’est-il pas encore prêt pour une vraie production ?
 
@@ -819,4 +819,4 @@ Transition naturelle :
 
 ## 20. Message final à faire passer
 
-> StudyFlow est un projet complet, pas seulement une maquette. Il relie une application Flutter, une API ASP.NET Core, une base PostgreSQL, une authentification réelle et une réflexion sécurité. Le projet répond à un besoin concret d’organisation de classe et pose une base crédible pour une future V1.
+> Swikko est un projet complet, pas seulement une maquette. Il relie une application Flutter, une API ASP.NET Core, une base PostgreSQL, une authentification réelle et une réflexion sécurité. Le projet répond à un besoin concret d’organisation de classe et pose une base crédible pour une future V1.

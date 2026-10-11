@@ -1,7 +1,7 @@
 part of 'profile_page.dart';
 
 /// Carte étudiante : une simple photo, copiée dans le stockage de l'app et
-/// affichée en plein écran sans quitter StudyFlow.
+/// affichée en plein écran sans quitter Swikko.
 class _StudentCardSection extends StatelessWidget {
   const _StudentCardSection({
     required this.document,

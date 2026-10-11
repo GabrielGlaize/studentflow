@@ -1,6 +1,6 @@
-# StudyFlow — guide NAS
+# Swikko — guide NAS
 
-Ce guide explique comment faire tourner l'API StudyFlow sur un NAS avec Docker,
+Ce guide explique comment faire tourner l'API Swikko sur un NAS avec Docker,
 pour que l'app iPhone puisse fonctionner même quand le Mac est éteint.
 
 Un retour d’expérience complet du déploiement réellement effectué est disponible
@@ -12,10 +12,10 @@ conteneur PostgreSQL, DuckDNS, reverse proxy, certificat HTTPS et tests avec
 L'architecture cible est :
 
 ```text
-iPhone StudyFlow
+iPhone Swikko
   -> https://studyflow.ton-domaine.example
   -> reverse proxy du NAS, optionnel mais recommandé
-  -> conteneur API StudyFlow
+  -> conteneur API Swikko
   -> conteneur PostgreSQL
 ```
 

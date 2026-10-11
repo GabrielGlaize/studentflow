@@ -3,7 +3,7 @@
 /// (`FcmPushNotificationSender.AndroidChannelId`).
 abstract final class StudyFlowNotificationChannel {
   static const id = 'studyflow_reminders';
-  static const name = 'Rappels StudyFlow';
+  static const name = 'Rappels Swikko';
   static const description =
       'Rappels de cours et de devoirs, annonces de la classe.';
 }

@@ -174,7 +174,7 @@ Future<void> confirmAndOpenLink(
             ProtoMutedText(
               [
                 if (sharedBy != null) 'Partagé par $sharedBy.',
-                'Ce site s’ouvre hors de StudyFlow : vérifie l’adresse avant d’y saisir un mot de passe.',
+                'Ce site s’ouvre hors de Swikko : vérifie l’adresse avant d’y saisir un mot de passe.',
               ].join(' '),
             ),
             const SizedBox(height: 16),
@@ -318,7 +318,7 @@ class _Unavailable extends StatelessWidget {
   }
 }
 
-/// Page HTML ou PDF d'un élève, affichée sans accès au compte StudyFlow :
+/// Page HTML ou PDF d'un élève, affichée sans accès au compte Swikko :
 /// contenu chargé localement (origine vide), aucune session ni jeton partagé,
 /// et tout lien qui voudrait quitter la page passe par une confirmation.
 class _IsolatedWebViewer extends StatefulWidget {

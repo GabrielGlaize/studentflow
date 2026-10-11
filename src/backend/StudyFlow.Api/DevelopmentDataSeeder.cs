@@ -438,7 +438,7 @@ public static class DevelopmentDataSeeder
         {
             NewHomework("Maquette Flutter à finaliser", "Préparer les écrans principaux pour la revue.", 2),
             NewHomework("Exercices C : pointeurs et tableaux", "Rendre les exercices sur les pointeurs, tableaux et fonctions.", 3),
-            NewHomework("Schéma d'architecture web", "Dessiner le parcours client -> API -> base de données pour StudyFlow.", 4),
+            NewHomework("Schéma d'architecture web", "Dessiner le parcours client -> API -> base de données pour Swikko.", 4),
             NewHomework("Page HTML/CSS/JS responsive", "Créer une petite page responsive avec validation JavaScript simple.", 5),
             NewHomework("Compte-rendu API", "Expliquer auth, classes et confidentialité.", 6),
             NewHomework("Administration Windows", "Préparer une fiche sur utilisateurs, groupes, partages et droits NTFS.", 7)

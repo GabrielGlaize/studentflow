@@ -367,7 +367,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // La présentation s'ouvre d'elle-même, page après page.
-    expect(find.text('Salut Lina, voici StudyFlow'), findsOneWidget);
+    expect(find.text('Salut Lina, voici Swikko'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('tutorial-next')));
     await tester.pumpAndSettle();
     expect(find.text('On s’organise ensemble'), findsOneWidget);
@@ -399,6 +399,6 @@ void main() {
     // Une seule fois : elle ne revient pas toute seule.
     await tester.tap(find.text('Planning'));
     await tester.pumpAndSettle();
-    expect(find.text('Salut Lina, voici StudyFlow'), findsNothing);
+    expect(find.text('Salut Lina, voici Swikko'), findsNothing);
   });
 }

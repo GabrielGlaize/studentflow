@@ -1,4 +1,4 @@
-# Cahier des charges — StudyFlow Pro
+# Cahier des charges — Swikko Pro
 
 > Application de gestion scolaire et de recherche d’alternances pour les élèves d’une classe
 > Dernière mise à jour : 4 juillet 2026
@@ -7,17 +7,17 @@
 
 ## 1. Présentation du projet
 
-**StudyFlow Pro** est une application destinée à faciliter l’organisation quotidienne des élèves d’une classe. Elle centralise l’emploi du temps, les devoirs, les rappels et la recherche d’alternances.
+**Swikko Pro** est une application destinée à faciliter l’organisation quotidienne des élèves d’une classe. Elle centralise l’emploi du temps, les devoirs, les rappels et la recherche d’alternances.
 
 Dans un premier temps, l’application sera utilisée au sein d’un seul établissement et testée avec une classe réelle. Le projet doit avant tout démontrer sa capacité à répondre aux besoins concrets des élèves, tout en conservant une architecture permettant une évolution future.
 
-Le moteur de recherche d’alternances constitue également un service Web public autonome. Il s’adresse notamment aux futurs élèves qui cherchent une entreprise avant de rejoindre une classe StudyFlow. Aucune installation, aucun compte et aucun code de classe ne sont nécessaires pour effectuer une recherche.
+Le moteur de recherche d’alternances constitue également un service Web public autonome. Il s’adresse notamment aux futurs élèves qui cherchent une entreprise avant de rejoindre une classe Swikko. Aucune installation, aucun compte et aucun code de classe ne sont nécessaires pour effectuer une recherche.
 
 ---
 
 ## 2. Objectifs
 
-StudyFlow Pro doit permettre aux élèves de :
+Swikko Pro doit permettre aux élèves de :
 
 - consulter rapidement leur emploi du temps ;
 - connaître la salle et le professeur associés à chaque cours ;
@@ -29,7 +29,7 @@ StudyFlow Pro doit permettre aux élèves de :
 
 Certains élèves disposent également du rôle **Délégué**. Ils conservent toutes les fonctionnalités d’un élève, avec des droits limités à la gestion de la classe, de son code d’accès, des référentiels communs et des communications officielles.
 
-StudyFlow repose sur un principe d’**autosuffisance de la classe** : les élèves créent et maintiennent collectivement les cours, les devoirs et les projets. Le délégué n’est pas responsable de ces contenus et ne remplace pas un administrateur technique.
+Swikko repose sur un principe d’**autosuffisance de la classe** : les élèves créent et maintiennent collectivement les cours, les devoirs et les projets. Le délégué n’est pas responsable de ces contenus et ne remplace pas un administrateur technique.
 
 ---
 
@@ -55,7 +55,7 @@ StudyFlow repose sur un principe d’**autosuffisance de la classe** : les élè
 - gestion de plusieurs établissements ;
 - espace de connexion pour les professeurs ;
 - messagerie entre élèves et professeurs ;
-- dépôt de candidature directement depuis StudyFlow ;
+- dépôt de candidature directement depuis Swikko ;
 - génération automatique complète des emplois du temps ;
 - synchronisation avec les logiciels officiels de l’établissement.
 
@@ -245,7 +245,7 @@ Fonctionnalités attendues :
 
 La recherche, les filtres, la consultation d’une offre et l’ouverture du site de candidature ne nécessitent pas de compte. Les favoris synchronisés, les recherches sauvegardées et les alertes nécessitent une authentification.
 
-Pour le MVP, StudyFlow ne stocke pas toutes les offres externes. La base conserve uniquement les favoris, les recherches sauvegardées et, si nécessaire, un cache temporaire.
+Pour le MVP, Swikko ne stocke pas toutes les offres externes. La base conserve uniquement les favoris, les recherches sauvegardées et, si nécessaire, un cache temporaire.
 
 Le scraping de sites n’est pas prévu dans le MVP. L’intégration passe par des APIs ou fournisseurs autorisés. Le backend peut agréger La Bonne Alternance, Adzuna et France Travail lorsque les clés nécessaires sont configurées.
 
@@ -402,7 +402,7 @@ Une appartenance n’est effective qu’après approbation. Un utilisateur en at
 
 ### 10.3 Confidentialité de l’emploi du temps
 
-L’isolation par classe protège contre les accès ordinaires via l’API, mais elle ne suffit pas en cas de copie de la base. StudyFlow applique donc une défense en profondeur :
+L’isolation par classe protège contre les accès ordinaires via l’API, mais elle ne suffit pas en cas de copie de la base. Swikko applique donc une défense en profondeur :
 
 - `classeId`, la matière et le jour restent indexables pour charger une semaine ;
 - le nom du professeur, ses informations, la salle et l’horaire précis sont chiffrés par l’API avant écriture ;
@@ -544,4 +544,4 @@ Le MVP est considéré comme réussi si :
 - hébergement de l’API et de PostgreSQL ;
 - fournisseur de gestion des clés de chiffrement en production ;
 - service SMTP pour la réinitialisation de mot de passe ;
-- identité visuelle définitive de StudyFlow Pro pour une éventuelle publication.
+- identité visuelle définitive de Swikko Pro pour une éventuelle publication.

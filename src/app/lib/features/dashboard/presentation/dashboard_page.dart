@@ -217,7 +217,7 @@ class _DashboardContent extends StatelessWidget {
       if (last.isNotEmpty) last.characters.first,
     ].join().toUpperCase();
 
-    return letters.isEmpty ? 'SF' : letters;
+    return letters.isEmpty ? 'S' : letters;
   }
 
   Future<void> _openAnnouncementFeed(BuildContext context) {

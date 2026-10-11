@@ -114,14 +114,14 @@
       "'": '&#039;',
     })[character]);
 
-  const initialsFor = (value = 'SF') =>
+  const initialsFor = (value = 'S') =>
     value
       .split(/\s+/)
       .filter(Boolean)
       .slice(0, 2)
       .map((part) => part[0])
       .join('')
-      .toUpperCase() || 'SF';
+      .toUpperCase() || 'S';
 
   const formatDistance = (value) => {
     if (value === null || value === undefined) return null;
@@ -212,7 +212,7 @@
     list.innerHTML = `
       <article class="state-card">
         <h3>Recherche en cours</h3>
-        <p>StudyFlow interroge les sources d’alternance disponibles.</p>
+        <p>Swikko interroge les sources d’alternance disponibles.</p>
       </article>
     `;
 
@@ -220,7 +220,7 @@
       const offers = await searchOpportunities({keywords, location, distanceKm});
       renderOffers(offers);
       title.textContent = `${offers.length} opportunité${offers.length > 1 ? 's' : ''} autour de ${location}`;
-      showToast('Résultats chargés depuis l’API StudyFlow.');
+      showToast('Résultats chargés depuis l’API Swikko.');
     } catch {
       renderOffers(demoOffers);
       title.textContent = `${demoOffers.length} opportunités de démonstration autour de ${location}`;

@@ -5,7 +5,7 @@ Cette arborescence prépare les maquettes Flutter Android et Web.
 ## 1. Navigation publique Web
 
 ```text
-StudyFlow
+Swikko
 ├── Accueil Alternances
 ├── Résultats de recherche
 ├── Détail d’une offre

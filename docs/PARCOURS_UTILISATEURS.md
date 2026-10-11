@@ -20,7 +20,7 @@ Ce document traduit le cahier des charges en parcours vérifiables. Il sert de r
 
 1. Le visiteur ouvre la page publique des alternances depuis un smartphone ou un ordinateur.
 2. Il saisit des mots-clés et, facultativement, une localisation et des filtres.
-3. Le système vérifie les critères puis interroge la source externe via l’API StudyFlow.
+3. Le système vérifie les critères puis interroge la source externe via l’API Swikko.
 4. Le visiteur consulte une liste paginée de résultats.
 5. Il ouvre le détail d’une offre.
 6. Il peut être redirigé vers le site d’origine pour candidater.
@@ -30,7 +30,7 @@ Résultat attendu : aucune installation et aucun compte ne sont nécessaires.
 ### Parcours V2 — Utiliser une fonction personnelle
 
 1. Le visiteur tente d’enregistrer une offre, une recherche ou une alerte.
-2. StudyFlow lui propose de se connecter.
+2. Swikko lui propose de se connecter.
 3. Après connexion, l’action initiale peut être reprise.
 
 Résultat attendu : la consultation reste publique, mais les données synchronisées sont rattachées à un compte.
@@ -77,7 +77,7 @@ Un code expiré ou renouvelé ne permet plus de rejoindre la classe.
 
 ### Parcours E3 — Consulter le tableau de bord
 
-1. L’élève ouvre StudyFlow.
+1. L’élève ouvre Swikko.
 2. Il voit son prochain cours, sa salle et son horaire.
 3. Il consulte les prochains devoirs ou projets.
 4. Il retrouve ses tâches personnelles à faire.

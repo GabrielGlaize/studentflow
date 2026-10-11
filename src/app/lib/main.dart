@@ -232,7 +232,7 @@ class _StudyFlowAppState extends State<StudyFlowApp>
           examRepository: _examRepository,
           reminderSync: _reminderSync,
           child: MaterialApp(
-            title: 'StudyFlow',
+            title: 'Swikko',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.light,
             darkTheme: AppTheme.dark,

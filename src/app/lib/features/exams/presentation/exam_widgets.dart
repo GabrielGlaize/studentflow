@@ -5,7 +5,7 @@ import 'package:studyflow_app/core/theme/app_colors.dart';
 import 'package:studyflow_app/core/widgets/date_time_pickers.dart';
 import 'package:studyflow_app/features/exams/domain/exam_models.dart';
 
-/// Une couleur par matière, prise dans la palette StudyFlow élargie.
+/// Une couleur par matière, prise dans la palette Swikko élargie.
 class SubjectPalette {
   const SubjectPalette._(this.light, this.lightSoft, this.dark);
 

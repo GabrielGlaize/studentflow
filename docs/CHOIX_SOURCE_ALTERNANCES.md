@@ -4,19 +4,19 @@
 
 ## 1. Décision actuelle
 
-Le MVP s’appuie maintenant sur un agrégateur backend. Il expose une recherche normalisée StudyFlow et peut interroger plusieurs fournisseurs :
+Le MVP s’appuie maintenant sur un agrégateur backend. Il expose une recherche normalisée Swikko et peut interroger plusieurs fournisseurs :
 
 - **La Bonne Alternance** : source publique française orientée alternance ;
 - **Adzuna** : API d’offres d’emploi, utile comme source complémentaire ;
 - **France Travail — Offres d’emploi v2** : source institutionnelle française, utilisable avec client id / client secret.
 
-Flutter et l’interface Web publique ne contactent jamais directement ces APIs externes. Elles appellent uniquement le backend StudyFlow :
+Flutter et l’interface Web publique ne contactent jamais directement ces APIs externes. Elles appellent uniquement le backend Swikko :
 
 ```text
 Flutter / Web public
         |
         v
-API StudyFlow
+API Swikko
         |
         +--> La Bonne Alternance
         +--> Adzuna
@@ -85,9 +85,9 @@ Ces points sont à traiter avant une mise en production ouverte.
 
 ## 6. Position produit
 
-StudyFlow ne remplace pas les sites de candidature. L’app aide à chercher, sauvegarder et organiser les démarches, puis redirige l’élève vers le site source pour candidater.
+Swikko ne remplace pas les sites de candidature. L’app aide à chercher, sauvegarder et organiser les démarches, puis redirige l’élève vers le site source pour candidater.
 
-La valeur ajoutée StudyFlow est donc :
+La valeur ajoutée Swikko est donc :
 
 - centraliser la recherche ;
 - relier la recherche d’alternance aux tâches et événements personnels ;

@@ -2,16 +2,16 @@
 
 ## 1. Objectif
 
-L’interface Web permet à toute personne, notamment un futur élève, de rechercher une alternance sans installer StudyFlow, sans posséder de compte et sans appartenir à une classe.
+L’interface Web permet à toute personne, notamment un futur élève, de rechercher une alternance sans installer Swikko, sans posséder de compte et sans appartenir à une classe.
 
-Elle constitue une porte d’entrée publique vers StudyFlow, distincte des fonctionnalités scolaires privées.
+Elle constitue une porte d’entrée publique vers Swikko, distincte des fonctionnalités scolaires privées.
 
 ## 2. Publics
 
 - visiteur anonyme recherchant une alternance ;
 - futur élève souhaitant sauvegarder ses recherches avant son inscription ;
 - futur élève utilisant son planning et son agenda personnels pour organiser ses démarches ;
-- élève StudyFlow déjà rattaché à une classe ;
+- élève Swikko déjà rattaché à une classe ;
 - utilisateur sur smartphone ou ordinateur.
 
 ## 3. Pages du MVP
@@ -27,7 +27,7 @@ Elle constitue une porte d’entrée publique vers StudyFlow, distincte des fonc
 
 Implémentation actuelle : `design/alternances-web/index.html` appelle `/api/v1/public/alternances` via `prototype.js`. Si le backend n’est pas lancé ou refuse l’appel, la page affiche automatiquement des résultats de démonstration pour rester présentable.
 
-La route publique est servie par le backend StudyFlow. Celui-ci peut ensuite interroger La Bonne Alternance, Adzuna et France Travail selon les clés configurées. Les clés restent côté serveur et ne sont jamais exposées dans le JavaScript public.
+La route publique est servie par le backend Swikko. Celui-ci peut ensuite interroger La Bonne Alternance, Adzuna et France Travail selon les clés configurées. Les clés restent côté serveur et ne sont jamais exposées dans le JavaScript public.
 
 ### Résultats
 

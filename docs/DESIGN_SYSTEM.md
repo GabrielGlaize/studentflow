@@ -1,4 +1,4 @@
-# Identité visuelle StudyFlow
+# Identité visuelle Swikko
 
 ## Palette source
 

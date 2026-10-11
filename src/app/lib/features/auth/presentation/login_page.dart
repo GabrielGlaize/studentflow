@@ -62,7 +62,7 @@ class _LoginPageState extends State<LoginPage> {
               const _AuthBrand(),
               const SizedBox(height: 24),
               Text(
-                'Bienvenue sur StudyFlow',
+                'Bienvenue sur Swikko',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   color: isDark ? Colors.white : AppColors.petrol,
                   fontWeight: FontWeight.w900,
@@ -651,7 +651,7 @@ class _AuthBrand extends StatelessWidget {
         ),
         const SizedBox(width: 9),
         Text(
-          'StudyFlow',
+          'Swikko',
           style: TextStyle(
             color: isDark ? Colors.white : AppColors.petrol,
             fontSize: 15,

@@ -1,4 +1,4 @@
-# StudyFlow — lancement rapide
+# Swikko — lancement rapide
 
 Cette mini doc sert à lancer le projet en local pour développer ou faire une démonstration.
 
@@ -87,7 +87,7 @@ C’est l’adresse spéciale qui permet à l’émulateur Android de joindre le
 ## 3 bis. Script universel Flutter
 
 Le script [`scripts/run_app.sh`](../scripts/run_app.sh) permet de lancer
-StudyFlow sur presque n’importe quelle cible Flutter : Android emulator, iPhone,
+Swikko sur presque n’importe quelle cible Flutter : Android emulator, iPhone,
 Chrome ou macOS.
 
 Lister les appareils disponibles :

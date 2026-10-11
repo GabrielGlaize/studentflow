@@ -4,7 +4,7 @@ Dernière mise à jour : 4 juillet 2026.
 
 ## Objectif de l’app
 
-L’application Flutter est la partie mobile de StudyFlow. Elle doit rester simple à relire par une équipe étudiante, mais assez propre pour pouvoir évoluer sans tout casser.
+L’application Flutter est la partie mobile de Swikko. Elle doit rester simple à relire par une équipe étudiante, mais assez propre pour pouvoir évoluer sans tout casser.
 
 Le principe produit est le suivant :
 
@@ -115,7 +115,7 @@ Le parcours classe couvre maintenant :
 - nommer un autre délégué ;
 - quitter son propre rôle délégué.
 
-Le rôle délégué reste volontairement léger. Il ne sert pas à approuver les cours ou devoirs, car le concept StudyFlow repose sur l’autosuffisance des élèves.
+Le rôle délégué reste volontairement léger. Il ne sert pas à approuver les cours ou devoirs, car le concept Swikko repose sur l’autosuffisance des élèves.
 
 ## Cours et devoirs collaboratifs
 
@@ -140,7 +140,7 @@ L’agenda sépare :
 - les tâches entreprise quand l’élève active le mode Entreprise ;
 - les événements personnels : entretiens, relances, rendez-vous alternance ou points entreprise.
 
-Cela permet à StudyFlow de servir à la fois aux élèves déjà en classe et aux futurs élèves qui cherchent une alternance.
+Cela permet à Swikko de servir à la fois aux élèves déjà en classe et aux futurs élèves qui cherchent une alternance.
 
 ## Alternances
 

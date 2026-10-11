@@ -1,6 +1,8 @@
-# StudyFlow Pro
+# Swikko Pro
 
-StudyFlow aide une classe à partager son emploi du temps, ses devoirs et ses informations importantes. L’outil public de recherche d’alternances reste accessible sans compte depuis un navigateur.
+Swikko aide une classe à partager son emploi du temps, ses devoirs et ses informations importantes. L’outil public de recherche d’alternances reste accessible sans compte depuis un navigateur.
+
+> L’application s’appelait StudyFlow. Le code garde ce nom dans ses identifiants techniques (projets `StudyFlow.*`, paquet `studyflow_app`, base de données, conteneurs, identifiants iOS, Android et Firebase) : seuls les textes visibles ont changé.
 
 Un compte sans classe peut organiser ses candidatures dans un agenda personnel. Les rattachements scolaires sont approuvés par un délégué, tandis que les cours et devoirs restent modifiables librement par tous les élèves approuvés. Les identités des professeurs, salles, horaires précis, tokens techniques et événements personnels sont protégés côté backend.
 
@@ -58,7 +60,7 @@ Le guide NAS complet est dans [`docs/NAS_DEPLOIEMENT.md`](./docs/NAS_DEPLOIEMENT
 
 ## Tester l’application Flutter sur iPhone
 
-Pour lancer StudyFlow sur un iPhone physique :
+Pour lancer Swikko sur un iPhone physique :
 
 1. Installe et ouvre Xcode au moins une fois.
 2. Branche l’iPhone en USB.

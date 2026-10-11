@@ -79,7 +79,7 @@ class DemoDashboardRepository implements DashboardRepository {
         ),
         HomeworkSummary(
           id: 'demo-homework-2',
-          title: 'Préparer la présentation StudyFlow',
+          title: 'Préparer la présentation Swikko',
           subjectName: 'Développement',
           deadline: now.add(const Duration(days: 3)),
           isDone: false,

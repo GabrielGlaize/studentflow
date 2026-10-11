@@ -44,7 +44,7 @@ class OnboardingPage extends StatelessWidget {
             ),
             const SizedBox(height: 9),
             const ProtoMutedText(
-              'StudyFlow peut déjà t’aider avant même que ta classe soit prête.',
+              'Swikko peut déjà t’aider avant même que ta classe soit prête.',
             ),
             const SizedBox(height: 20),
             _ChoiceCard(
@@ -52,7 +52,7 @@ class OnboardingPage extends StatelessWidget {
               tag: 'Élève',
               title: 'Créer mon compte',
               subtitle:
-                  'Pour rejoindre une classe avec un code, ou utiliser StudyFlow avant la rentrée.',
+                  'Pour rejoindre une classe avec un code, ou utiliser Swikko avant la rentrée.',
               color: AppColors.green,
               onTap: () => Navigator.push(
                 context,

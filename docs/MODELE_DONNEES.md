@@ -1,6 +1,6 @@
 # Modèle de données initial
 
-Ce modèle couvre le MVP de StudyFlow Pro pour un établissement, plusieurs classes possibles, des élèves pouvant être délégués et un module public de recherche d’alternances.
+Ce modèle couvre le MVP de Swikko Pro pour un établissement, plusieurs classes possibles, des élèves pouvant être délégués et un module public de recherche d’alternances.
 
 ## 1. Principes de modélisation
 

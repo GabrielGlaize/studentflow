@@ -42,7 +42,7 @@ public sealed class PasswordResetEmailSender(
         using var message = new MailMessage(
             from: _options.From,
             to: email,
-            subject: "Réinitialisation de ton mot de passe StudyFlow",
+            subject: "Réinitialisation de ton mot de passe Swikko",
             body: BuildBody(resetToken, expiresAt));
 
         using var client = new SmtpClient(_options.Host, _options.Port)
@@ -70,7 +70,7 @@ public sealed class PasswordResetEmailSender(
         return $"""
             Bonjour,
 
-            Voici ton code pour choisir un nouveau mot de passe StudyFlow :
+            Voici ton code pour choisir un nouveau mot de passe Swikko :
 
                 {resetCode}
 
@@ -79,7 +79,7 @@ public sealed class PasswordResetEmailSender(
             Il est valable jusqu'au {localExpiry:dd/MM/yyyy à HH:mm}.
             Si tu n'es pas à l'origine de cette demande, ignore cet e-mail : ton mot de passe ne change pas.
 
-            L'équipe StudyFlow
+            L'équipe Swikko
             """;
     }
 

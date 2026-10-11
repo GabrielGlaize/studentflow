@@ -1,6 +1,6 @@
-# StudyFlow App
+# Swikko App
 
-Application Flutter mobile et web de StudyFlow.
+Application Flutter mobile et web de Swikko.
 
 ## Tester sur iPhone
 

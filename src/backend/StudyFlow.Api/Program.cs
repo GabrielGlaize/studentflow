@@ -47,7 +47,7 @@ if (openApiEnabled)
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(options =>
     {
-        options.SwaggerDoc("v1", new OpenApiInfo { Title = "StudyFlow API", Version = "v1" });
+        options.SwaggerDoc("v1", new OpenApiInfo { Title = "Swikko API", Version = "v1" });
         options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
         {
             Description = "Access token JWT obtenu via /api/v1/auth/login.",

@@ -38,7 +38,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Bienvenue sur StudyFlow'), findsOneWidget);
+    expect(find.text('Bienvenue sur Swikko'), findsOneWidget);
 
     // Le formulaire n'est plus prérempli par défaut : il faut saisir les identifiants.
     await tester.enterText(

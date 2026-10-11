@@ -111,7 +111,7 @@ class ProfilePage extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                'StudyFlow Pro · version étudiante',
+                'Swikko Pro · version étudiante',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: context.sfMuted, fontSize: 11),
               ),

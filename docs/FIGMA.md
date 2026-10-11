@@ -1,6 +1,6 @@
 # Maquettes Figma
 
-- Fichier de travail : [StudyFlow Pro — MVP](https://www.figma.com/design/ecUTTTa55gZ59MYblQzmKb)
+- Fichier de travail : [Swikko Pro — MVP](https://www.figma.com/design/ecUTTTa55gZ59MYblQzmKb)
 - Design system retenu : Material 3 Design Kit
 - Cibles : Flutter Android et Flutter Web responsive
 - État : parcours MVP maquettés, repris dans Flutter et vérifiés localement ; intégration Figma à reprendre lorsque le quota le permettra

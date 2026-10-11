@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Palette StudyFlow : pétrole, menthe, ciel et rose.
+/// Palette Swikko : pétrole, menthe, ciel et rose.
 ///
 /// Le pétrole sert aux actions et aux titres, pas aux grandes surfaces : les
 /// fonds restent neutres (gris très clair, ou anthracite en mode sombre) pour

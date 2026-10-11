@@ -1,4 +1,4 @@
-# StudyFlow Pro — Documentation backend
+# Swikko Pro — Documentation backend
 
 Ce document explique ce qui a été fait sur le backend, pourquoi ces choix ont été faits, et comment relire le code sans se perdre.
 
@@ -23,7 +23,7 @@ Depuis la première version de cette documentation, le backend a été durci et 
 
 ## 1. Objectif actuel du backend
 
-Le backend sert de base à l’application StudyFlow Pro.
+Le backend sert de base à l’application Swikko Pro.
 
 Il doit permettre :
 
@@ -1321,7 +1321,7 @@ Le premier endpoint existe maintenant avec `GET /api/v1/dashboard`. Il évite à
 
 On peut expliquer le backend comme ça :
 
-> StudyFlow Pro est organisé avec une API ASP.NET Core, une base PostgreSQL et Entity Framework Core. Les utilisateurs se connectent avec JWT. Un élève peut créer une classe, devenir délégué, puis partager un code de classe. Les autres élèves demandent à rejoindre la classe et le délégué les approuve. Une fois dans la classe, les élèves peuvent gérer eux-mêmes les cours et devoirs, sans validation, car le projet repose sur l’autosuffisance. Pour garder une trace, chaque contribution importante est journalisée. Les données sensibles comme les noms de professeurs, salles, horaires précis et événements personnels sont chiffrées en base. Le backend prévoit aussi l’agenda personnel et les futures fonctionnalités d’alternance.
+> Swikko Pro est organisé avec une API ASP.NET Core, une base PostgreSQL et Entity Framework Core. Les utilisateurs se connectent avec JWT. Un élève peut créer une classe, devenir délégué, puis partager un code de classe. Les autres élèves demandent à rejoindre la classe et le délégué les approuve. Une fois dans la classe, les élèves peuvent gérer eux-mêmes les cours et devoirs, sans validation, car le projet repose sur l’autosuffisance. Pour garder une trace, chaque contribution importante est journalisée. Les données sensibles comme les noms de professeurs, salles, horaires précis et événements personnels sont chiffrées en base. Le backend prévoit aussi l’agenda personnel et les futures fonctionnalités d’alternance.
 
 ---
 

@@ -340,8 +340,8 @@ class _WelcomePage extends StatelessWidget {
           icon: Icons.waving_hand_outlined,
           overline: 'Bienvenue',
           title: firstName.isEmpty
-              ? 'StudyFlow en 30 secondes'
-              : 'Salut $firstName, voici StudyFlow',
+              ? 'Swikko en 30 secondes'
+              : 'Salut $firstName, voici Swikko',
           lead:
               'Ton année au même endroit : cours, devoirs, organisation '
               'perso et alternance.',
