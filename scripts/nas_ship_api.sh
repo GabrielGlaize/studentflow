@@ -90,11 +90,19 @@ echo "==> Chargement de l'image"
 gunzip -c "\$HOME_DIR/$ARCHIVE" | docker load
 echo "==> Redémarrage de l'API (migrations appliquées au démarrage)"
 docker compose --env-file .env.nas -f compose.nas.yaml up -d --no-build api
-sleep 8
 docker compose --env-file .env.nas -f compose.nas.yaml ps api
 PORT=\$(awk -F= '\$1 == "STUDYFLOW_API_PORT" {print \$2}' .env.nas | tail -n 1)
-curl -fsS "http://localhost:\${PORT:-5028}/api/status" && echo && echo "API à jour."
-rm -f "\$HOME_DIR/$ARCHIVE"
+# Les migrations passent avant que l'API réponde : on attend jusqu'à une minute.
+for _ in \$(seq 1 30); do
+  if curl -fsS -m 3 "http://localhost:\${PORT:-5028}/api/status" 2>/dev/null; then
+    echo; echo "API à jour."
+    rm -f "\$HOME_DIR/$ARCHIVE"
+    exit 0
+  fi
+  sleep 2
+done
+echo "L'API ne répond pas après une minute : docker logs studyflow-nas-api"
+exit 1
 INSTALL
 # Le dossier personnel de l'utilisateur SSH, figé ici : sous sudo, \$HOME devient celui de root.
 NAS_HOME="$(ssh "${SSH_OPTS[@]}" "$NAS_HOST" 'printf %s "$HOME"')"
