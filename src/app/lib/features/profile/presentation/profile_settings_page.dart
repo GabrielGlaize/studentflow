@@ -243,6 +243,26 @@ class ProfileSettingsPage extends StatelessWidget {
                     },
                   ),
                 ),
+                Builder(
+                  builder: (context) {
+                    final scope = AppScope.of(context);
+                    final environment = scope.environment;
+                    return ListTile(
+                      key: const ValueKey('app-environment'),
+                      leading: Icon(
+                        environment.isProd
+                            ? Icons.cloud_done_outlined
+                            : Icons.developer_mode_outlined,
+                      ),
+                      title: Text('Serveur · ${environment.flavor.label}'),
+                      subtitle: Text(
+                        environment.useDemoRepositoriesByDefault
+                            ? 'Données de démonstration, sans serveur'
+                            : '${scope.apiBaseUrl} · version ${ReleaseNotes.current.version}',
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
             const SizedBox(height: 12),

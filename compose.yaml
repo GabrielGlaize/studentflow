@@ -1,7 +1,17 @@
+# Environnement de DÉVELOPPEMENT, sur le Mac. La production (NAS) est compose.nas.yaml.
+#
+#   make dev        pile complète : base + API (seedée) + Mailpit
+#   make dev-api    base + Mailpit ici, API sur le Mac avec rechargement à chaud
+#   make dev-reset  base effacée puis reseedée
+#
+# Les clés viennent de .env (créé par `make setup`), comme pour l'API lancée sur le Mac :
+# les deux modes lisent et écrivent les mêmes données chiffrées.
+name: swikko-dev
+
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: studyflow-postgres
+    container_name: swikko-dev-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: studyflow
@@ -10,12 +20,65 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - studyflow-postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U studyflow -d studyflow"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # Boîte mail locale : tous les e-mails de l'API (codes, réinitialisation, retours)
+  # arrivent ici au lieu de partir sur Internet. Interface : http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:v1.27
+    container_name: swikko-dev-mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  api:
+    profiles: [api]
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: swikko-api:dev
+    container_name: swikko-dev-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    env_file:
+      # Clés des fournisseurs d'offres (Adzuna, France Travail, LBA), facultatives.
+      - path: .env
+        required: false
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      DOTNET_gcServer: "0"
+      ConnectionStrings__PostgreSql: Host=postgres;Port=5432;Database=studyflow;Username=studyflow;Password=studyflow
+      Jwt__SigningKey: ${Jwt__SigningKey:?Lance `make setup` pour créer .env}
+      Security__LookupKey: ${Security__LookupKey:?Lance `make setup` pour créer .env}
+      # Même dossier de clés que l'API lancée sur le Mac (make dev-api), qui s'exécute
+      # depuis le dossier du projet API.
+      Security__DataProtectionKeysPath: /var/lib/studyflow/data-protection-keys
+      DevelopmentSeed__Enabled: "true"
+      DevelopmentSeed__ResetOnStartup: "false"
+      Email__Host: mailpit
+      Email__Port: "1025"
+      Email__UseSsl: "false"
+      NotificationWorker__Enabled: "false"
+    ports:
+      - "5028:8080"
+    volumes:
+      - ./src/backend/StudyFlow.Api/.data-protection-keys:/var/lib/studyflow/data-protection-keys
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
       interval: 5s
-      timeout: 5s
-      retries: 10
+      timeout: 3s
+      retries: 30
 
 volumes:
-  studyflow-postgres-data:
+  postgres-data:

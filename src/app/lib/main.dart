@@ -60,8 +60,9 @@ import 'package:studyflow_app/features/schedule/data/demo_course_repository.dart
 import 'package:studyflow_app/features/schedule/data/http_course_repository.dart';
 import 'package:studyflow_app/features/shell/presentation/main_shell.dart';
 
+/// L'environnement vient de `config/<env>.json` : voir config/README.md.
 void main() {
-  runStudyFlowApp(const AppEnvironment.dev());
+  runStudyFlowApp(AppEnvironment.fromDefines());
 }
 
 void runStudyFlowApp(AppEnvironment environment) {
@@ -256,6 +257,8 @@ class _StudyFlowAppState extends State<StudyFlowApp>
           groupRepository: _groupRepository,
           groupRealtime: _groupRealtime,
           reminderSync: _reminderSync,
+          environment: widget.environment,
+          apiBaseUrl: ApiConfig.baseUrlFor(widget.environment),
           child: MaterialApp(
             title: 'Swikko',
             debugShowCheckedModeBanner: false,
@@ -266,6 +269,14 @@ class _StudyFlowAppState extends State<StudyFlowApp>
             locale: const Locale('fr', 'FR'),
             supportedLocales: const [Locale('fr', 'FR')],
             localizationsDelegates: GlobalMaterialLocalizations.delegates,
+            builder: widget.environment.showsDevBanner
+                ? (context, child) => Banner(
+                    message: 'DEV',
+                    location: BannerLocation.topEnd,
+                    color: const Color(0xFFB0701A),
+                    child: child ?? const SizedBox.shrink(),
+                  )
+                : null,
             home: _sessionController.status == SessionStatus.checkingSession
                 ? const _SplashPage()
                 : _sessionController.isSignedIn

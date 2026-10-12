@@ -37,50 +37,39 @@ Les fichiers sont généralement séparés en trois familles :
 
 Ce découpage évite d’avoir toute la logique dans les écrans.
 
-## Environnements dev, prod et repositories de démonstration
+## Environnements dev, prod et démo
 
-Par défaut, l’app démarre maintenant en mode dev réel : elle appelle le backend local.
+L’environnement est choisi à la compilation par un fichier de `src/app/config/`
+(`--dart-define-from-file`), lu par `AppEnvironment.fromDefines()` :
 
-Sur Android Emulator, l’URL locale est automatiquement `http://10.0.2.2:5028`. Sur les autres cibles locales, l’app utilise `http://localhost:5028`, sauf si `STUDYFLOW_API_URL` est fourni.
+| Fichier     | Environnement | API                                                 |
+|-------------|---------------|-----------------------------------------------------|
+| `dev.json`  | Développement | API du Mac (`make dev`), bandeau « DEV »            |
+| `prod.json` | Production    | API du NAS                                          |
+| `demo.json` | Démonstration | aucune : repositories de démonstration intégrés     |
 
-Sur un appareil iOS ou Android branché au Mac, on utilise le script racine :
-
-```bash
-cd /Users/gab/Documents/studentflow
-./scripts/install_app.sh                 # menu de choix de l’appareil
-./scripts/install_app.sh --device=pixel  # ID exact ou partie du nom
-```
-
-Ce script demande sur quel appareil installer, copie le projet vers `/Users/gab/Developer/studentflow`, nettoie les attributs macOS qui peuvent casser le codesign iOS et lance Flutter avec `STUDYFLOW_API_URL` pointant vers l’API du NAS. Avec `--local-mac`, l’URL vise le backend du Mac (`http://IP_DU_MAC:5028` sur un appareil physique, `10.0.2.2` sur l’émulateur Android).
-
-Pour une installation autonome sur iPhone, utilise une build release :
+Les scripts passent le bon fichier :
 
 ```bash
-./scripts/install_app.sh --clean --release
+make app-dev     # ./scripts/install_app.sh --env=dev  : appareil branché, API du Mac
+make app-prod    # ./scripts/install_app.sh --env=prod --release
+make app-demo    # ./scripts/install_app.sh --env=demo
+make app-web     # ./scripts/run_app.sh --env=dev --device=chrome
 ```
 
-Pour pointer l'app vers une API sur NAS :
+En dev, le script ajoute l’adresse du Mac vue depuis l’appareil (`--dart-define=STUDYFLOW_API_URL=…`,
+qui l’emporte sur le fichier) : l’IP du Mac pour un appareil physique, `10.0.2.2` pour
+l’émulateur Android, `localhost` pour le simulateur iOS. Paramètres › Application affiche
+l’environnement et l’adresse du serveur utilisés.
 
-```bash
-./scripts/install_app.sh --clean --release --api-url=http://IP_DU_NAS:5028
-```
-
-Le guide de déploiement NAS est dans [`NAS_DEPLOIEMENT.md`](./NAS_DEPLOIEMENT.md).
-
-Commandes principales :
-
-```bash
-flutter run
-
-flutter run -t lib/main_prod.dart \
-  --dart-define=STUDYFLOW_API_URL=https://ton-api-prod.example.com
-```
+`install_app.sh` copie aussi le projet vers `/Users/gab/Developer/studentflow` et nettoie les
+attributs macOS qui peuvent casser la signature iOS.
 
 Pourquoi ce choix ?
 
 - le dev ressemble à une vraie app, avec backend et base seedée ;
 - la prod n’embarque pas de données locales ;
-- les repositories de démonstration restent disponibles uniquement pour les tests ou une présentation sans backend.
+- les repositories de démonstration servent aux tests et au mode démo, sans backend.
 
 ## Authentification réelle
 

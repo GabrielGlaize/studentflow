@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:studyflow_app/core/config/app_environment.dart';
 import 'package:studyflow_app/features/auth/application/session_controller.dart';
 import 'package:studyflow_app/core/settings/app_settings_controller.dart';
 import 'package:studyflow_app/features/agenda/data/agenda_repository.dart';
@@ -47,6 +48,8 @@ class AppScope extends InheritedWidget {
     required this.groupRepository,
     required this.groupRealtime,
     required this.reminderSync,
+    required this.environment,
+    required this.apiBaseUrl,
     required super.child,
     super.key,
   });
@@ -71,6 +74,10 @@ class AppScope extends InheritedWidget {
   final GroupRepository groupRepository;
   final GroupRealtime groupRealtime;
   final ReminderSync reminderSync;
+
+  /// Développement, production ou démo (affiché dans les paramètres).
+  final AppEnvironment environment;
+  final String apiBaseUrl;
 
   static AppScope of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<AppScope>();
@@ -100,6 +107,8 @@ class AppScope extends InheritedWidget {
         feedbackRepository != oldWidget.feedbackRepository ||
         groupRepository != oldWidget.groupRepository ||
         groupRealtime != oldWidget.groupRealtime ||
-        reminderSync != oldWidget.reminderSync;
+        reminderSync != oldWidget.reminderSync ||
+        environment != oldWidget.environment ||
+        apiBaseUrl != oldWidget.apiBaseUrl;
   }
 }

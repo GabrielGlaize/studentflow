@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Runs StudyFlow on any Flutter target:
+# Lance Swikko sur n'importe quelle cible Flutter :
 # - Android emulator / Android device
 # - physical iPhone
 # - Chrome
@@ -12,7 +12,11 @@ set -euo pipefail
 #   ./scripts/run_app.sh --device=emulator-5554
 #   ./scripts/run_app.sh --device=chrome
 #   ./scripts/run_app.sh --device=macos
-#   ./scripts/run_app.sh --device=00008120-0009098822A2201E --nas --release --sync --clean
+#   ./scripts/run_app.sh --device=chrome --env=dev
+#   ./scripts/run_app.sh --device=00008120-0009098822A2201E --env=prod --release --sync --clean
+#
+# Environnements (src/app/config/<env>.json) : dev par défaut (API du Mac,
+# make dev), prod (API du NAS), demo (sans serveur).
 
 SOURCE_ROOT="${STUDYFLOW_SOURCE_ROOT:-/Users/gab/Documents/studentflow}"
 DEV_ROOT="${STUDYFLOW_DEV_ROOT:-/Users/gab/Developer/studentflow}"
@@ -21,11 +25,10 @@ NAS_API_URL="${STUDYFLOW_NAS_API_URL:-https://studyflow-dev.duckdns.org}"
 DEVICE_ID=""
 BUILD_MODE="debug"
 API_URL=""
-ENTRYPOINT="lib/main.dart"
+ENV_NAME="dev"
 SHOULD_CLEAN=false
 SHOULD_SYNC=false
 SHOULD_LIST=false
-USE_NAS=false
 USE_LOCAL_MAC=false
 
 usage() {
@@ -39,10 +42,10 @@ Options:
   --debug                 Build debug. Par défaut.
   --profile               Build profile.
   --release               Build release.
-  --api-url=URL           URL exacte du backend.
-  --nas                   Utilise STUDYFLOW_NAS_API_URL ou https://studyflow-dev.duckdns.org.
-  --local-mac             Force l'URL http://IP_DU_MAC:5028.
-  --prod                  Lance lib/main_prod.dart.
+  --env=dev|prod|demo     Environnement (défaut : dev). Voir src/app/config.
+  --api-url=URL           URL exacte du backend (remplace celle de l'environnement).
+  --nas, --prod           Raccourcis de --env=prod.
+  --local-mac             --env=dev avec l'IP du Mac (téléphone sur le même Wi-Fi).
   --clean                 Nettoie Flutter avant lancement.
   --sync                  Copie vers ~/Developer/studentflow avant lancement, utile pour iPhone.
   --no-sync               Désactive explicitement la copie.
@@ -127,14 +130,15 @@ for argument in "$@"; do
     --api-url=*)
       API_URL="${argument#--api-url=}"
       ;;
-    --nas)
-      USE_NAS=true
+    --env=*)
+      ENV_NAME="${argument#--env=}"
+      ;;
+    --nas|--prod)
+      ENV_NAME="prod"
       ;;
     --local-mac)
+      ENV_NAME="dev"
       USE_LOCAL_MAC=true
-      ;;
-    --prod)
-      ENTRYPOINT="lib/main_prod.dart"
       ;;
     --clean)
       SHOULD_CLEAN=true
@@ -158,7 +162,17 @@ if [ "$SHOULD_LIST" = true ]; then
   exit 0
 fi
 
-if [ "$USE_NAS" = true ]; then
+case "$ENV_NAME" in
+  dev|prod|demo) ;;
+  *)
+    echo "Environnement inconnu : $ENV_NAME (dev, prod ou demo)." >&2
+    exit 1
+    ;;
+esac
+
+if [ -n "$API_URL" ] || [ "$ENV_NAME" = "demo" ]; then
+  :
+elif [ "$ENV_NAME" = "prod" ]; then
   API_URL="$NAS_API_URL"
 elif [ "$USE_LOCAL_MAC" = true ]; then
   API_URL="http://$(detect_mac_ip):5028"
@@ -214,7 +228,7 @@ fi
 
 echo "Flutter target: ${DEVICE_ID:-interactive selection}"
 echo "Build mode: $BUILD_MODE"
-echo "Entrypoint: $ENTRYPOINT"
+echo "Environnement: $ENV_NAME"
 echo "API URL: ${API_URL:-Flutter default}"
 echo "Project root: $RUN_ROOT"
 
@@ -225,7 +239,12 @@ if looks_like_ios_target && [ ! -d "ios/Pods" ]; then
   (cd ios && pod install)
 fi
 
-COMMAND=(flutter run "--$BUILD_MODE" -t "$ENTRYPOINT")
+COMMAND=(flutter run "--$BUILD_MODE" "--dart-define-from-file=config/$ENV_NAME.json")
+
+# Port fixe pour le web : l'API n'autorise que des origines connues (CORS).
+if [ "$DEVICE_ID" = "chrome" ] || [ "$DEVICE_ID" = "web-server" ]; then
+  COMMAND+=(--web-port=8080)
+fi
 
 if [ -n "$DEVICE_ID" ]; then
   COMMAND+=(-d "$DEVICE_ID")

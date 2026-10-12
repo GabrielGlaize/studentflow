@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using StudyFlow.Api.Contracts;
 using StudyFlow.Api;
+using StudyFlow.Api.Seeding;
 using StudyFlow.Api.Realtime;
 using StudyFlow.Infrastructure;
 using StudyFlow.Infrastructure.Persistence;

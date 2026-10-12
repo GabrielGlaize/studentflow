@@ -1,20 +1,21 @@
 import 'package:flutter/foundation.dart';
 import 'package:studyflow_app/core/config/app_environment.dart';
 
-/// Centralizes API-related configuration.
+/// Centralise l'adresse de l'API.
 abstract final class ApiConfig {
   static const String _configuredBaseUrl = String.fromEnvironment(
     'STUDYFLOW_API_URL',
     defaultValue: '',
   );
 
-  /// Default backend URL used by the selected app environment.
+  /// URL de l'API pour cet environnement. `STUDYFLOW_API_URL` (fichier de
+  /// config ou script d'installation) l'emporte toujours.
   ///
-  /// Android emulators cannot reach the Mac with `localhost`; they use the
-  /// special host `10.0.2.2`. Other local targets can keep `localhost`.
+  /// En dev sans URL : l'émulateur Android joint le Mac par `10.0.2.2`, les
+  /// autres cibles locales par `localhost`.
   static String baseUrlFor(AppEnvironment environment) {
     if (_configuredBaseUrl.isNotEmpty) return _configuredBaseUrl;
-    if (environment.isProd) return environment.productionApiBaseUrl!;
+    if (environment.isProd) return AppEnvironment.defaultProductionApiUrl;
 
     return defaultTargetPlatform == TargetPlatform.android
         ? 'http://10.0.2.2:5028'

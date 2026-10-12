@@ -6,57 +6,24 @@ Swikko aide une classe à partager son emploi du temps, ses devoirs et ses infor
 
 Un compte sans classe peut organiser ses candidatures dans un agenda personnel. Les rattachements scolaires sont approuvés par un délégué, tandis que les cours et devoirs restent modifiables librement par tous les élèves approuvés. Les identités des professeurs, salles, horaires précis, tokens techniques et événements personnels sont protégés côté backend.
 
-## Démarrage le plus simple
+## Démarrage
 
-La procédure complète est dans [`docs/LANCEMENT_RAPIDE.md`](./docs/LANCEMENT_RAPIDE.md).
-
-Backend :
-
-```bash
-cd /Users/gab/Documents/studentflow
-
-open -a Docker
-docker compose up -d postgres
-
-dotnet run --project src/backend/StudyFlow.Api \
-  --urls http://0.0.0.0:5028
-```
-
-App sur un appareil iOS ou Android branché au Mac, avec le script automatisé :
+Deux environnements : **développement** sur le Mac (Docker, base seedée) et **production**
+sur le NAS. Tout passe par `make` (`make` seul affiche l'aide). Détails :
+[`docs/ENVIRONNEMENTS.md`](./docs/ENVIRONNEMENTS.md).
 
 ```bash
 cd /Users/gab/Documents/studentflow
-./scripts/install_app.sh                  # menu : choisir l’appareil
-./scripts/install_app.sh --list           # lister les appareils iOS/Android
-./scripts/install_app.sh --device=ipad    # ID exact ou partie du nom
+make setup     # outils, .env avec des clés aléatoires, dépendances
+make dev       # PostgreSQL + API (seedée) + Mailpit dans Docker
+make app-dev   # l'app sur l'appareil branché, reliée à l'API du Mac
 ```
 
-Le script liste les iPhone, iPad et appareils Android détectés par Flutter et demande sur lequel installer (choix automatique s’il n’y en a qu’un). Il copie le projet dans `/Users/gab/Developer/studentflow`, nettoie les attributs macOS qui peuvent casser le codesign iOS et lance Flutter avec l’API du NAS (`https://studyflow-dev.duckdns.org`, modifiable via `STUDYFLOW_NAS_API_URL`). Avec `--local-mac`, l’app utilise le backend du Mac : IP locale du Mac pour un appareil physique, `10.0.2.2` pour l’émulateur Android, `localhost` pour le simulateur iOS.
+- API : http://localhost:5028 (Swagger : `/swagger`) · e-mails : http://localhost:8025
+- comptes : `gabriel@studyflow.dev` (délégué) et 7 élèves, mot de passe `Password1234!`
+- `make dev-api` : API sur le Mac avec rechargement à chaud · `make dev-reset` : base remise à zéro
 
-Pour lancer l’app sur n’importe quelle cible Flutter, utilise le script
-universel :
-
-```bash
-./scripts/run_app.sh --list
-./scripts/run_app.sh --device=emulator-5554
-./scripts/run_app.sh --device=chrome
-./scripts/run_app.sh --device=macos
-./scripts/run_app.sh --device=TON_ID_IPHONE --nas --release --sync --clean
-```
-
-Pour installer une version autonome sur iPhone pendant la durée du provisioning gratuit Apple, utilise le mode release :
-
-```bash
-./scripts/install_app.sh --clean --release
-```
-
-Pour que l’app reste utile Mac éteint, fais tourner l’API sur un NAS ou serveur local et installe l’app avec son URL :
-
-```bash
-./scripts/install_app.sh --clean --release --api-url=http://IP_DU_NAS:5028
-```
-
-Le guide NAS complet est dans [`docs/NAS_DEPLOIEMENT.md`](./docs/NAS_DEPLOIEMENT.md).
+Production : `make deploy-api` pour l'API du NAS, `make app-prod` pour l'app reliée au NAS.
 
 ## Tester l’application Flutter sur iPhone
 
@@ -126,24 +93,15 @@ Le conteneur expose PostgreSQL sur le port hôte `5433` afin de ne pas entrer en
 
 ## Backend
 
-```bash
-dotnet restore StudyFlow.sln
-dotnet run --project src/backend/StudyFlow.Api \
-  --urls http://0.0.0.0:5028
-```
+Le plus simple est `make dev` (tout dans Docker) ou `make dev-api` (API sur le Mac avec
+`dotnet watch`, base et Mailpit dans Docker). Voir [`docs/ENVIRONNEMENTS.md`](./docs/ENVIRONNEMENTS.md).
 
-En environnement `Development`, le backend applique les migrations et seed une classe locale si `DevelopmentSeed:Enabled=true`.
-
-Par défaut, `DevelopmentSeed:ResetOnStartup=true` dans `appsettings.Development.json` : à chaque relance du backend, la base locale est supprimée puis recréée avec les données seedées. C’est pratique pour une démo propre. Pour conserver tes modifications locales entre deux lancements, passe cette valeur à `false`.
-
-- compte délégué : `gabriel@studyflow.dev`
-- élèves seedés : `garance@studyflow.dev`, `liam@studyflow.dev`
-- demande d’approbation seedée : `nina@studyflow.dev`
-- mot de passe : `Password1234!`
-- classe : `BTS SIO 1`, année `2026-2027`
-- cours principaux : C, Architecture web, HTML/CSS/JS, Administration Windows, Flutter, API ASP.NET Core, Base de données et Anglais.
-
-Ces identifiants sont aussi affichés dans le terminal au lancement de `dotnet run`.
+En environnement `Development`, l’API applique les migrations et lance le seed
+(`src/backend/StudyFlow.Api/Seeding/`) : une classe `BTS SIO 1` en alternance, 8 élèves,
+5 semaines de cours, des devoirs, des partiels, des groupes de travail… Le contenu n’est
+créé que dans une base vide, et les comptes sont vérifiés à chaque démarrage (mot de passe
+`Password1234!`). `make dev-reset` remet la base à zéro. Le récapitulatif des comptes et
+le code de la classe s’affichent dans le journal de l’API (`make dev-logs`).
 
 La recherche d’alternance agrège plusieurs sources côté backend : La Bonne Alternance, Adzuna et France Travail. Les vraies clés ne doivent pas être mises dans Git. En local, le backend charge automatiquement le fichier `.env` placé à la racine du projet :
 
@@ -190,19 +148,17 @@ flutter run
 
 Sur émulateur Android, `flutter run` utilise automatiquement `http://10.0.2.2:5028` pour joindre le backend du Mac.
 
-Pour lancer le mode prod Flutter :
+L’environnement de l’app (dev, prod, démo) se choisit avec un fichier de `src/app/config/` :
 
 ```bash
 cd src/app
-flutter run -t lib/main_prod.dart \
-  --dart-define=STUDYFLOW_API_URL=https://ton-api-prod.example.com
+flutter run --dart-define-from-file=config/prod.json
 ```
 
 Pour lancer les tests :
 
 ```bash
-dotnet build StudyFlow.sln
-cd src/app && flutter test
+make test
 ```
 
 ## État actuel du MVP Flutter

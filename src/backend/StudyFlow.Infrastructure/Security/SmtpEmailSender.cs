@@ -113,7 +113,16 @@ public sealed class SmtpEmailSender(
         }
 
         using var registration = cancellationToken.Register(client.SendAsyncCancel);
-        await client.SendMailAsync(message, cancellationToken);
+        try
+        {
+            await client.SendMailAsync(message, cancellationToken);
+        }
+        catch (SmtpException exception) when (environment.IsDevelopment())
+        {
+            // En dev, Mailpit peut ne pas tourner : le code est de toute façon renvoyé par l'API.
+            logger.LogWarning(exception, "SMTP indisponible en développement ({Host}:{Port}) : e-mail « {Subject} » non envoyé.",
+                _options.Host, _options.Port, subject);
+        }
     }
 
     private static string BuildVerificationBody(string code, DateTimeOffset expiresAt)

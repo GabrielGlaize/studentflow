@@ -1,0 +1,4 @@
+{
+  "SWIKKO_ENV": "prod",
+  "STUDYFLOW_API_URL": "https://studyflow-dev.duckdns.org"
+}

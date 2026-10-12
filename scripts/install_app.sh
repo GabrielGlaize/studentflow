@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Installs StudyFlow on an iOS or Android device connected to the Mac.
+# Installe Swikko sur un appareil iOS ou Android branché au Mac.
 #
 # - Without --device, the script lists the iPhone, iPad and Android devices
 #   seen by Flutter and asks which one to use. If only one is connected, it is
@@ -10,9 +10,11 @@ set -euo pipefail
 #   locations because macOS adds resource forks or Finder metadata. The script
 #   copies the project to ~/Developer without extended attributes, then
 #   launches Flutter from that clean location.
-# - The app talks to the NAS API by default. With --local-mac, the API URL is
-#   derived from the target: the Mac IP for a physical device, 10.0.2.2 for an
-#   Android emulator, localhost for an iOS simulator.
+# - --env choisit l'environnement (src/app/config/<env>.json) :
+#     prod (défaut) : API du NAS ;
+#     dev           : API du Mac (make dev) : IP du Mac pour un appareil physique,
+#                     10.0.2.2 pour l'émulateur Android, localhost pour le simulateur iOS ;
+#     demo          : sans serveur, données fictives.
 
 SOURCE_ROOT="${STUDYFLOW_SOURCE_ROOT:-/Users/gab/Documents/studentflow}"
 DEV_ROOT="${STUDYFLOW_DEV_ROOT:-/Users/gab/Developer/studentflow}"
@@ -21,7 +23,7 @@ DEVICE_QUERY="${STUDYFLOW_DEVICE_ID:-}"
 SHOULD_SYNC=true
 SHOULD_CLEAN=false
 SHOULD_LIST=false
-USE_LOCAL_MAC=false
+ENV_NAME="prod"
 BUILD_MODE="debug"
 API_URL=""
 
@@ -37,15 +39,15 @@ Options:
   --debug                 Build debug. Par défaut.
   --profile               Build profile.
   --release               Build release (app autonome, débranchable ensuite).
-  --api-url=URL           URL exacte du backend.
-                          Par défaut : API du NAS (STUDYFLOW_NAS_API_URL ou
-                          https://studyflow-dev.duckdns.org).
-  --local-mac             Utilise l'API lancée sur le Mac (port 5028).
+  --env=dev|prod|demo     Environnement (défaut : prod). Voir src/app/config.
+  --api-url=URL           URL exacte du backend (remplace celle de l'environnement).
+  --local-mac             Raccourci de --env=dev.
   --clean                Nettoie Flutter avant lancement.
   --no-sync               Lance depuis ~/Developer/studentflow sans recopier.
 
 Exemples:
   ./scripts/install_app.sh
+  ./scripts/install_app.sh --env=dev
   ./scripts/install_app.sh --list
   ./scripts/install_app.sh --device=ipad --release
   ./scripts/install_app.sh --device=00008120-0009098822A2201E --clean --release
@@ -80,7 +82,10 @@ for argument in "$@"; do
       API_URL="${argument#--api-url=}"
       ;;
     --local-mac)
-      USE_LOCAL_MAC=true
+      ENV_NAME="dev"
+      ;;
+    --env=*)
+      ENV_NAME="${argument#--env=}"
       ;;
     --device=*)
       DEVICE_QUERY="${argument#--device=}"
@@ -92,6 +97,14 @@ for argument in "$@"; do
       ;;
   esac
 done
+
+case "$ENV_NAME" in
+  dev|prod|demo) ;;
+  *)
+    echo "Environnement inconnu : $ENV_NAME (dev, prod ou demo)." >&2
+    exit 1
+    ;;
+esac
 
 detect_mac_ip() {
   local mac_ip
@@ -232,7 +245,7 @@ else
   done
 
   while true; do
-    if ! read -r -p "Sur quel appareil installer StudyFlow ? [1-${#CANDIDATES[@]}, q pour quitter] " choice; then
+    if ! read -r -p "Sur quel appareil installer Swikko ? [1-${#CANDIDATES[@]}, q pour quitter] " choice; then
       echo
       exit 1
     fi
@@ -257,9 +270,9 @@ DEVICE_ID="${DEVICE_IDS[$SELECTED]}"
 DEVICE_PLATFORM="${DEVICE_PLATFORMS[$SELECTED]}"
 DEVICE_KIND="${DEVICE_KINDS[$SELECTED]}"
 
-if [ -n "$API_URL" ]; then
+if [ -n "$API_URL" ] || [ "$ENV_NAME" = "demo" ]; then
   :
-elif [ "$USE_LOCAL_MAC" = false ]; then
+elif [ "$ENV_NAME" = "prod" ]; then
   API_URL="$NAS_API_URL"
 else
   case "$DEVICE_PLATFORM:$DEVICE_KIND" in
@@ -279,13 +292,13 @@ fi
 # from the Android emulator, so it is checked through localhost.
 STATUS_URL="${API_URL%/}/api/status"
 STATUS_URL="${STATUS_URL/10.0.2.2/localhost}"
-if ! curl -fsS -m 5 "$STATUS_URL" >/dev/null 2>&1; then
+if [ -n "$API_URL" ] && ! curl -fsS -m 5 "$STATUS_URL" >/dev/null 2>&1; then
   echo "Attention : l'API ne répond pas sur $STATUS_URL." >&2
   echo "L'app affichera 'impossible de joindre le serveur'." >&2
-  if [ "$USE_LOCAL_MAC" = true ]; then
-    echo "Lance le backend : dotnet run --project src/backend/StudyFlow.Api --urls http://0.0.0.0:5028" >&2
+  if [ "$ENV_NAME" = "dev" ]; then
+    echo "Lance l'environnement de dev : make dev" >&2
   else
-    echo "Vérifie que l'API du NAS tourne, ou utilise --local-mac / --api-url=URL." >&2
+    echo "Vérifie que l'API du NAS tourne, ou utilise --env=dev / --api-url=URL." >&2
   fi
 
   if [ -t 0 ]; then
@@ -340,8 +353,9 @@ if [ "$SHOULD_CLEAN" = true ]; then
 fi
 
 echo "Device: $(device_label "$SELECTED")"
+echo "Environnement: $ENV_NAME"
 echo "Build mode: $BUILD_MODE"
-echo "API URL: $API_URL"
+echo "API URL: ${API_URL:-aucune (démo)}"
 
 flutter pub get
 
@@ -350,14 +364,16 @@ if [ "$DEVICE_PLATFORM" = "ios" ] && [ ! -d "ios/Pods" ]; then
   (cd ios && pod install)
 fi
 
-COMMAND=(flutter run "--$BUILD_MODE" -d "$DEVICE_ID")
+COMMAND=(flutter run "--$BUILD_MODE" -d "$DEVICE_ID" "--dart-define-from-file=config/$ENV_NAME.json")
 
 # Identifiants Firebase (notifications push Android), fichier local ignoré par Git.
 if [ -f "firebase_config.json" ]; then
   COMMAND+=(--dart-define-from-file=firebase_config.json)
 fi
 
-COMMAND+=(--dart-define=STUDYFLOW_API_URL="$API_URL")
+if [ -n "$API_URL" ]; then
+  COMMAND+=(--dart-define=STUDYFLOW_API_URL="$API_URL")
+fi
 
 echo "Running: ${COMMAND[*]}"
 "${COMMAND[@]}"
