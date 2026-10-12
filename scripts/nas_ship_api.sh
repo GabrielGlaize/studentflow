@@ -11,6 +11,7 @@ set -euo pipefail
 #
 # Usage :
 #   ./scripts/nas_ship_api.sh
+#   ./scripts/nas_ship_api.sh --installer-only   renvoie seulement le script d'installation
 #   STUDYFLOW_NAS_HOST=Gabriel@192.168.1.14 ./scripts/nas_ship_api.sh
 #
 # Variables :
@@ -27,6 +28,8 @@ IMAGE="studyflow-api:nas"
 ARCHIVE="studyflow-api.tar.gz"
 INSTALLER="studyflow_install_api.sh"
 SSH_OPTS=(-i "$NAS_KEY" -o ConnectTimeout=8)
+INSTALLER_ONLY=false
+[ "${1:-}" = "--installer-only" ] && INSTALLER_ONLY=true
 
 step() { printf '\n\033[1m==> %s\033[0m\n' "$1"; }
 
@@ -39,16 +42,17 @@ if ! ssh "${SSH_OPTS[@]}" -o BatchMode=yes "$NAS_HOST" true 2>/dev/null; then
   exit 1
 fi
 
-step "Publication de l'API (.NET, Release)"
-rm -rf "$BUILD_DIR"
-mkdir -p "$BUILD_DIR"
-dotnet publish "$PROJECT_ROOT/src/backend/StudyFlow.Api/StudyFlow.Api.csproj" \
-  --configuration Release \
-  --output "$BUILD_DIR/publish" \
-  /p:UseAppHost=false \
-  --nologo -v quiet
+if [ "$INSTALLER_ONLY" = false ]; then
+  step "Publication de l'API (.NET, Release)"
+  rm -rf "$BUILD_DIR"
+  mkdir -p "$BUILD_DIR"
+  dotnet publish "$PROJECT_ROOT/src/backend/StudyFlow.Api/StudyFlow.Api.csproj" \
+    --configuration Release \
+    --output "$BUILD_DIR/publish" \
+    /p:UseAppHost=false \
+    --nologo -v quiet
 
-cat > "$BUILD_DIR/Dockerfile" <<'DOCKERFILE'
+  cat > "$BUILD_DIR/Dockerfile" <<'DOCKERFILE'
 FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine
 WORKDIR /app
 # Fuseaux horaires : l'API calcule les cours et rappels en heure de Paris.
@@ -59,20 +63,29 @@ COPY publish/ .
 ENTRYPOINT ["dotnet", "StudyFlow.Api.dll"]
 DOCKERFILE
 
-step "Image Docker linux/amd64 ($IMAGE)"
-docker buildx build --platform linux/amd64 --tag "$IMAGE" --load "$BUILD_DIR"
-docker save "$IMAGE" | gzip > "$BUILD_DIR/$ARCHIVE"
-echo "Archive : $(du -h "$BUILD_DIR/$ARCHIVE" | cut -f1)"
+  step "Image Docker linux/amd64 ($IMAGE)"
+  docker buildx build --platform linux/amd64 --tag "$IMAGE" --load "$BUILD_DIR"
+  docker save "$IMAGE" | gzip > "$BUILD_DIR/$ARCHIVE"
+  echo "Archive : $(du -h "$BUILD_DIR/$ARCHIVE" | cut -f1)"
+fi
 
+mkdir -p "$BUILD_DIR"
 cat > "$BUILD_DIR/$INSTALLER" <<INSTALL
 #!/bin/sh
 # Installé par scripts/nas_ship_api.sh : à lancer avec sudo sur le NAS.
 set -eu
+# Sous sudo, le PATH de Synology ne contient pas /usr/local/bin, où se trouve docker.
+PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:\$PATH"
+command -v docker >/dev/null || { echo "docker introuvable : Container Manager est-il lancé ?"; exit 1; }
 cd "$NAS_DIR"
 mkdir -p backups
 STAMP=\$(date +%Y%m%d-%H%M%S)
-echo "==> Sauvegarde de la base (backups/studyflow-\$STAMP.sql.gz)"
-docker exec studyflow-nas-postgres sh -c 'pg_dump -U "\$POSTGRES_USER" "\$POSTGRES_DB"' | gzip > "backups/studyflow-\$STAMP.sql.gz"
+BACKUP="backups/studyflow-\$STAMP.sql"
+echo "==> Sauvegarde de la base (\$BACKUP.gz)"
+# Sans tube : si pg_dump échoue, set -e arrête tout avant de toucher à l'API.
+docker exec studyflow-nas-postgres sh -c 'pg_dump -U "\$POSTGRES_USER" "\$POSTGRES_DB"' > "\$BACKUP"
+grep -q "PostgreSQL database dump complete" "\$BACKUP" || { echo "Sauvegarde incomplète : arrêt."; rm -f "\$BACKUP"; exit 1; }
+gzip "\$BACKUP"
 echo "==> Chargement de l'image"
 gunzip -c "\$HOME_DIR/$ARCHIVE" | docker load
 echo "==> Redémarrage de l'API (migrations appliquées au démarrage)"
@@ -89,12 +102,14 @@ sed -i '' "s#\\\$HOME_DIR#$NAS_HOME#g" "$BUILD_DIR/$INSTALLER"
 
 step "Copie vers le NAS"
 # rsync est refusé par Synology pour cet utilisateur : on passe par cat sur SSH.
-ssh "${SSH_OPTS[@]}" "$NAS_HOST" "cat > '$NAS_HOME/$ARCHIVE'" < "$BUILD_DIR/$ARCHIVE"
+if [ "$INSTALLER_ONLY" = false ]; then
+  ssh "${SSH_OPTS[@]}" "$NAS_HOST" "cat > '$NAS_HOME/$ARCHIVE'" < "$BUILD_DIR/$ARCHIVE"
+fi
 ssh "${SSH_OPTS[@]}" "$NAS_HOST" "cat > '$NAS_HOME/$INSTALLER'" < "$BUILD_DIR/$INSTALLER"
 
 step "Dernière étape, sur le NAS"
-echo "Lance cette commande (mot de passe sudo du NAS demandé) :"
+echo "Lance cette commande dans l'app Terminal du Mac (mot de passe sudo du NAS demandé) :"
 echo
 echo "  ssh -t -i $NAS_KEY $NAS_HOST 'sudo sh $NAS_HOME/$INSTALLER'"
 echo
-echo "Depuis Claude Code : tape ! devant la commande."
+echo "Pas avec ! dans Claude Code : sudo a besoin d'un vrai terminal pour le mot de passe."
