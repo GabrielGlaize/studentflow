@@ -162,9 +162,34 @@ class ProfileSettingsPage extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            const _SettingsGroupTitle(title: 'Application'),
+            const _SettingsGroupTitle(title: 'Swikko'),
             _SettingsGroup(
               children: [
+                Builder(
+                  builder: (tileContext) => ListTile(
+                    key: const ValueKey('share-app'),
+                    leading: const Icon(Icons.ios_share),
+                    title: const Text('Partager l’app à mes camarades'),
+                    subtitle: const Text('Le lien et le code de ta classe.'),
+                    onTap: () => shareSwikko(tileContext),
+                  ),
+                ),
+                ListTile(
+                  key: const ValueKey('send-feedback'),
+                  leading: const Icon(Icons.lightbulb_outline),
+                  title: const Text('Une idée ? Un bug ?'),
+                  subtitle: const Text('Envoie-le directement à l’équipe.'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => FeedbackPage.open(context),
+                ),
+                ListTile(
+                  key: const ValueKey('whats-new'),
+                  leading: const Icon(Icons.auto_awesome_outlined),
+                  title: const Text('Quoi de neuf'),
+                  subtitle: Text('Version ${ReleaseNotes.current.version}'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => WhatsNewSheet.show(context),
+                ),
                 ListTile(
                   key: const ValueKey('replay-tutorial'),
                   leading: const Icon(Icons.school_outlined),
@@ -173,6 +198,12 @@ class ProfileSettingsPage extends StatelessWidget {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => WelcomeTutorialPage.open(context),
                 ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const _SettingsGroupTitle(title: 'Application'),
+            _SettingsGroup(
+              children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
                   child: DropdownButtonFormField<ThemeMode>(
@@ -237,7 +268,7 @@ class ProfileSettingsPage extends StatelessWidget {
 
             const SizedBox(height: 12),
             Text(
-              'Swikko Pro · version étudiante',
+              'Swikko ${ReleaseNotes.current.version}',
               textAlign: TextAlign.center,
               style: TextStyle(color: context.sfMuted, fontSize: 11),
             ),

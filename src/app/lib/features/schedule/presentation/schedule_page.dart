@@ -30,6 +30,7 @@ class _SchedulePageState extends State<SchedulePage> {
 
   late final DateTime _anchorMonday;
   late DateTime _selectedDay;
+
   /// Vue semaine par défaut ; sinon le dernier choix (gardé dans les réglages).
   bool _showWholeWeek = true;
   bool _viewRestored = false;

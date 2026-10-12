@@ -1393,6 +1393,50 @@ namespace StudyFlow.Infrastructure.Persistence.Migrations
                     b.ToTable("teachers", (string)null);
                 });
 
+            modelBuilder.Entity("StudyFlow.Domain.Support.Feedback", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AppVersion")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("app_version");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("message");
+
+                    b.Property<string>("Platform")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("platform");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "CreatedAt");
+
+                    b.ToTable("feedback", (string)null);
+                });
+
             modelBuilder.Entity("StudyFlow.Domain.Users.UserAppSettings", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2134,6 +2178,15 @@ namespace StudyFlow.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("SchoolClass");
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Support.Feedback", b =>
+                {
+                    b.HasOne("StudyFlow.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("StudyFlow.Domain.Users.UserAppSettings", b =>

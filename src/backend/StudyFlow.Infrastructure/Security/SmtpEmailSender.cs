@@ -4,6 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using StudyFlow.Application.Security;
+using StudyFlow.Application.Support;
 
 namespace StudyFlow.Infrastructure.Security;
 
@@ -11,7 +12,7 @@ namespace StudyFlow.Infrastructure.Security;
 public sealed class SmtpEmailSender(
     IOptions<EmailOptions> options,
     IHostEnvironment environment,
-    ILogger<SmtpEmailSender> logger) : IPasswordResetEmailSender, IEmailVerificationSender
+    ILogger<SmtpEmailSender> logger) : IPasswordResetEmailSender, IEmailVerificationSender, IFeedbackNotifier
 {
     private readonly EmailOptions _options = options.Value;
 
@@ -53,6 +54,34 @@ public sealed class SmtpEmailSender(
             BuildVerificationBody(code, expiresAt),
             cancellationToken);
         return true;
+    }
+
+    public async Task NotifyAsync(FeedbackMessage feedback, CancellationToken cancellationToken = default)
+    {
+        var recipient = !string.IsNullOrWhiteSpace(_options.FeedbackTo)
+            ? _options.FeedbackTo
+            : _options.UserName;
+        if (!_options.IsSmtpConfigured || string.IsNullOrWhiteSpace(recipient))
+        {
+            logger.LogInformation("SMTP is not configured: feedback stored without e-mail.");
+            return;
+        }
+
+        var label = feedback.Kind == "bug" ? "Bug" : "Idée";
+        var firstLine = feedback.Message.Split('\n')[0];
+        var summary = firstLine.Length <= 60 ? firstLine : $"{firstLine[..59]}…";
+        await SendAsync(
+            recipient,
+            $"[Swikko] {label} : {summary}",
+            $"""
+            {label} remonté(e) depuis l'app.
+
+            De : {feedback.AuthorName} <{feedback.AuthorEmail}>
+            Version : {feedback.AppVersion ?? "?"} · {feedback.Platform ?? "?"}
+
+            {feedback.Message}
+            """,
+            cancellationToken);
     }
 
     private void LogUnsentCode(string purpose, string email, string code)

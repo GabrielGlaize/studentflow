@@ -5,6 +5,8 @@ import 'package:studyflow_app/core/config/app_environment.dart';
 import 'package:studyflow_app/core/widgets/date_time_pickers.dart';
 import 'package:studyflow_app/features/schedule/data/demo_course_repository.dart';
 import 'package:studyflow_app/features/schedule/domain/course_models.dart';
+import 'package:studyflow_app/core/release_notes.dart';
+import 'package:studyflow_app/features/support/data/feedback_repository.dart';
 import 'package:studyflow_app/main.dart';
 
 Future<void> _signIn(WidgetTester tester) async {
@@ -406,5 +408,47 @@ void main() {
     await tester.tap(find.text('Planning'));
     await tester.pumpAndSettle();
     expect(find.text('Salut Lina, voici Swikko'), findsNothing);
+  });
+
+  testWidgets('on envoie une idée et on relit les nouveautés', (tester) async {
+    await _signIn(tester);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.text('Profil'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('open-settings-button')));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('send-feedback')),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.ensureVisible(find.byKey(const ValueKey('send-feedback')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('send-feedback')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('feedback-message')),
+      'Pouvoir trier les devoirs par matière',
+    );
+    await tester.tap(find.byKey(const ValueKey('feedback-send')));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(find.text('Merci pour l’idée !'), findsOneWidget);
+    expect(
+      DemoFeedbackRepository.sent.last,
+      'idea: Pouvoir trier les devoirs par matière',
+    );
+
+    await tester.ensureVisible(find.byKey(const ValueKey('whats-new')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('whats-new')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('whats-new-sheet')), findsOneWidget);
+    expect(find.text(ReleaseNotes.current.title), findsOneWidget);
   });
 }

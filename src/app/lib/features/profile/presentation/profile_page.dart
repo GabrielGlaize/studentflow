@@ -20,6 +20,10 @@ import 'package:studyflow_app/features/company/application/company_documents_con
 import 'package:studyflow_app/features/exams/presentation/exams_page.dart';
 import 'package:studyflow_app/features/notifications/domain/notification_models.dart';
 import 'package:studyflow_app/features/onboarding/presentation/welcome_tutorial_page.dart';
+import 'package:studyflow_app/features/support/presentation/feedback_page.dart';
+import 'package:studyflow_app/features/support/presentation/share_app.dart';
+import 'package:studyflow_app/features/support/presentation/whats_new_sheet.dart';
+import 'package:studyflow_app/core/release_notes.dart';
 import 'package:studyflow_app/features/profile/application/app_preferences_sync.dart';
 import 'package:studyflow_app/features/profile/domain/notification_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -106,13 +110,22 @@ class ProfilePage extends StatelessWidget {
                 compact: true,
               ),
               const SizedBox(height: 4),
+              Builder(
+                builder: (buttonContext) => OutlinedButton.icon(
+                  key: const ValueKey('invite-classmates'),
+                  onPressed: () => shareSwikko(buttonContext),
+                  icon: const Icon(Icons.ios_share, size: 18),
+                  label: const Text('Inviter des camarades'),
+                ),
+              ),
+              const SizedBox(height: 12),
               _SettingsEntry(
                 onOpen: () => ProfileSettingsPage.open(context),
                 quietHours: settingsController.quietHours,
               ),
               const SizedBox(height: 12),
               Text(
-                'Swikko Pro · version étudiante',
+                'Swikko ${ReleaseNotes.current.version}',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: context.sfMuted, fontSize: 11),
               ),

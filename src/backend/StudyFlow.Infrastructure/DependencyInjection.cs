@@ -17,6 +17,7 @@ using StudyFlow.Application.Accounts;
 using StudyFlow.Application.Apprenticeships;
 using StudyFlow.Application.Notifications;
 using StudyFlow.Application.Security;
+using StudyFlow.Application.Support;
 using StudyFlow.Application.Time;
 using StudyFlow.Infrastructure.Apprenticeships;
 using StudyFlow.Infrastructure.Identity;
@@ -166,6 +167,7 @@ public static class DependencyInjection
         services.AddScoped<IPasswordResetService, PasswordResetService>();
         services.AddScoped<IEmailVerificationService, EmailVerificationService>();
         services.AddScoped<SmtpEmailSender>();
+        services.AddScoped<IFeedbackNotifier>(provider => provider.GetRequiredService<SmtpEmailSender>());
         services.AddScoped<IPasswordResetEmailSender>(provider => provider.GetRequiredService<SmtpEmailSender>());
         services.AddScoped<IEmailVerificationSender>(provider => provider.GetRequiredService<SmtpEmailSender>());
         services.AddScoped<IAccountDeletionService, AccountDeletionService>();

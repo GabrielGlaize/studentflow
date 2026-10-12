@@ -27,6 +27,7 @@ class AppSettingsController extends ChangeNotifier {
   bool _dailyNoteReminderEnabled = true;
   int _dailyNoteReminderMinutes = 19 * 60;
   bool _tutorialPending = false;
+  String? _lastSeenRelease;
   bool _scheduleWeekView = true;
   DateTime? _appPreferencesUpdatedAt;
 
@@ -64,6 +65,16 @@ class AppSettingsController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Dernière version dont le « Quoi de neuf » a été vu sur ce téléphone.
+  String? get lastSeenRelease => _lastSeenRelease;
+
+  void markReleaseSeen(String version) {
+    if (_lastSeenRelease == version) return;
+    _lastSeenRelease = version;
+    _save();
+    notifyListeners();
+  }
+
   void completeTutorial() {
     if (!_tutorialPending) return;
     _tutorialPending = false;
@@ -92,6 +103,7 @@ class AppSettingsController extends ChangeNotifier {
     _dailyNoteReminderEnabled = settings.dailyNoteReminderEnabled;
     _dailyNoteReminderMinutes = settings.dailyNoteReminderMinutes;
     _tutorialPending = _tutorialPending || settings.tutorialPending;
+    _lastSeenRelease = settings.lastSeenRelease;
     _scheduleWeekView = settings.scheduleWeekView;
     _appPreferencesUpdatedAt = settings.appPreferencesUpdatedAt;
     notifyListeners();
@@ -258,6 +270,7 @@ class AppSettingsController extends ChangeNotifier {
       dailyNoteReminderEnabled: _dailyNoteReminderEnabled,
       dailyNoteReminderMinutes: _dailyNoteReminderMinutes,
       tutorialPending: _tutorialPending,
+      lastSeenRelease: _lastSeenRelease,
       scheduleWeekView: _scheduleWeekView,
       appPreferencesUpdatedAt: _appPreferencesUpdatedAt,
     );
@@ -283,6 +296,7 @@ class AppSettings {
     this.dailyNoteReminderEnabled = true,
     this.dailyNoteReminderMinutes = 19 * 60,
     this.tutorialPending = false,
+    this.lastSeenRelease,
     this.scheduleWeekView = true,
     this.appPreferencesUpdatedAt,
   });
@@ -299,6 +313,7 @@ class AppSettings {
   final bool dailyNoteReminderEnabled;
   final int dailyNoteReminderMinutes;
   final bool tutorialPending;
+  final String? lastSeenRelease;
   final bool scheduleWeekView;
   final DateTime? appPreferencesUpdatedAt;
 
@@ -321,6 +336,7 @@ class AppSettings {
       dailyNoteReminderMinutes:
           (json['dailyNoteReminderMinutes'] as num?)?.toInt() ?? 19 * 60,
       tutorialPending: json['tutorialPending'] as bool? ?? false,
+      lastSeenRelease: json['lastSeenRelease'] as String?,
       scheduleWeekView: json['scheduleWeekView'] as bool? ?? true,
       appPreferencesUpdatedAt: DateTime.tryParse(
         json['appPreferencesUpdatedAt'] as String? ?? '',
@@ -342,6 +358,7 @@ class AppSettings {
       'dailyNoteReminderEnabled': dailyNoteReminderEnabled,
       'dailyNoteReminderMinutes': dailyNoteReminderMinutes,
       'tutorialPending': tutorialPending,
+      'lastSeenRelease': lastSeenRelease,
       'scheduleWeekView': scheduleWeekView,
       'appPreferencesUpdatedAt': appPreferencesUpdatedAt?.toIso8601String(),
     };

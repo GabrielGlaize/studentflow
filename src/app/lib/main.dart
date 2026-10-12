@@ -35,6 +35,7 @@ import 'package:studyflow_app/features/company/application/company_documents_con
 import 'package:studyflow_app/features/dashboard/data/dashboard_repository.dart';
 import 'package:studyflow_app/features/dashboard/data/demo_dashboard_repository.dart';
 import 'package:studyflow_app/features/dashboard/data/http_dashboard_repository.dart';
+import 'package:studyflow_app/features/support/data/feedback_repository.dart';
 import 'package:studyflow_app/features/notes/data/daily_note_repository.dart';
 import 'package:studyflow_app/features/notes/application/daily_notes_controller.dart';
 import 'package:studyflow_app/features/exams/data/demo_exam_repository.dart';
@@ -129,6 +130,7 @@ class _StudyFlowAppState extends State<StudyFlowApp>
   _notificationPreferencesRepository;
   late final CourseRepository _courseRepository;
   late final ExamRepository _examRepository;
+  late final FeedbackRepository _feedbackRepository;
   late final PushNotificationService _pushNotifications;
   late final ReminderSync _reminderSync;
   String? _syncedUserId;
@@ -175,6 +177,9 @@ class _StudyFlowAppState extends State<StudyFlowApp>
         _buildNotificationPreferencesRepository();
     _courseRepository = _buildCourseRepository();
     _examRepository = _buildExamRepository();
+    _feedbackRepository = _useDemoRepository(_useDemoAuthOverride)
+        ? const DemoFeedbackRepository()
+        : HttpFeedbackRepository(apiClient: _apiClient);
     _pushNotifications = PushNotificationService(
       sessionController: _sessionController,
       deviceRepository: HttpNotificationDeviceRepository(apiClient: _apiClient),
@@ -230,6 +235,7 @@ class _StudyFlowAppState extends State<StudyFlowApp>
           notificationScheduler: _notificationScheduler,
           courseRepository: _courseRepository,
           examRepository: _examRepository,
+          feedbackRepository: _feedbackRepository,
           reminderSync: _reminderSync,
           child: MaterialApp(
             title: 'Swikko',

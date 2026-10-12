@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:studyflow_app/core/app_scope.dart';
 import 'package:studyflow_app/core/theme/app_colors.dart';
 import 'package:studyflow_app/core/theme/prototype_widgets.dart';
+import 'package:studyflow_app/core/widgets/swikko_logo.dart';
 import 'package:studyflow_app/core/widgets/grouped_code_formatter.dart';
 import 'package:studyflow_app/core/widgets/password_rules.dart';
 import 'package:studyflow_app/features/auth/application/session_controller.dart';
@@ -636,12 +637,7 @@ class _AuthBrand extends StatelessWidget {
 
     return Row(
       children: [
-        const ProtoIconBox(
-          icon: Icons.school_outlined,
-          backgroundColor: AppColors.petrol,
-          foregroundColor: Colors.white,
-          size: 34,
-        ),
+        const SwikkoLogo(size: 36),
         const SizedBox(width: 9),
         Text(
           'Swikko',

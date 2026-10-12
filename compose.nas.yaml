@@ -68,6 +68,8 @@ services:
       Email__UseSsl: ${STUDYFLOW_EMAIL_USE_SSL:-true}
       Email__UserName: ${STUDYFLOW_EMAIL_USERNAME:-}
       Email__Password: ${STUDYFLOW_EMAIL_PASSWORD:-}
+      # Idées et bugs remontés depuis l'app (vide = adresse du compte d'envoi).
+      Email__FeedbackTo: ${STUDYFLOW_EMAIL_FEEDBACK_TO:-}
       # Le reverse proxy Synology passe par le réseau Docker : on lui fait confiance pour
       # transmettre la vraie IP du client (limites de requêtes par utilisateur, pas globales).
       ReverseProxy__KnownNetworks__0: ${STUDYFLOW_TRUSTED_PROXY_NETWORK:-172.16.0.0/12}

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:studyflow_app/core/app_scope.dart';
+import 'package:studyflow_app/core/release_notes.dart';
 import 'package:studyflow_app/core/theme/app_colors.dart';
 import 'package:studyflow_app/features/agenda/presentation/agenda_page.dart';
 import 'package:studyflow_app/features/apprenticeships/presentation/apprenticeships_page.dart';
@@ -8,6 +9,7 @@ import 'package:studyflow_app/features/dashboard/presentation/dashboard_page.dar
 import 'package:studyflow_app/features/onboarding/presentation/welcome_tutorial_page.dart';
 import 'package:studyflow_app/features/profile/presentation/profile_page.dart';
 import 'package:studyflow_app/features/schedule/presentation/schedule_page.dart';
+import 'package:studyflow_app/features/support/presentation/whats_new_sheet.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -37,6 +39,33 @@ class _MainShellState extends State<MainShell> {
     });
   }
 
+  bool _whatsNewOpen = false;
+
+  /// Après une mise à jour : « Quoi de neuf », une seule fois par version.
+  /// Première installation ou compte tout neuf : rien (la présentation suffit).
+  void _showWhatsNewIfUpdated() {
+    final settings = AppScope.of(context).settingsController;
+    final current = ReleaseNotes.current.version;
+    if (settings.lastSeenRelease == current || _whatsNewOpen) return;
+    // Première installation : rien de « nouveau » à montrer.
+    if (settings.lastSeenRelease == null ||
+        settings.tutorialPending ||
+        _tutorialOpen) {
+      // Après l'image en cours : prévenir pendant le build est interdit.
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => settings.markReleaseSeen(current),
+      );
+      return;
+    }
+    _whatsNewOpen = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      AppScope.of(context).settingsController.markReleaseSeen(current);
+      await WhatsNewSheet.show(context);
+      _whatsNewOpen = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final settingsController = AppScope.of(context).settingsController;
@@ -45,6 +74,7 @@ class _MainShellState extends State<MainShell> {
       animation: settingsController,
       builder: (context, _) {
         _showTutorialIfPending();
+        _showWhatsNewIfUpdated();
         return LayoutBuilder(
           builder: (context, constraints) {
             final useRail = constraints.maxWidth >= 840;

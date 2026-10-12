@@ -12,6 +12,9 @@ public sealed class EmailOptions
     public string Password { get; set; } = "";
     public string PasswordResetUrlBase { get; set; } = "";
 
+    /// <summary>Adresse qui reçoit les idées et bugs ; vide = celle du compte d'envoi.</summary>
+    public string FeedbackTo { get; set; } = "";
+
     public bool IsSmtpConfigured =>
         !string.IsNullOrWhiteSpace(From)
         && !string.IsNullOrWhiteSpace(Host);

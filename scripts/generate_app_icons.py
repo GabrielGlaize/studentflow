@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Generate StudyFlow launcher icons from the official logo.
+"""Generate Swikko launcher icons from the official logo.
 
-The source logo lives in `design/app-icon/studyflow-logo-source.png`.
+The source logo lives in `design/app-icon/swikko-logo-source.png`
+(drawn by `design/app-icon/draw_swikko_logo.py`).
 This script intentionally uses only Python's standard library so everyone in
 the project can regenerate the mobile icons without installing extra tools.
 """
@@ -14,9 +15,9 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "design/app-icon/studyflow-logo-source.png"
-MASTER = ROOT / "design/app-icon/studyflow-icon-1024.png"
-BACKGROUND = (7, 59, 76)  # StudyFlow petrol blue, used behind transparent pixels.
+SOURCE = ROOT / "design/app-icon/swikko-logo-source.png"
+MASTER = ROOT / "design/app-icon/swikko-icon-1024.png"
+BACKGROUND = (7, 59, 76)  # Swikko petrol blue, used behind transparent pixels.
 
 
 class RgbImage:

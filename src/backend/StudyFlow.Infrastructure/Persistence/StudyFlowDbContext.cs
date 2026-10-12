@@ -5,6 +5,7 @@ using StudyFlow.Domain.Apprenticeships;
 using StudyFlow.Domain.Contributions;
 using StudyFlow.Domain.Exams;
 using StudyFlow.Domain.Notes;
+using StudyFlow.Domain.Support;
 using StudyFlow.Domain.Notifications;
 using StudyFlow.Domain.School;
 using StudyFlow.Domain.Users;
@@ -25,6 +26,7 @@ public sealed class StudyFlowDbContext(
     public DbSet<HomeworkProgress> HomeworkProgressItems => Set<HomeworkProgress>();
     public DbSet<PersonalTask> PersonalTasks => Set<PersonalTask>();
     public DbSet<DailyNote> DailyNotes => Set<DailyNote>();
+    public DbSet<Feedback> FeedbackItems => Set<Feedback>();
     public DbSet<PersonalEvent> PersonalEvents => Set<PersonalEvent>();
     public DbSet<ClassMembershipRequest> ClassMembershipRequests => Set<ClassMembershipRequest>();
     public DbSet<ApprenticeshipMessage> ApprenticeshipMessages => Set<ApprenticeshipMessage>();
@@ -253,6 +255,17 @@ public sealed class StudyFlowDbContext(
 
     private static void ConfigurePersonalData(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<Feedback>(entity =>
+        {
+            entity.ToTable("feedback");
+            entity.Property(x => x.Kind).HasConversion<string>().HasMaxLength(10);
+            entity.Property(x => x.Message).HasMaxLength(4000).IsRequired();
+            entity.Property(x => x.AppVersion).HasMaxLength(30);
+            entity.Property(x => x.Platform).HasMaxLength(20);
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(x => new { x.UserId, x.CreatedAt });
+        });
+
         modelBuilder.Entity<DailyNote>(entity =>
         {
             entity.ToTable("daily_notes");

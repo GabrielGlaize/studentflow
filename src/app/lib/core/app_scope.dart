@@ -10,6 +10,7 @@ import 'package:studyflow_app/features/dashboard/data/dashboard_repository.dart'
 import 'package:studyflow_app/features/company/application/company_contacts_controller.dart';
 import 'package:studyflow_app/features/company/application/company_documents_controller.dart';
 import 'package:studyflow_app/features/exams/data/exam_repository.dart';
+import 'package:studyflow_app/features/support/data/feedback_repository.dart';
 import 'package:studyflow_app/features/notes/application/daily_notes_controller.dart';
 import 'package:studyflow_app/features/notifications/application/local_notification_scheduler.dart';
 import 'package:studyflow_app/features/notifications/application/reminder_sync.dart';
@@ -40,6 +41,7 @@ class AppScope extends InheritedWidget {
     required this.notificationScheduler,
     required this.courseRepository,
     required this.examRepository,
+    required this.feedbackRepository,
     required this.reminderSync,
     required super.child,
     super.key,
@@ -61,6 +63,7 @@ class AppScope extends InheritedWidget {
   final LocalNotificationScheduler notificationScheduler;
   final CourseRepository courseRepository;
   final ExamRepository examRepository;
+  final FeedbackRepository feedbackRepository;
   final ReminderSync reminderSync;
 
   static AppScope of(BuildContext context) {
@@ -88,6 +91,7 @@ class AppScope extends InheritedWidget {
         notificationScheduler != oldWidget.notificationScheduler ||
         courseRepository != oldWidget.courseRepository ||
         examRepository != oldWidget.examRepository ||
+        feedbackRepository != oldWidget.feedbackRepository ||
         reminderSync != oldWidget.reminderSync;
   }
 }
