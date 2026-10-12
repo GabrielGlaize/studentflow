@@ -25,6 +25,26 @@ public sealed class DevelopmentSeedTests(ApiFixture fixture)
             Assert.Equal(8, await db.Users.CountAsync(x => x.SchoolClassId == schoolClass.Id));
             Assert.Equal(39, await db.Courses.CountAsync(x => x.SchoolClassId == schoolClass.Id));
             Assert.Equal(3, await db.StudyGroups.CountAsync(x => x.SchoolClassId == schoolClass.Id));
+
+            // Chaque compte après les trois premiers a sa situation.
+            async Task<Guid> Id(string key) =>
+                (await db.Users.SingleAsync(x => x.Email == DevelopmentAccounts.Get(key).Email)).Id;
+            var yanis = await Id("yanis");
+            var garance = await Id("garance");
+            var sarah = await Id("sarah");
+            var tom = await Id("tom");
+            var ines = await Id("ines");
+            var now = DateTimeOffset.UtcNow;
+            var pastHomework = await db.HomeworkItems.CountAsync(x => x.SchoolClassId == schoolClass.Id && x.Deadline < now);
+            Assert.True(pastHomework >= 2);
+            Assert.Equal(pastHomework, await db.HomeworkProgressItems.CountAsync(x => x.UserId == garance && x.IsDone));
+            Assert.False(await db.HomeworkProgressItems.AnyAsync(x => x.UserId == yanis && x.IsDone));
+            Assert.False(await db.StudyGroupMembers.AnyAsync(x => x.UserId == sarah));
+            Assert.Null((await db.Users.SingleAsync(x => x.Id == tom)).SchoolClassId);
+            Assert.False(await db.ClassMembershipRequests.AnyAsync(x => x.UserId == tom));
+            Assert.False(await db.UserAppSettings.AnyAsync(x => x.UserId == ines && x.HasCompany));
+            Assert.Equal(10, DevelopmentAccounts.All.Count);
+            Assert.Equal(DevelopmentAccounts.All.Count, DevelopmentAccounts.All.Select(x => x.Situation).Skip(3).Distinct().Count() + 3);
         }
 
         // Les données chiffrées se relisent par l'API, comme dans l'app.

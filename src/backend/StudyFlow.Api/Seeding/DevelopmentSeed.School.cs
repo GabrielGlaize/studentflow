@@ -174,16 +174,26 @@ internal sealed partial class DevelopmentSeed
         Add("api-cr", "API ASP.NET Core", -9, "Compte-rendu : authentification JWT",
             "Expliquer access token, refresh token et leur durée de vie.");
 
-        // Un devoir déjà rendu par Gabriel, pour voir l'état « fait ».
-        if (homework.TryGetValue("api-cr", out var done))
+        Add("bdd-exercices", "Base de données", -13, "Exercices SQL : requêtes simples",
+            "Feuille 2, requêtes 1 à 12 sur la base « bibliothèque ».");
+        Add("anglais-cv", "Anglais", -13, "CV en anglais",
+            "Une page, format Europass accepté.");
+
+        // Les devoirs passés sont rendus par toute la classe, sauf Yanis (situation « en retard »).
+        var past = homework.Values.Where(x => x.Deadline < DateTimeOffset.UtcNow).ToList();
+        var onTime = DevelopmentAccounts.All.Where(x => x.InClass && x.Key != "yanis").Select(x => _users[x.Key]);
+        foreach (var item in past)
         {
-            db.HomeworkProgressItems.Add(new HomeworkProgress
+            foreach (var student in onTime)
             {
-                Homework = done,
-                UserId = Gabriel.Id,
-                IsDone = true,
-                CompletedAt = done.Deadline.AddDays(-1)
-            });
+                db.HomeworkProgressItems.Add(new HomeworkProgress
+                {
+                    Homework = item,
+                    UserId = student.Id,
+                    IsDone = true,
+                    CompletedAt = item.Deadline.AddDays(-1)
+                });
+            }
         }
 
         return homework;

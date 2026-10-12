@@ -16,7 +16,8 @@ namespace StudyFlow.Api.Seeding;
 /// école / entreprise, ses devoirs, ses partiels, ses groupes de travail et la vie perso de
 /// Gabriel (le délégué). Tout est daté par rapport à aujourd'hui, en heure de Paris.
 /// <para>
-/// Les comptes sont recréés à chaque démarrage (mots de passe remis à zéro) ; le contenu
+/// Les comptes (<see cref="DevelopmentAccounts"/>, un par situation à tester) sont vérifiés à
+/// chaque démarrage, mot de passe compris ; le contenu
 /// n'est créé que dans une base vide. Pour repartir de zéro : <c>make dev-reset</c>.
 /// </para>
 /// </summary>
@@ -80,21 +81,6 @@ internal sealed partial class DevelopmentSeed(
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    /// <summary>Les élèves de la classe, par prénom. Gabriel est le délégué.</summary>
-    private static readonly (string Key, string Email, string FirstName, string LastName)[] Students =
-    [
-        ("gabriel", "gabriel@studyflow.dev", "Gabriel", "Glaize"),
-        ("garance", "garance@studyflow.dev", "Garance", "Moreau"),
-        ("liam", "liam@studyflow.dev", "Liam", "Petit"),
-        ("ines", "ines@studyflow.dev", "Inès", "Benali"),
-        ("yanis", "yanis@studyflow.dev", "Yanis", "Kaci"),
-        ("chloe", "chloe@studyflow.dev", "Chloé", "Durand"),
-        ("hugo", "hugo@studyflow.dev", "Hugo", "Lefèvre"),
-        ("sarah", "sarah@studyflow.dev", "Sarah", "Fontaine")
-    ];
-
-    private const string PendingEmail = "nina@studyflow.dev";
-
     private readonly Dictionary<string, ApplicationUser> _users = [];
     private SchoolClass _class = null!;
 
@@ -104,19 +90,21 @@ internal sealed partial class DevelopmentSeed(
 
     public async Task RunAsync()
     {
-        foreach (var (key, email, firstName, lastName) in Students)
+        foreach (var account in DevelopmentAccounts.All)
         {
-            _users[key] = await EnsureUserAsync(email, firstName, lastName);
+            _users[account.Key] = await EnsureUserAsync(account.Email, account.FirstName, account.LastName);
         }
 
         await EnsureClassAsync();
-        foreach (var user in _users.Values)
+        foreach (var account in DevelopmentAccounts.All.Where(x => x.InClass))
         {
-            await EnsureRoleAsync(user, nameof(UserRole.Eleve));
+            await EnsureRoleAsync(_users[account.Key], nameof(UserRole.Eleve));
+            if (account.IsDelegate) await EnsureRoleAsync(_users[account.Key], nameof(UserRole.Delegue));
         }
 
-        await EnsureRoleAsync(Gabriel, nameof(UserRole.Delegue));
-        await EnsurePendingRequestAsync();
+        await EnsureOutsideClassAsync(_users["tom"]);
+        await EnsureOutsideClassAsync(_users["nina"]);
+        await EnsurePendingRequestAsync(_users["nina"]);
 
         // Le contenu n'est créé qu'une fois : une base déjà remplie garde ce qu'on y a fait.
         if (await db.Courses.IgnoreQueryFilters().AnyAsync(x => x.SchoolClassId == _class.Id))
@@ -184,33 +172,37 @@ internal sealed partial class DevelopmentSeed(
         }
 
         _class = schoolClass;
-        foreach (var user in _users.Values.Where(x => x.SchoolClassId != schoolClass.Id))
+        var members = DevelopmentAccounts.All.Where(x => x.InClass).Select(x => _users[x.Key]);
+        foreach (var user in members.Where(x => x.SchoolClassId != schoolClass.Id))
         {
             user.SchoolClassId = schoolClass.Id;
             Check(await userManager.UpdateAsync(user), $"rattacher {user.Email}");
         }
     }
 
-    /// <summary>Nina a demandé à rejoindre la classe : l'écran d'approbation du délégué a toujours une demande.</summary>
-    private async Task EnsurePendingRequestAsync()
+    /// <summary>Tom et Nina restent hors de la classe, même si on les y a fait entrer en testant.</summary>
+    private async Task EnsureOutsideClassAsync(ApplicationUser user)
     {
-        var nina = await EnsureUserAsync(PendingEmail, "Nina", "Lemoine");
-        if (nina.SchoolClassId is not null)
+        if (user.SchoolClassId is not null)
         {
-            nina.SchoolClassId = null;
-            Check(await userManager.UpdateAsync(nina), "sortir Nina de la classe");
+            user.SchoolClassId = null;
+            Check(await userManager.UpdateAsync(user), $"sortir {user.Email} de la classe");
         }
 
         foreach (var role in new[] { nameof(UserRole.Eleve), nameof(UserRole.Delegue) })
         {
-            if (await userManager.IsInRoleAsync(nina, role)) await userManager.RemoveFromRoleAsync(nina, role);
+            if (await userManager.IsInRoleAsync(user, role)) await userManager.RemoveFromRoleAsync(user, role);
         }
+    }
 
+    /// <summary>Nina a demandé à rejoindre la classe : l'écran d'approbation du délégué a toujours une demande.</summary>
+    private async Task EnsurePendingRequestAsync(ApplicationUser user)
+    {
         var pending = await db.ClassMembershipRequests
-            .AnyAsync(x => x.UserId == nina.Id && x.Status == ClassMembershipRequestStatus.Pending);
+            .AnyAsync(x => x.UserId == user.Id && x.Status == ClassMembershipRequestStatus.Pending);
         if (!pending)
         {
-            db.ClassMembershipRequests.Add(new ClassMembershipRequest { SchoolClassId = _class.Id, UserId = nina.Id });
+            db.ClassMembershipRequests.Add(new ClassMembershipRequest { SchoolClassId = _class.Id, UserId = user.Id });
             await db.SaveChangesAsync();
         }
     }
@@ -240,7 +232,7 @@ internal sealed partial class DevelopmentSeed(
     {
         var accounts = string.Join(
             Environment.NewLine,
-            Students.Select(x => $"  {(x.Key == "gabriel" ? "Délégué " : "Élève   ")} {x.Email}"));
+            DevelopmentAccounts.All.Select(x => $"  {x.Email,-24} {x.Situation}"));
         logger.LogInformation(
             """
 
@@ -248,13 +240,11 @@ internal sealed partial class DevelopmentSeed(
             Classe : {ClassName} · code {ClassCode}
             Mot de passe de tous les comptes : {Password}
             {Accounts}
-              En attente {Pending} (demande à valider par le délégué)
             ────────────────────────────────────────────────────────────
             """,
             DevelopmentDataSeeder.ClassName,
             classCode,
             DevelopmentDataSeeder.Password,
-            accounts,
-            PendingEmail);
+            accounts);
     }
 }

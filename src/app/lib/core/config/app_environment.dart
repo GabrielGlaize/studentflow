@@ -56,7 +56,11 @@ class AppEnvironment {
 
   bool get isProd => flavor == AppFlavor.prod;
 
-  /// Bandeau « DEV » : on sait toujours qu'on n'est pas sur les vraies données.
-  bool get showsDevBanner =>
+  /// L'app parle à l'API de dev du Mac (seedée) : bandeau « DEV » et comptes
+  /// de test sur l'écran de connexion.
+  bool get usesDevServer =>
       flavor == AppFlavor.dev && !useDemoRepositoriesByDefault;
+
+  /// Bandeau « DEV » : on sait toujours qu'on n'est pas sur les vraies données.
+  bool get showsDevBanner => usesDevServer;
 }

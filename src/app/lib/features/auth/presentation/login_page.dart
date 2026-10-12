@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:studyflow_app/core/app_scope.dart';
+import 'package:studyflow_app/core/network/api_client.dart';
 import 'package:studyflow_app/core/theme/app_colors.dart';
 import 'package:studyflow_app/core/theme/prototype_widgets.dart';
 import 'package:studyflow_app/core/widgets/swikko_logo.dart';
 import 'package:studyflow_app/core/widgets/grouped_code_formatter.dart';
 import 'package:studyflow_app/core/widgets/password_rules.dart';
 import 'package:studyflow_app/features/auth/application/session_controller.dart';
+import 'package:studyflow_app/features/auth/data/dev_accounts_repository.dart';
 import 'package:studyflow_app/features/auth/data/remembered_credentials_store.dart';
+import 'package:studyflow_app/features/auth/presentation/dev_accounts_panel.dart';
 import 'package:studyflow_app/features/apprenticeships/presentation/apprenticeships_page.dart';
 import 'package:studyflow_app/features/auth/presentation/onboarding_page.dart';
 
@@ -34,10 +37,27 @@ class _LoginPageState extends State<LoginPage> {
   final _credentialsStore = RememberedCredentialsStore();
   bool _rememberMe = false;
 
+  /// Comptes du seed, seulement quand l'app parle à l'API de dev du Mac.
+  DevAccountsRepository? _devAccounts;
+  bool _devAccountsChecked = false;
+
   @override
   void initState() {
     super.initState();
     _restoreCredentials();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_devAccountsChecked) return;
+    _devAccountsChecked = true;
+    final scope = AppScope.of(context);
+    if (scope.environment.usesDevServer) {
+      _devAccounts = HttpDevAccountsRepository(
+        apiClient: ApiClient(baseUrl: scope.apiBaseUrl),
+      );
+    }
   }
 
   Future<void> _restoreCredentials() async {
@@ -267,6 +287,17 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
               const SizedBox(height: 16),
+              if (_devAccounts case final repository?) ...[
+                AnimatedBuilder(
+                  animation: session,
+                  builder: (context, _) => DevAccountsPanel(
+                    repository: repository,
+                    enabled: session.status != SessionStatus.signingIn,
+                    onSelected: _loginAs,
+                  ),
+                ),
+                const SizedBox(height: 6),
+              ],
               if (_prefillDevelopmentCredentials) ...[
                 ProtoCard(
                   backgroundColor: const Color(0xFFEDF8FD),
@@ -319,6 +350,20 @@ class _LoginPageState extends State<LoginPage> {
       );
     } else {
       await _credentialsStore.clear();
+    }
+  }
+
+  /// Connexion en un geste (dev) : rien n'est mémorisé sur le téléphone.
+  Future<void> _loginAs(DevAccount account) async {
+    _emailController.text = account.email;
+    _passwordController.text = account.password;
+    final scope = AppScope.of(context);
+    final signedIn = await scope.sessionController.login(
+      email: account.email,
+      password: account.password,
+    );
+    if (signedIn && account.firstLaunch) {
+      scope.settingsController.requestTutorial();
     }
   }
 

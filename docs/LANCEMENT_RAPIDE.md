@@ -27,7 +27,8 @@ avec une classe complète. Le terminal affiche ensuite :
 - l’API : http://localhost:5028 (Swagger : http://localhost:5028/swagger) ;
 - l’adresse à utiliser depuis un téléphone : `http://IP_DU_MAC:5028` ;
 - la boîte mail locale : http://localhost:8025 (codes d’inscription, réinitialisation…) ;
-- les comptes : `gabriel@studyflow.dev` (délégué) et 7 élèves, mot de passe `Password1234!`.
+- les comptes de test, chacun avec sa situation (délégué, en retard, sans classe…),
+  mot de passe `Password1234!`.
 
 Tu modifies le backend ? Lance plutôt `make dev-api` : l’API tourne sur le Mac avec
 rechargement à chaud, sur la même base.
@@ -41,7 +42,8 @@ make app-dev
 ```
 
 Le script demande sur quel appareil installer, puis relie l’app à l’API du Mac. Un
-bandeau « DEV » rappelle qu’on n’est pas sur les vraies données.
+bandeau « DEV » rappelle qu’on n’est pas sur les vraies données, et l’écran de
+connexion liste les comptes de test : on en touche un pour se connecter.
 
 Autres cibles :
 

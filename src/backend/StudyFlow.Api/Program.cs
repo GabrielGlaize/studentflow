@@ -138,6 +138,23 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<StudyGroupHub>(StudyGroupHub.Path);
+
+if (usesDevelopmentSeed)
+{
+    // Écran de connexion de l'app de dev : tous les comptes du seed, avec leur situation.
+    // N'existe qu'en développement : en production, la route n'est jamais déclarée.
+    app.MapGet("/api/v1/dev/accounts", () => DevelopmentAccounts.All.Select(x => new DevelopmentAccountResponse(
+        x.Email,
+        DevelopmentDataSeeder.Password,
+        x.FirstName,
+        x.LastName,
+        x.Situation,
+        x.Details,
+        x.IsDelegate,
+        x.InClass,
+        x.FirstLaunch)));
+}
+
 app.MapHealthChecks("/health");
 app.MapGet("/api/status", () => Results.Ok(new ApiStatusResponse(
     "StudyFlow.Api",

@@ -14,7 +14,8 @@ internal sealed partial class DevelopmentSeed
     /// <summary>
     /// Trois groupes : celui de Gabriel pour le projet BDD (discussion, tâches, une réunion
     /// confirmée et une à valider), un autre groupe du même projet (pour voir qui est déjà
-    /// pris), et une invitation de Hugo pour le dossier réseau.
+    /// pris), et le groupe de Hugo pour le dossier réseau, qui attend la réponse de Gabriel.
+    /// Sarah n'a de groupe pour aucun des deux travaux.
     /// </summary>
     private async Task SeedGroupsAsync(SchoolSeed school)
     {
@@ -65,11 +66,10 @@ internal sealed partial class DevelopmentSeed
         AddMessage(team2, null, $"{ShortName(_users["ines"])} a créé le groupe.", now.AddDays(-2));
         AddMessage(team2, "yanis", "On part sur une base de location de vélos ?", now.AddDays(-1));
 
-        // ── Dossier réseau : Hugo invite Gabriel ──────────────────────────────────
+        // ── Dossier réseau : Hugo, seul, invite Gabriel ─────────────────────────────
         var network = NewGroup("Dossier réseau", networkFile, school.Subjects["Administration Windows"].Id,
             "Domaine AD avec deux OU, trois GPO et un partage par service.", now.AddHours(-5));
         AddMember(network, "hugo", StudyGroupRole.Organizer, null, now.AddHours(-5));
-        AddMember(network, "sarah", StudyGroupRole.Member, null, now.AddHours(-4));
         network.Members.Add(new StudyGroupMember
         {
             UserId = Gabriel.Id,

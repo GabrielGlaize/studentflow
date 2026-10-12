@@ -42,20 +42,33 @@ rien perdre.
 Le seed (`src/backend/StudyFlow.Api/Seeding/`) crée une classe de BTS SIO en alternance,
 datée par rapport à aujourd'hui :
 
-- 8 élèves, dont **Gabriel**, délégué et en entreprise chez « Atelier Numérique ». Nina
-  a une demande d'adhésion en attente ;
 - 5 semaines de cours au rythme de l'alternance : lundi et mardi à l'école, le mercredi
   une semaine sur deux, le reste en entreprise. Un cours est annulé ;
 - des devoirs, dont deux évaluations et deux travaux de groupe ;
 - les partiels dans deux semaines, avec une fiche de révision déjà commencée ;
-- trois groupes de travail : celui de Gabriel (discussion, tâches, une réunion confirmée
-  et une à valider), un autre groupe du même projet, et une invitation en attente ;
-- l'agenda perso de Gabriel (tâches école et entreprise, point avec le tuteur), ses notes
-  du jour, et l'entraide alternance de la classe.
+- trois groupes de travail et l'entraide alternance de la classe.
 
-Tous les comptes ont le mot de passe `Password1234!` :
-`gabriel@`, `garance@`, `liam@`, `ines@`, `yanis@`, `chloe@`, `hugo@`, `sarah@`
-et `nina@studyflow.dev`.
+### Les comptes : une situation par compte
+
+Mot de passe commun : `Password1234!`. En dev, l'écran de connexion de l'app liste
+tous ces comptes : on touche un compte pour se connecter.
+
+| Compte | Situation à tester |
+|--------|--------------------|
+| `gabriel@studyflow.dev` | Délégué, en entreprise : gère la classe, organise le projet BDD, 2 messages non lus, invité par Hugo, agenda perso et notes du jour |
+| `garance@studyflow.dev` | Élève du groupe de Gabriel |
+| `liam@studyflow.dev` | Élève du groupe de Gabriel, disponible le week-end |
+| `ines@studyflow.dev` | Cherche son alternance : pas d'entreprise, onglet Alternances |
+| `yanis@studyflow.dev` | En retard : ses devoirs passés ne sont pas rendus |
+| `chloe@studyflow.dev` | Premier lancement : la présentation s'ouvre après la connexion |
+| `hugo@studyflow.dev` | Seul dans son groupe, attend la réponse de Gabriel |
+| `sarah@studyflow.dev` | Sans groupe pour les deux travaux de groupe |
+| `nina@studyflow.dev` | Demande d'adhésion en attente (Gabriel peut l'accepter) |
+| `tom@studyflow.dev` | Sans classe : rejoindre ou créer une classe |
+
+La liste vient de `Seeding/DevelopmentAccounts.cs`, servie à l'app par
+`GET /api/v1/dev/accounts`. Cette route n'existe qu'en développement. Pour ajouter une
+situation, ajoute un compte à cette liste et ses données dans le seed.
 
 Le seed tourne à chaque démarrage de l'API en dev :
 

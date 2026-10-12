@@ -59,6 +59,14 @@ EOF
     fi
   done
 
+  # Docker Compose interprète les « $ » de .env : une clé JWT qui en contient n'aurait pas la
+  # même valeur dans Docker et sur le Mac. C'est une clé de dev : on la régénère (il suffit
+  # de se reconnecter dans l'app).
+  if grep -q '^Jwt__SigningKey=.*\$' .env; then
+    sed -i '' "s|^Jwt__SigningKey=.*|Jwt__SigningKey=$(random_key)|" .env
+    echo "Clé Jwt__SigningKey régénérée (elle contenait un « \$ »)."
+  fi
+
   # Puis on complète seulement les clés obligatoires manquantes.
   for key in Jwt__SigningKey Security__LookupKey; do
     if ! grep -q "^$key=." .env; then
@@ -96,10 +104,10 @@ summary() {
   echo "  E-mails    http://localhost:8025   (Mailpit)"
   echo "  Base       localhost:5433 · studyflow / studyflow   (make dev-psql)"
   echo
-  echo "  Comptes (mot de passe Password1234!) :"
-  echo "    gabriel@studyflow.dev   délégué, en entreprise, dans un groupe de projet"
-  echo "    garance@ liam@ ines@ yanis@ chloe@ hugo@ sarah@studyflow.dev"
-  echo "    nina@studyflow.dev      demande d’adhésion en attente"
+  echo "  Comptes (mot de passe Password1234!), aussi sur l’écran de connexion de l’app :"
+  curl -fsS -m 3 "$API_URL/api/v1/dev/accounts" 2>/dev/null \
+    | jq -r '.[] | "    \(.email | .[0:24] + (" " * (24 - length)))  \(.situation)"' 2>/dev/null \
+    || echo "    (API pas encore lancée : make dev)"
   echo
   echo "  App : make app-dev   (appareil branché)  ·  make app-web (navigateur)"
 }

@@ -20,17 +20,30 @@ internal sealed partial class DevelopmentSeed
 
     /// <summary>
     /// Gabriel est en alternance chez Atelier Numérique : tâches école et entreprise, rendez-vous
-    /// avec son tuteur, notes du jour. Liam cherche encore son entreprise (espace Alternance).
+    /// avec son tuteur, notes du jour. Toute la classe a une entreprise, sauf Inès qui cherche
+    /// encore la sienne (espace Alternances) et Chloé, dont le premier lancement le demandera.
     /// </summary>
     private async Task SeedPersonalAsync(SchoolSeed school)
     {
-        db.UserAppSettings.Add(new UserAppSettings
+        (string Key, string Company)[] companies =
+        [
+            ("gabriel", "Atelier Numérique"),
+            ("garance", "Mairie de Roubaix"),
+            ("liam", "Decathlon Digital"),
+            ("yanis", "Orange Business"),
+            ("hugo", "Hôpital Saint-Vincent"),
+            ("sarah", "Leroy Merlin")
+        ];
+        foreach (var (key, company) in companies)
         {
-            UserId = Gabriel.Id,
-            HasCompany = true,
-            CompanyName = "Atelier Numérique",
-            ProfessionalMode = ProfessionalMode.Company
-        });
+            db.UserAppSettings.Add(new UserAppSettings
+            {
+                UserId = _users[key].Id,
+                HasCompany = true,
+                CompanyName = company,
+                ProfessionalMode = ProfessionalMode.Company
+            });
+        }
 
         void Task(string title, string? description, PersonalTaskCategory category, int days, int hour, bool done = false)
         {
