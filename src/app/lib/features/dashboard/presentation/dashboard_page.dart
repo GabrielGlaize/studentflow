@@ -9,6 +9,7 @@ import 'package:studyflow_app/features/dashboard/domain/dashboard_models.dart';
 import 'package:studyflow_app/features/exams/domain/exam_models.dart';
 import 'package:studyflow_app/features/exams/presentation/exam_widgets.dart';
 import 'package:studyflow_app/features/exams/presentation/exams_page.dart';
+import 'package:studyflow_app/features/groups/presentation/groups_dashboard_section.dart';
 import 'package:studyflow_app/features/notes/application/daily_notes_controller.dart';
 import 'package:studyflow_app/features/notes/presentation/daily_note_page.dart';
 import 'package:studyflow_app/features/notes/presentation/quick_note_sheet.dart';
@@ -180,7 +181,7 @@ class _DashboardContent extends StatelessWidget {
                 onOpenAgenda: onOpenAgenda,
               ),
               _ExamsDashboardCard(refreshedAt: dashboard.generatedAt),
-              const SizedBox(height: 8),
+              GroupsDashboardSection(refreshedAt: dashboard.generatedAt),
             ],
             _SectionHeader(
               overline: 'Mon organisation',

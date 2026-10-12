@@ -11,6 +11,9 @@ import 'package:studyflow_app/features/agenda/presentation/agenda_calendar_view.
 import 'package:studyflow_app/features/agenda/presentation/homework_form_page.dart';
 import 'package:studyflow_app/features/exams/domain/exam_models.dart';
 import 'package:studyflow_app/features/exams/presentation/exams_page.dart';
+import 'package:studyflow_app/features/groups/domain/group_models.dart';
+import 'package:studyflow_app/features/groups/presentation/group_agenda_items.dart';
+import 'package:studyflow_app/features/groups/presentation/homework_groups_sheet.dart';
 
 class AgendaPage extends StatefulWidget {
   const AgendaPage({this.initialCategory = 'school', super.key});
@@ -32,6 +35,9 @@ class _AgendaPageState extends State<AgendaPage> {
 
   /// Partiels de la classe, montrés comme évaluations dans le calendrier.
   List<ExamSession> _examSessions = const [];
+
+  /// Tâches de groupe confiées à l'élève et réunions confirmées.
+  GroupAgenda _groupAgenda = GroupAgenda.empty;
   late PageController _workspaceController;
 
   @override
@@ -225,6 +231,7 @@ class _AgendaPageState extends State<AgendaPage> {
                 else
                   ...agenda.homework.map(_homeworkCard),
                 const SizedBox(height: 16),
+                GroupAgendaItems(agenda: _groupAgenda, onOpened: _refresh),
               ],
               _SectionTitle(
                 title: _eventSectionTitle(category),
@@ -270,6 +277,7 @@ class _AgendaPageState extends State<AgendaPage> {
       onDelete: run(() => _confirmDeleteHomework(item)),
       onToggleDone: run(() => _setHomeworkDone(item, !item.isDone)),
       onEditReminder: run(() => _editHomeworkReminder(item)),
+      onOpenGroups: run(() => HomeworkGroupsSheet.show(context, item)),
     );
   }
 
@@ -315,6 +323,7 @@ class _AgendaPageState extends State<AgendaPage> {
           entries: [
             ..._calendarEntries(_merge(snapshot.requireData)),
             ..._examEntries(),
+            ..._groupEntries(),
           ],
           onRefresh: _refresh,
           onOpenDay: (day) =>
@@ -396,6 +405,27 @@ class _AgendaPageState extends State<AgendaPage> {
     ];
   }
 
+  List<AgendaCalendarEntry> _groupEntries() {
+    return [
+      for (final task in _groupAgenda.tasks)
+        if (task.dueOn case final due?)
+          AgendaCalendarEntry(
+            id: 'group-task-${task.id}',
+            kind: AgendaEntryKind.group,
+            day: DateUtils.dateOnly(due),
+            title: '${task.groupName} · ${task.title}',
+          ),
+      for (final meeting in _groupAgenda.meetings)
+        AgendaCalendarEntry(
+          id: 'group-meeting-${meeting.id}',
+          kind: AgendaEntryKind.group,
+          day: DateUtils.dateOnly(meeting.startsAt),
+          time: StudyFlowFormat.timeOf(meeting.startsAt),
+          title: 'Réunion · ${meeting.groupName}',
+        ),
+    ];
+  }
+
   /// Détail d'un jour du calendrier, avec les mêmes cartes que la liste.
   Future<void> _openCalendarDay(AgendaSummary agenda, DateTime day) async {
     final homework = agenda.homework
@@ -424,11 +454,19 @@ class _AgendaPageState extends State<AgendaPage> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       builder: (sheetContext) {
         void close() => Navigator.pop(sheetContext);
+        final hasGroupWork =
+            _groupAgenda.tasks.any(
+              (x) => x.dueOn != null && DateUtils.isSameDay(x.dueOn, day),
+            ) ||
+            _groupAgenda.meetings.any(
+              (x) => DateUtils.isSameDay(x.startsAt, day),
+            );
         final isEmpty =
             homework.isEmpty &&
             tasks.isEmpty &&
             events.isEmpty &&
-            exams.isEmpty;
+            exams.isEmpty &&
+            !hasGroupWork;
 
         return DraggableScrollableSheet(
           expand: false,
@@ -509,6 +547,12 @@ class _AgendaPageState extends State<AgendaPage> {
                 for (final item in homework) _homeworkCard(item, before: close),
                 const SizedBox(height: 8),
               ],
+              GroupAgendaItems(
+                agenda: _groupAgenda,
+                day: day,
+                before: close,
+                onOpened: _refresh,
+              ),
               if (events.isNotEmpty) ...[
                 _SectionTitle(
                   title: 'Mes événements',
@@ -560,6 +604,7 @@ class _AgendaPageState extends State<AgendaPage> {
   Future<AgendaSummary> _loadAgenda(String category) async {
     final appScope = AppScope.of(context);
     final accessToken = await appScope.sessionController.accessTokenForApi();
+    if (category == 'school') _loadGroupAgenda(accessToken);
 
     return appScope.agendaRepository.getAgenda(
       taskCategory: category,
@@ -581,6 +626,7 @@ class _AgendaPageState extends State<AgendaPage> {
           })
           .catchError((Object _) {}),
     );
+    _loadGroupAgenda(accessToken);
 
     return Future.wait([
       for (final category in _workspaces)
@@ -589,6 +635,18 @@ class _AgendaPageState extends State<AgendaPage> {
           accessToken: accessToken,
         ),
     ]);
+  }
+
+  /// Travail de groupe : facultatif, l'agenda s'affiche même sans lui.
+  void _loadGroupAgenda(String? accessToken) {
+    unawaited(
+      AppScope.of(context).groupRepository
+          .agenda(accessToken: accessToken)
+          .then((agenda) {
+            if (mounted) setState(() => _groupAgenda = agenda);
+          })
+          .catchError((Object _) {}),
+    );
   }
 
   Future<void> _refresh() async {
@@ -1971,6 +2029,7 @@ class _HomeworkCard extends StatelessWidget {
     required this.onDelete,
     required this.onToggleDone,
     required this.onEditReminder,
+    required this.onOpenGroups,
   });
 
   final HomeworkItem homework;
@@ -1978,6 +2037,7 @@ class _HomeworkCard extends StatelessWidget {
   final VoidCallback onDelete;
   final VoidCallback onToggleDone;
   final VoidCallback onEditReminder;
+  final VoidCallback onOpenGroups;
 
   @override
   Widget build(BuildContext context) {
@@ -1996,12 +2056,20 @@ class _HomeworkCard extends StatelessWidget {
           'cours du ${StudyFlowFormat.shortDay(courseDay)}',
         ?homework.description,
       ].join(' · '),
-      footer: homework.isDone
+      footer: homework.isDone && !homework.isGroupWork
           ? null
-          : _ReminderBadge(
-              enabled: homework.notificationsEnabled,
-              minutes: homework.reminderMinutesBefore,
-              onTap: onEditReminder,
+          : Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                if (!homework.isDone)
+                  _ReminderBadge(
+                    enabled: homework.notificationsEnabled,
+                    minutes: homework.reminderMinutesBefore,
+                    onTap: onEditReminder,
+                  ),
+                if (homework.isGroupWork) _GroupWorkBadge(onTap: onOpenGroups),
+              ],
             ),
       isDone: homework.isDone,
       isEvaluation: homework.isEvaluation,
@@ -2014,6 +2082,8 @@ class _HomeworkCard extends StatelessWidget {
               onToggleDone();
             case _HomeworkAction.reminder:
               onEditReminder();
+            case _HomeworkAction.groups:
+              onOpenGroups();
             case _HomeworkAction.edit:
               onEdit();
             case _HomeworkAction.delete:
@@ -2031,6 +2101,11 @@ class _HomeworkCard extends StatelessWidget {
             value: _HomeworkAction.reminder,
             child: Text('Mon rappel'),
           ),
+          if (homework.isGroupWork)
+            const PopupMenuItem(
+              value: _HomeworkAction.groups,
+              child: Text('Groupes de ce devoir'),
+            ),
           const PopupMenuItem(
             value: _HomeworkAction.edit,
             child: Text('Modifier'),
@@ -2049,7 +2124,29 @@ class _HomeworkCard extends StatelessWidget {
   }
 }
 
-enum _HomeworkAction { toggleDone, reminder, edit, delete }
+enum _HomeworkAction { toggleDone, reminder, groups, edit, delete }
+
+/// « Travail de groupe » sous un devoir : ouvre mon groupe ou permet d'en former un.
+class _GroupWorkBadge extends StatelessWidget {
+  const _GroupWorkBadge({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      key: const ValueKey('homework-group-badge'),
+      borderRadius: BorderRadius.circular(99),
+      onTap: onTap,
+      child: ProtoChip(
+        icon: Icons.diversity_3_outlined,
+        label: 'Travail de groupe',
+        backgroundColor: context.sfGroupSoft,
+        foregroundColor: context.sfGroup,
+      ),
+    );
+  }
+}
 
 /// « La veille » sous un devoir ou une tâche : touche pour changer le rappel.
 class _ReminderBadge extends StatelessWidget {

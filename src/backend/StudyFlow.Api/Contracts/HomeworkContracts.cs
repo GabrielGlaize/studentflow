@@ -7,14 +7,16 @@ public sealed record HomeworkRequest(
     [StringLength(4000, ErrorMessage = "Description : 4000 caractères maximum.")] string? Description,
     DateTimeOffset Deadline,
     Guid? CourseId = null,
-    bool IsEvaluation = false);
+    bool IsEvaluation = false,
+    bool IsGroupWork = false);
 
 public sealed record HomeworkUpdateRequest(
     [StringLength(160, ErrorMessage = "Titre : 160 caractères maximum.")] string Title,
     [StringLength(4000, ErrorMessage = "Description : 4000 caractères maximum.")] string? Description,
     DateTimeOffset Deadline,
     Guid? CourseId = null,
-    bool IsEvaluation = false);
+    bool IsEvaluation = false,
+    bool IsGroupWork = false);
 
 /// <param name="ReminderMinutesBefore">Délai du rappel avant l'échéance ; nul pour garder le réglage actuel.</param>
 public sealed record HomeworkProgressRequest(
@@ -36,4 +38,5 @@ public sealed record HomeworkResponse(
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     int ReminderMinutesBefore = 1440,
-    bool IsEvaluation = false);
+    bool IsEvaluation = false,
+    bool IsGroupWork = false);

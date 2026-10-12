@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using StudyFlow.Domain.Apprenticeships;
 using StudyFlow.Domain.Contributions;
 using StudyFlow.Domain.Exams;
+using StudyFlow.Domain.Groups;
 using StudyFlow.Domain.Notes;
 using StudyFlow.Domain.Support;
 using StudyFlow.Domain.Notifications;
@@ -44,6 +45,16 @@ public sealed class StudyFlowDbContext(
     public DbSet<RevisionItemCheck> RevisionItemChecks => Set<RevisionItemCheck>();
     public DbSet<RevisionResource> RevisionResources => Set<RevisionResource>();
     public DbSet<RevisionResourceFile> RevisionResourceFiles => Set<RevisionResourceFile>();
+    public DbSet<StudyGroup> StudyGroups => Set<StudyGroup>();
+    public DbSet<StudyGroupMember> StudyGroupMembers => Set<StudyGroupMember>();
+    public DbSet<StudyGroupTask> StudyGroupTasks => Set<StudyGroupTask>();
+    public DbSet<StudyGroupTaskAssignee> StudyGroupTaskAssignees => Set<StudyGroupTaskAssignee>();
+    public DbSet<StudyGroupMessage> StudyGroupMessages => Set<StudyGroupMessage>();
+    public DbSet<StudyGroupResource> StudyGroupResources => Set<StudyGroupResource>();
+    public DbSet<StudyGroupResourceFile> StudyGroupResourceFiles => Set<StudyGroupResourceFile>();
+    public DbSet<StudyGroupMeeting> StudyGroupMeetings => Set<StudyGroupMeeting>();
+    public DbSet<StudyGroupMeetingVote> StudyGroupMeetingVotes => Set<StudyGroupMeetingVote>();
+    public DbSet<UserAvailability> UserAvailabilities => Set<UserAvailability>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
     public DbSet<EmailVerificationCode> EmailVerificationCodes => Set<EmailVerificationCode>();
@@ -66,6 +77,7 @@ public sealed class StudyFlowDbContext(
         ConfigureApprenticeships(modelBuilder);
         ConfigureContributions(modelBuilder);
         ConfigureExams(modelBuilder);
+        ConfigureGroups(modelBuilder);
         ApplySnakeCaseColumnNames(modelBuilder);
     }
 
@@ -439,6 +451,107 @@ public sealed class StudyFlowDbContext(
             entity.ToTable("revision_resource_files");
             entity.HasKey(x => x.RevisionResourceId);
             entity.Property(x => x.Content).IsRequired();
+        });
+    }
+
+    private static void ConfigureGroups(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<StudyGroup>(entity =>
+        {
+            entity.ToTable("study_groups");
+            entity.Property(x => x.Name).HasMaxLength(60).IsRequired();
+            entity.Ignore(x => x.EffectiveDueAt);
+            entity.HasOne(x => x.SchoolClass).WithMany().HasForeignKey(x => x.SchoolClassId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(x => x.Subject).WithMany().HasForeignKey(x => x.SubjectId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.Homework).WithMany().HasForeignKey(x => x.HomeworkId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.SetNull);
+            entity.HasIndex(x => new { x.SchoolClassId, x.HomeworkId });
+        });
+
+        modelBuilder.Entity<StudyGroupMember>(entity =>
+        {
+            entity.ToTable("study_group_members");
+            entity.HasKey(x => new { x.StudyGroupId, x.UserId });
+            entity.Property(x => x.Role).HasConversion<string>().HasMaxLength(12);
+            entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(10);
+            entity.Property(x => x.RoleLabel).HasMaxLength(40);
+            entity.HasOne(x => x.Group).WithMany(x => x.Members).HasForeignKey(x => x.StudyGroupId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(x => x.UserId);
+        });
+
+        modelBuilder.Entity<StudyGroupTask>(entity =>
+        {
+            entity.ToTable("study_group_tasks");
+            entity.Property(x => x.EncryptedTitle).IsRequired();
+            entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(10);
+            entity.HasOne(x => x.Group).WithMany(x => x.Tasks).HasForeignKey(x => x.StudyGroupId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.CreatedById).OnDelete(DeleteBehavior.SetNull);
+            entity.HasIndex(x => new { x.StudyGroupId, x.CreatedAt });
+        });
+
+        modelBuilder.Entity<StudyGroupTaskAssignee>(entity =>
+        {
+            entity.ToTable("study_group_task_assignees");
+            entity.HasKey(x => new { x.StudyGroupTaskId, x.UserId });
+            entity.HasOne(x => x.Task).WithMany(x => x.Assignees).HasForeignKey(x => x.StudyGroupTaskId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(x => x.UserId);
+        });
+
+        modelBuilder.Entity<StudyGroupMessage>(entity =>
+        {
+            entity.ToTable("study_group_messages");
+            entity.Property(x => x.EncryptedText).IsRequired();
+            entity.HasOne(x => x.Group).WithMany().HasForeignKey(x => x.StudyGroupId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.AuthorId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasIndex(x => new { x.StudyGroupId, x.CreatedAt });
+        });
+
+        modelBuilder.Entity<StudyGroupResource>(entity =>
+        {
+            entity.ToTable("study_group_resources");
+            entity.Property(x => x.Kind).HasConversion<string>().HasMaxLength(10);
+            entity.Property(x => x.EncryptedTitle).IsRequired();
+            entity.Property(x => x.FileName).HasMaxLength(120);
+            entity.Property(x => x.FileType).HasMaxLength(10);
+            entity.Property(x => x.ContentType).HasMaxLength(80);
+            entity.HasOne(x => x.Group).WithMany().HasForeignKey(x => x.StudyGroupId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.AuthorId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.File).WithOne().HasForeignKey<StudyGroupResourceFile>(x => x.StudyGroupResourceId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(x => new { x.StudyGroupId, x.CreatedAt });
+        });
+
+        modelBuilder.Entity<StudyGroupResourceFile>(entity =>
+        {
+            entity.ToTable("study_group_resource_files");
+            entity.HasKey(x => x.StudyGroupResourceId);
+            entity.Property(x => x.EncryptedContent).IsRequired();
+        });
+
+        modelBuilder.Entity<StudyGroupMeeting>(entity =>
+        {
+            entity.ToTable("study_group_meetings");
+            entity.Property(x => x.Mode).HasConversion<string>().HasMaxLength(10);
+            entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(10);
+            entity.HasOne(x => x.Group).WithMany().HasForeignKey(x => x.StudyGroupId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.ProposedById).OnDelete(DeleteBehavior.SetNull);
+            entity.HasIndex(x => new { x.StudyGroupId, x.StartsAt });
+        });
+
+        modelBuilder.Entity<StudyGroupMeetingVote>(entity =>
+        {
+            entity.ToTable("study_group_meeting_votes");
+            entity.HasKey(x => new { x.StudyGroupMeetingId, x.UserId });
+            entity.HasOne(x => x.Meeting).WithMany(x => x.Votes).HasForeignKey(x => x.StudyGroupMeetingId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<UserAvailability>(entity =>
+        {
+            entity.ToTable("user_availabilities");
+            entity.HasKey(x => x.UserId);
+            entity.HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 

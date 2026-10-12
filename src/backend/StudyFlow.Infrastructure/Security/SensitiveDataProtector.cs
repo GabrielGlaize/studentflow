@@ -24,6 +24,12 @@ public sealed class SensitiveDataProtector(
         return CreateProtector(purpose).Unprotect(ciphertext);
     }
 
+    public byte[] ProtectBytes(byte[] plaintext, string purpose) =>
+        CreateProtector(purpose).Protect(plaintext);
+
+    public byte[] UnprotectBytes(byte[] ciphertext, string purpose) =>
+        CreateProtector(purpose).Unprotect(ciphertext);
+
     public string ComputeLookupHash(string value, string purpose)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(value);

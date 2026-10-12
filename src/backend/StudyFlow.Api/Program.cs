@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using StudyFlow.Api.Contracts;
 using StudyFlow.Api;
+using StudyFlow.Api.Realtime;
 using StudyFlow.Infrastructure;
 using StudyFlow.Infrastructure.Persistence;
 
@@ -17,6 +18,9 @@ builder.Services.AddExceptionHandler<StudyFlowExceptionHandler>();
 builder.Services.AddHealthChecks();
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 builder.Services.AddStudyFlowRateLimiting(builder.Configuration);
+builder.Services.AddSignalR(options => options.MaximumReceiveMessageSize = 16 * 1024);
+builder.Services.AddSingleton<StudyGroupConnections>();
+builder.Services.AddScoped<StudyGroupNotifier>();
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     // Derrière le reverse proxy du NAS, l'IP vue par l'API est celle du proxy : sans ces en-têtes,
@@ -37,7 +41,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("StudyFlowApp", policy =>
         policy
             .WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
-            .WithHeaders("Accept", "Authorization", "Content-Type")
+            .WithHeaders("Accept", "Authorization", "Content-Type", "X-Requested-With", "X-SignalR-User-Agent")
             .WithMethods("GET", "POST", "PUT", "DELETE"));
 });
 
@@ -132,6 +136,7 @@ app.UseRateLimiter();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<StudyGroupHub>(StudyGroupHub.Path);
 app.MapHealthChecks("/health");
 app.MapGet("/api/status", () => Results.Ok(new ApiStatusResponse(
     "StudyFlow.Api",

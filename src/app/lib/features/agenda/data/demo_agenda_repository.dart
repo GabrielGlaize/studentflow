@@ -222,6 +222,7 @@ class DemoAgendaRepository implements AgendaRepository {
       subjectName: request.subjectName,
       courseDay: request.courseDay,
       isEvaluation: request.isEvaluation,
+      isGroupWork: request.isGroupWork,
       isDone: false,
       notificationsEnabled: true,
     );
@@ -246,6 +247,7 @@ class DemoAgendaRepository implements AgendaRepository {
       subjectName: request.subjectName,
       courseDay: request.courseDay,
       isEvaluation: request.isEvaluation,
+      isGroupWork: request.isGroupWork,
       isDone: false,
       notificationsEnabled: true,
     );

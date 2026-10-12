@@ -11,6 +11,7 @@ class HomeworkItem {
     this.courseDay,
     this.reminderMinutesBefore = ReminderDelays.homeworkDefault,
     this.isEvaluation = false,
+    this.isGroupWork = false,
   });
 
   final String id;
@@ -20,6 +21,9 @@ class HomeworkItem {
 
   /// Devoir noté (contrôle, oral…), mis en avant dans l'agenda.
   final bool isEvaluation;
+
+  /// Devoir à faire en groupe : on forme son groupe depuis le devoir.
+  final bool isGroupWork;
   final String? courseId;
 
   /// Matière du cours lié, pour afficher « Mathématiques » sur le devoir.
@@ -48,6 +52,7 @@ class HomeworkItem {
           (json['reminderMinutesBefore'] as num?)?.toInt() ??
           ReminderDelays.homeworkDefault,
       isEvaluation: json['isEvaluation'] as bool? ?? false,
+      isGroupWork: json['isGroupWork'] as bool? ?? false,
     );
   }
 
@@ -69,6 +74,7 @@ class HomeworkItem {
       reminderMinutesBefore:
           reminderMinutesBefore ?? this.reminderMinutesBefore,
       isEvaluation: isEvaluation,
+      isGroupWork: isGroupWork,
     );
   }
 
@@ -81,6 +87,7 @@ class HomeworkItem {
       subjectName: subjectName,
       courseDay: courseDay,
       isEvaluation: isEvaluation,
+      isGroupWork: isGroupWork,
     );
   }
 }
@@ -94,6 +101,7 @@ class CreateHomeworkRequest {
     this.subjectName,
     this.courseDay,
     this.isEvaluation = false,
+    this.isGroupWork = false,
   });
 
   final String title;
@@ -101,6 +109,7 @@ class CreateHomeworkRequest {
   final DateTime deadline;
   final String? courseId;
   final bool isEvaluation;
+  final bool isGroupWork;
 
   /// Affichage seulement (mode démo) : le serveur les déduit du cours lié.
   final String? subjectName;
@@ -113,6 +122,7 @@ class CreateHomeworkRequest {
       'deadline': deadline.toUtc().toIso8601String(),
       'courseId': courseId,
       'isEvaluation': isEvaluation,
+      'isGroupWork': isGroupWork,
     };
   }
 

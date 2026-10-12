@@ -58,34 +58,7 @@ class WhatsNewSheet extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 18),
-            for (final item in release.items)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Icon(
-                        Icons.auto_awesome,
-                        size: 16,
-                        color: context.sfAccent,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        item,
-                        style: TextStyle(
-                          color: context.sfText,
-                          fontSize: 15,
-                          height: 1.4,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+            ReleaseNotesList(release: release),
             const SizedBox(height: 6),
             SizedBox(
               width: double.infinity,
@@ -97,6 +70,72 @@ class WhatsNewSheet extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Nouveautés puis correctifs d'une version (Quoi de neuf, historique).
+class ReleaseNotesList extends StatelessWidget {
+  const ReleaseNotesList({required this.release, super.key});
+
+  final AppRelease release;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final item in release.items)
+          _Line(icon: Icons.auto_awesome, color: context.sfAccent, text: item),
+        if (release.fixes.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: ProtoOverline('Correctifs', color: context.sfMuted),
+          ),
+          for (final fix in release.fixes)
+            _Line(
+              icon: Icons.build_circle_outlined,
+              color: context.sfMuted,
+              text: fix,
+            ),
+        ],
+      ],
+    );
+  }
+}
+
+class _Line extends StatelessWidget {
+  const _Line({required this.icon, required this.color, required this.text});
+
+  final IconData icon;
+  final Color color;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(icon, size: 16, color: color),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: context.sfText,
+                fontSize: 15,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

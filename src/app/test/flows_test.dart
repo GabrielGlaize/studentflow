@@ -381,6 +381,9 @@ void main() {
     expect(find.text('On s’organise ensemble'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('tutorial-next')));
     await tester.pumpAndSettle();
+    expect(find.text('Un projet à plusieurs'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('tutorial-next')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('tutorial-next')));
     await tester.pumpAndSettle();
 

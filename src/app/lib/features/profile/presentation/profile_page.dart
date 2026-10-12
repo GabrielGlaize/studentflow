@@ -22,6 +22,7 @@ import 'package:studyflow_app/features/notifications/domain/notification_models.
 import 'package:studyflow_app/features/onboarding/presentation/welcome_tutorial_page.dart';
 import 'package:studyflow_app/features/support/presentation/feedback_page.dart';
 import 'package:studyflow_app/features/support/presentation/share_app.dart';
+import 'package:studyflow_app/features/support/presentation/release_history_page.dart';
 import 'package:studyflow_app/features/support/presentation/whats_new_sheet.dart';
 import 'package:studyflow_app/core/release_notes.dart';
 import 'package:studyflow_app/features/profile/application/app_preferences_sync.dart';

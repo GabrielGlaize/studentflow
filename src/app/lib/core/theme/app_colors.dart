@@ -44,6 +44,13 @@ abstract final class AppColors {
   static const Color evaluation = Color(0xFFB0701A);
   static const Color evaluationSoft = Color(0xFFFCF2E3);
   static const Color evaluationLight = Color(0xFFF2C27D);
+
+  /// Groupes de travail : prune, l'espace privé d'un petit groupe d'élèves,
+  /// distinct du bleu « classe », du vert « perso » et du violet des
+  /// événements.
+  static const Color group = Color(0xFF8E3B8A);
+  static const Color groupSoft = Color(0xFFF7EAF6);
+  static const Color groupLight = Color(0xFFE7A9E2);
 }
 
 extension StudyFlowThemeColors on BuildContext {
@@ -90,4 +97,10 @@ extension StudyFlowThemeColors on BuildContext {
   Color get sfEvaluationSoft => sfIsDark
       ? AppColors.evaluationLight.withValues(alpha: 0.13)
       : AppColors.evaluationSoft;
+
+  Color get sfGroup => sfIsDark ? AppColors.groupLight : AppColors.group;
+
+  Color get sfGroupSoft => sfIsDark
+      ? AppColors.groupLight.withValues(alpha: 0.13)
+      : AppColors.groupSoft;
 }

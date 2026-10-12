@@ -39,6 +39,10 @@ import 'package:studyflow_app/features/support/data/feedback_repository.dart';
 import 'package:studyflow_app/features/notes/data/daily_note_repository.dart';
 import 'package:studyflow_app/features/notes/application/daily_notes_controller.dart';
 import 'package:studyflow_app/features/exams/data/demo_exam_repository.dart';
+import 'package:studyflow_app/features/groups/data/demo_group_repository.dart';
+import 'package:studyflow_app/features/groups/data/group_realtime.dart';
+import 'package:studyflow_app/features/groups/data/group_repository.dart';
+import 'package:studyflow_app/features/groups/data/http_group_repository.dart';
 import 'package:studyflow_app/features/exams/data/exam_repository.dart';
 import 'package:studyflow_app/features/exams/data/http_exam_repository.dart';
 import 'package:studyflow_app/features/notifications/application/local_notification_scheduler.dart';
@@ -131,6 +135,8 @@ class _StudyFlowAppState extends State<StudyFlowApp>
   late final CourseRepository _courseRepository;
   late final ExamRepository _examRepository;
   late final FeedbackRepository _feedbackRepository;
+  late final GroupRepository _groupRepository;
+  late final GroupRealtime _groupRealtime;
   late final PushNotificationService _pushNotifications;
   late final ReminderSync _reminderSync;
   String? _syncedUserId;
@@ -180,6 +186,16 @@ class _StudyFlowAppState extends State<StudyFlowApp>
     _feedbackRepository = _useDemoRepository(_useDemoAuthOverride)
         ? const DemoFeedbackRepository()
         : HttpFeedbackRepository(apiClient: _apiClient);
+    final demoGroups = _useDemoRepository(_useDemoAuthOverride);
+    _groupRepository = demoGroups
+        ? const DemoGroupRepository()
+        : HttpGroupRepository(apiClient: _apiClient);
+    _groupRealtime = demoGroups
+        ? LocalGroupRealtime()
+        : SignalRGroupRealtime(
+            baseUrl: ApiConfig.baseUrlFor(widget.environment),
+            accessToken: _sessionController.accessTokenForApi,
+          );
     _pushNotifications = PushNotificationService(
       sessionController: _sessionController,
       deviceRepository: HttpNotificationDeviceRepository(apiClient: _apiClient),
@@ -190,6 +206,7 @@ class _StudyFlowAppState extends State<StudyFlowApp>
     );
     _sessionController.beforeLogout = _pushNotifications.unregister;
     _reminderSync = ReminderSync(
+      groupRepository: _groupRepository,
       sessionController: _sessionController,
       settingsController: _settingsController,
       courseRepository: _courseRepository,
@@ -236,6 +253,8 @@ class _StudyFlowAppState extends State<StudyFlowApp>
           courseRepository: _courseRepository,
           examRepository: _examRepository,
           feedbackRepository: _feedbackRepository,
+          groupRepository: _groupRepository,
+          groupRealtime: _groupRealtime,
           reminderSync: _reminderSync,
           child: MaterialApp(
             title: 'Swikko',
@@ -294,6 +313,7 @@ class _StudyFlowAppState extends State<StudyFlowApp>
     _companyContactsController.dispose();
     _companyDocumentsController.dispose();
     _dailyNotesController.dispose();
+    unawaited(_groupRealtime.dispose());
     if (_notificationScheduler is ChangeNotifier) {
       (_notificationScheduler as ChangeNotifier).dispose();
     }

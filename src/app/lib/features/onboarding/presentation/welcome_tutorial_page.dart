@@ -26,7 +26,7 @@ class WelcomeTutorialPage extends StatefulWidget {
 }
 
 class _WelcomeTutorialPageState extends State<WelcomeTutorialPage> {
-  static const _pageCount = 5;
+  static const _pageCount = 6;
 
   final _controller = PageController();
   int _page = 0;
@@ -100,6 +100,7 @@ class _WelcomeTutorialPageState extends State<WelcomeTutorialPage> {
         hasClass: user?.schoolClassId != null,
         isDelegate: user?.isDelegate == true,
       ),
+      const _GroupPage(),
       const _PersonalPage(),
       _CompanyPage(hasCompany: _hasCompany, onChoose: _chooseCompany),
       const _ReadyPage(),
@@ -445,6 +446,53 @@ class _ClassPage extends StatelessWidget {
                 'Tu es délégué : partage le code de la classe et valide '
                 'les demandes depuis Profil › Gérer la classe.',
           ),
+      ],
+    );
+  }
+}
+
+class _GroupPage extends StatelessWidget {
+  const _GroupPage();
+
+  @override
+  Widget build(BuildContext context) {
+    final group = context.sfGroup;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _Header(
+          icon: Icons.diversity_3_outlined,
+          overline: 'Travail de groupe',
+          title: 'Un projet à plusieurs',
+          lead:
+              'Crée un groupe privé avec quelques camarades, lié à un devoir '
+              'ou à un cours. Seuls ses membres le voient.',
+          color: group,
+        ),
+        _Feature(
+          icon: Icons.forum_outlined,
+          title: 'Discussion en direct',
+          text:
+              'Les messages arrivent à l’instant, avec « … écrit » et « vu ».',
+          color: group,
+        ),
+        _Feature(
+          icon: Icons.checklist_outlined,
+          title: 'Tâches réparties',
+          text:
+              'Chacun sait quoi faire et pour quand ; tes tâches arrivent '
+              'dans ton agenda.',
+          color: group,
+        ),
+        _Feature(
+          icon: Icons.event_available_outlined,
+          title: 'Créneaux communs',
+          text:
+              'Swikko croise le planning et les jours en entreprise pour '
+              'trouver quand tout le monde est libre.',
+          color: group,
+        ),
       ],
     );
   }

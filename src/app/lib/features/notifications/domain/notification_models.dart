@@ -21,4 +21,4 @@ class ScheduledReminder {
   final String sourceId;
 }
 
-enum ReminderType { course, homework, task, event, note }
+enum ReminderType { course, homework, task, event, note, group }

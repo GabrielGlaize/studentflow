@@ -12,6 +12,9 @@ public sealed class Homework : AuditableEntity, ISoftDeletable
 
     /// <summary>Devoir noté (contrôle, oral, dossier évalué…).</summary>
     public bool IsEvaluation { get; set; }
+
+    /// <summary>Devoir à faire en groupe : les élèves forment leurs groupes depuis le devoir.</summary>
+    public bool IsGroupWork { get; set; }
     public Guid CreatedById { get; set; }
     public Guid? UpdatedById { get; set; }
     public DateTimeOffset? DeletedAt { get; set; }

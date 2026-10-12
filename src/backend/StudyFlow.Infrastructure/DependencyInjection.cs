@@ -127,6 +127,18 @@ public static class DependencyInjection
                 };
                 options.Events = new JwtBearerEvents
                 {
+                    // Les WebSockets ne transportent pas d'en-tête Authorization : le temps réel
+                    // passe le jeton dans l'URL, accepté uniquement pour les hubs.
+                    OnMessageReceived = context =>
+                    {
+                        var accessToken = context.Request.Query["access_token"];
+                        if (!string.IsNullOrEmpty(accessToken) && context.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+                        {
+                            context.Token = accessToken;
+                        }
+
+                        return Task.CompletedTask;
+                    },
                     OnTokenValidated = async context =>
                     {
                         const string securityStampClaimType = "sst";

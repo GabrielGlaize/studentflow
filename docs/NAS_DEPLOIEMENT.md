@@ -212,6 +212,19 @@ cd /Users/gab/Documents/studentflow
 HTTPS est préférable si tu veux utiliser l'app hors Wi-Fi local ou éviter les
 limitations iOS liées au HTTP.
 
+### Temps réel des groupes (WebSocket)
+
+La discussion des groupes de travail passe par une connexion temps réel
+(`/hubs/groups`, ASP.NET SignalR). Pour qu'elle traverse le proxy inversé :
+
+1. Ouvrir la règle du proxy inversé, onglet `En-tête personnalisé`.
+2. `Créer > WebSocket` : Synology ajoute les en-têtes `Upgrade` et `Connection`.
+3. Enregistrer.
+
+Sans ce réglage, rien ne casse : l'app bascule sur une connexion plus lente
+(Server-Sent Events ou interrogation régulière) et les messages arrivent
+quand même, avec un peu de retard.
+
 ## 8. Sauvegarder les données
 
 Les données importantes sont dans deux volumes Docker :
@@ -231,14 +244,24 @@ chiffrées ou tokens existants ne seront plus exploitables.
 
 ## 9. Mettre à jour l'API
 
-Quand le code change :
+Le NAS n'a que 1,8 Go de RAM partagés : on ne compile plus sur le NAS.
+L'image est construite sur le Mac (Wi-Fi de la maison, Docker Desktop ouvert) :
 
 ```bash
-cd /volume1/docker/studyflow
-docker compose --env-file .env.nas -f compose.nas.yaml up -d --build
+cd /Users/gab/Documents/studentflow
+./scripts/nas_ship_api.sh
 ```
 
-Le conteneur API redémarre. Les migrations sont appliquées automatiquement grâce
+Le script publie l'API, construit une image `linux/amd64`, la copie dans le
+dossier personnel du NAS avec un petit script d'installation, puis affiche la
+dernière commande à lancer :
+
+```bash
+ssh -t -i ~/.ssh/id_ed25519_gabriel_nas Gabriel@192.168.1.14 'sudo sh ~/studyflow_install_api.sh'
+```
+
+Elle sauvegarde la base dans `backups/`, charge l'image et redémarre seulement
+le conteneur API. Les migrations sont appliquées automatiquement grâce
 à `Database__ApplyMigrationsOnStartup=true`.
 
 ## 10. Dépannage

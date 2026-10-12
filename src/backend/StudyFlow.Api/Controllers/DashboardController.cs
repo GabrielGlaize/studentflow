@@ -220,7 +220,8 @@ public sealed class DashboardController(
         homework.CreatedAt,
         homework.UpdatedAt,
         homework.ProgressItems.SingleOrDefault()?.ReminderMinutesBefore ?? ReminderDefaults.HomeworkMinutes,
-        homework.IsEvaluation);
+        homework.IsEvaluation,
+        homework.IsGroupWork);
 
     private static PersonalTaskResponse ToPersonalTaskResponse(PersonalTask task) => new(
         task.Id,

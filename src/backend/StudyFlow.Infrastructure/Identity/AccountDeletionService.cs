@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using StudyFlow.Application.Accounts;
+using StudyFlow.Domain.Groups;
 using StudyFlow.Domain.Users;
 using StudyFlow.Infrastructure.Persistence;
 
@@ -75,6 +76,42 @@ public sealed class AccountDeletionService(
             .IgnoreQueryFilters()
             .Where(x => x.AuthorId == userId)
             .ExecuteDeleteAsync(cancellationToken);
+
+        await LeaveStudyGroupsAsync(userId, cancellationToken);
+    }
+
+    /// <summary>
+    /// Groupes de travail : ses messages privés disparaissent, l'organisation passe au membre
+    /// le plus ancien, et un groupe dont il était le seul membre est supprimé.
+    /// </summary>
+    private async Task LeaveStudyGroupsAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        await dbContext.StudyGroupMessages.Where(x => x.AuthorId == userId).ExecuteDeleteAsync(cancellationToken);
+        await dbContext.StudyGroupTaskAssignees.Where(x => x.UserId == userId).ExecuteDeleteAsync(cancellationToken);
+        await dbContext.StudyGroupMeetingVotes.Where(x => x.UserId == userId).ExecuteDeleteAsync(cancellationToken);
+        await dbContext.UserAvailabilities.Where(x => x.UserId == userId).ExecuteDeleteAsync(cancellationToken);
+
+        var memberships = await dbContext.StudyGroupMembers
+            .Include(x => x.Group).ThenInclude(x => x.Members)
+            .Where(x => x.UserId == userId)
+            .ToListAsync(cancellationToken);
+        foreach (var membership in memberships)
+        {
+            var others = membership.Group.Members
+                .Where(x => x.UserId != userId && x.Status == StudyGroupMemberStatus.Active)
+                .OrderBy(x => x.JoinedAt)
+                .ToList();
+            if (membership.Status == StudyGroupMemberStatus.Active && others.Count == 0)
+            {
+                dbContext.StudyGroups.Remove(membership.Group);
+                continue;
+            }
+
+            if (membership.Role == StudyGroupRole.Organizer && others.Count > 0) others[0].Role = StudyGroupRole.Organizer;
+            dbContext.StudyGroupMembers.Remove(membership);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     private async Task AnonymizeAccountAsync(ApplicationUser user, CancellationToken cancellationToken)

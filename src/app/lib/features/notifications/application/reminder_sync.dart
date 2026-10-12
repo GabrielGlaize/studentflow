@@ -6,6 +6,7 @@ import 'package:studyflow_app/core/widgets/date_time_pickers.dart';
 import 'package:studyflow_app/features/agenda/data/agenda_repository.dart';
 import 'package:studyflow_app/features/agenda/domain/agenda_models.dart';
 import 'package:studyflow_app/features/auth/application/session_controller.dart';
+import 'package:studyflow_app/features/groups/data/group_repository.dart';
 import 'package:studyflow_app/features/notifications/application/local_notification_scheduler.dart';
 import 'package:studyflow_app/features/notifications/application/reminder_planner.dart';
 import 'package:studyflow_app/features/notifications/domain/notification_models.dart';
@@ -27,8 +28,10 @@ class ReminderSync {
     required LocalNotificationScheduler scheduler,
     required bool Function() deliveredByPush,
     List<ScheduledReminder> Function()? localReminders,
+    GroupRepository? groupRepository,
     this.autoSync = true,
-  }) : _localReminders = localReminders ?? _none,
+  }) : _groupRepository = groupRepository,
+       _localReminders = localReminders ?? _none,
        _sessionController = sessionController,
        _settingsController = settingsController,
        _courseRepository = courseRepository,
@@ -45,6 +48,10 @@ class ReminderSync {
   final AgendaRepository _agendaRepository;
   final LocalNotificationScheduler _scheduler;
   final bool Function() _deliveredByPush;
+  final GroupRepository? _groupRepository;
+
+  /// Rappel avant une réunion de groupe confirmée.
+  static const meetingReminderMinutes = 30;
 
   /// Rappels propres au téléphone (note du soir), programmés même quand les
   /// autres arrivent par push.
@@ -97,13 +104,46 @@ class ReminderSync {
     final reminders = await plan();
     final now = DateTime.now();
     final quietHours = _settingsController.quietHours;
-    final local = _localReminders()
+    // Le serveur n'envoie pas de push pour les réunions de groupe : elles
+    // sont toujours programmées sur le téléphone.
+    final local = [..._localReminders(), ...await _meetingReminders()]
         .where((reminder) => reminder.scheduledAt.isAfter(now))
         .where((reminder) => !quietHours.isQuietAt(reminder.scheduledAt))
         .toList();
     await _scheduler.replaceAll([if (!deliveredByPush) ...reminders, ...local]);
     return [...reminders, ...local]
       ..sort((left, right) => left.scheduledAt.compareTo(right.scheduledAt));
+  }
+
+  Future<List<ScheduledReminder>> _meetingReminders() async {
+    final repository = _groupRepository;
+    if (repository == null ||
+        !_settingsController.currentSettings.courseNotificationsEnabled) {
+      return const [];
+    }
+    try {
+      final accessToken = await _sessionController.accessTokenForApi();
+      final agenda = await repository.agenda(accessToken: accessToken);
+      return [
+        for (final meeting in agenda.meetings)
+          ScheduledReminder(
+            id: 'group-meeting-${meeting.id}',
+            type: ReminderType.group,
+            title: 'Réunion · ${meeting.groupName}',
+            body: [
+              'Dans $meetingReminderMinutes min, à ${StudyFlowFormat.timeOf(meeting.startsAt)}',
+              ?meeting.place,
+            ].join(' · '),
+            scheduledAt: meeting.startsAt.subtract(
+              const Duration(minutes: meetingReminderMinutes),
+            ),
+            sourceId: meeting.groupId,
+          ),
+      ];
+    } on Exception {
+      // Groupes injoignables : les autres rappels restent programmés.
+      return const [];
+    }
   }
 
   Future<List<ScheduledReminder>> plan() async {

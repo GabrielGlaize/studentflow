@@ -68,6 +68,7 @@ class _HomeworkFormPageState extends State<HomeworkFormPage> {
   late DateTime _customDeadline;
   bool _showPastCourses = false;
   bool _isEvaluation = false;
+  bool _isGroupWork = false;
   bool _isSaving = false;
   String? _error;
 
@@ -82,6 +83,7 @@ class _HomeworkFormPageState extends State<HomeworkFormPage> {
       text: homework?.description ?? '',
     );
     _isEvaluation = homework?.isEvaluation ?? false;
+    _isGroupWork = homework?.isGroupWork ?? false;
     _courseId = homework?.courseId ?? widget.initialCourse?.id;
     _subjectId = widget.initialCourse?.subjectId;
     _customDeadline =
@@ -194,6 +196,11 @@ class _HomeworkFormPageState extends State<HomeworkFormPage> {
                   _EvaluationToggle(
                     value: _isEvaluation,
                     onChanged: (value) => setState(() => _isEvaluation = value),
+                  ),
+                  const SizedBox(height: 8),
+                  _GroupWorkToggle(
+                    value: _isGroupWork,
+                    onChanged: (value) => setState(() => _isGroupWork = value),
                   ),
                   const SizedBox(height: 20),
                   _buildSubjectSection(choices),
@@ -530,6 +537,7 @@ class _HomeworkFormPageState extends State<HomeworkFormPage> {
       subjectName: course?.subjectName ?? widget.homework?.subjectName,
       courseDay: course?.day ?? widget.homework?.courseDay,
       isEvaluation: _isEvaluation,
+      isGroupWork: _isGroupWork,
     );
 
     try {
@@ -688,6 +696,54 @@ class _EvaluationToggle extends StatelessWidget {
                   ),
                 ),
                 const ProtoMutedText('Contrôle, oral, dossier noté…'),
+              ],
+            ),
+          ),
+          Switch(value: value, onChanged: onChanged),
+        ],
+      ),
+    );
+  }
+}
+
+class _GroupWorkToggle extends StatelessWidget {
+  const _GroupWorkToggle({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return ProtoCard(
+      key: const ValueKey('homework-group-work-toggle'),
+      onTap: () => onChanged(!value),
+      padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
+      borderColor: value ? context.sfGroup : context.sfLine,
+      backgroundColor: value ? context.sfGroupSoft : context.sfCard,
+      child: Row(
+        children: [
+          ProtoIconBox(
+            icon: Icons.diversity_3_outlined,
+            size: 34,
+            backgroundColor: value ? context.sfCard : context.sfSoftCard,
+            foregroundColor: value ? context.sfGroup : context.sfMuted,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Travail de groupe',
+                  style: TextStyle(
+                    color: context.sfText,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const ProtoMutedText(
+                  'Chacun pourra former son groupe depuis le devoir.',
+                  maxLines: 2,
+                ),
               ],
             ),
           ),

@@ -110,6 +110,7 @@ class _ReminderPreviewLine extends StatelessWidget {
               ReminderType.task => Icons.check_circle_outline,
               ReminderType.event => Icons.event_outlined,
               ReminderType.note => Icons.sticky_note_2_outlined,
+              ReminderType.group => Icons.diversity_3_outlined,
             },
             backgroundColor:
                 reminder.type == ReminderType.course ||

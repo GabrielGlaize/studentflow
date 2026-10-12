@@ -598,6 +598,417 @@ namespace StudyFlow.Infrastructure.Persistence.Migrations
                     b.ToTable("revision_resource_files", (string)null);
                 });
 
+            modelBuilder.Entity("StudyFlow.Domain.Groups.StudyGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<DateTimeOffset?>("DueAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("due_at");
+
+                    b.Property<string>("EncryptedDescription")
+                        .HasColumnType("text")
+                        .HasColumnName("encrypted_description");
+
+                    b.Property<Guid?>("HomeworkId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("homework_id");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("name");
+
+                    b.Property<Guid>("SchoolClassId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("school_class_id");
+
+                    b.Property<Guid?>("SubjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subject_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("HomeworkId");
+
+                    b.HasIndex("SubjectId");
+
+                    b.HasIndex("SchoolClassId", "HomeworkId");
+
+                    b.ToTable("study_groups", (string)null);
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Groups.StudyGroupMeeting", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("EncryptedPlace")
+                        .HasColumnType("text")
+                        .HasColumnName("encrypted_place");
+
+                    b.Property<DateTimeOffset>("EndsAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ends_at");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("mode");
+
+                    b.Property<Guid?>("ProposedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("proposed_by_id");
+
+                    b.Property<DateTimeOffset>("StartsAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("starts_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("StudyGroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("study_group_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProposedById");
+
+                    b.HasIndex("StudyGroupId", "StartsAt");
+
+                    b.ToTable("study_group_meetings", (string)null);
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Groups.StudyGroupMeetingVote", b =>
+                {
+                    b.Property<Guid>("StudyGroupMeetingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("study_group_meeting_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<DateTimeOffset>("AnsweredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("answered_at");
+
+                    b.Property<bool>("IsAvailable")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_available");
+
+                    b.HasKey("StudyGroupMeetingId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("study_group_meeting_votes", (string)null);
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Groups.StudyGroupMember", b =>
+                {
+                    b.Property<Guid>("StudyGroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("study_group_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<DateTimeOffset>("InvitedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("invited_at");
+
+                    b.Property<Guid?>("InvitedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("invited_by_id");
+
+                    b.Property<DateTimeOffset?>("JoinedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("joined_at");
+
+                    b.Property<DateTimeOffset?>("LastReadAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_read_at");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(12)
+                        .HasColumnType("character varying(12)")
+                        .HasColumnName("role");
+
+                    b.Property<string>("RoleLabel")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("role_label");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("status");
+
+                    b.HasKey("StudyGroupId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("study_group_members", (string)null);
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Groups.StudyGroupMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("AuthorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("author_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("EncryptedText")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("encrypted_text");
+
+                    b.Property<Guid>("StudyGroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("study_group_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuthorId");
+
+                    b.HasIndex("StudyGroupId", "CreatedAt");
+
+                    b.ToTable("study_group_messages", (string)null);
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Groups.StudyGroupResource", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("AuthorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("author_id");
+
+                    b.Property<string>("ContentType")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("EncryptedTitle")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("encrypted_title");
+
+                    b.Property<string>("EncryptedUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("encrypted_url");
+
+                    b.Property<string>("FileName")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("file_name");
+
+                    b.Property<string>("FileType")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("file_type");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("kind");
+
+                    b.Property<long?>("SizeBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("size_bytes");
+
+                    b.Property<Guid>("StudyGroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("study_group_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuthorId");
+
+                    b.HasIndex("StudyGroupId", "CreatedAt");
+
+                    b.ToTable("study_group_resources", (string)null);
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Groups.StudyGroupResourceFile", b =>
+                {
+                    b.Property<Guid>("StudyGroupResourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("study_group_resource_id");
+
+                    b.Property<byte[]>("EncryptedContent")
+                        .IsRequired()
+                        .HasColumnType("bytea")
+                        .HasColumnName("encrypted_content");
+
+                    b.HasKey("StudyGroupResourceId");
+
+                    b.ToTable("study_group_resource_files", (string)null);
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Groups.StudyGroupTask", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<DateOnly?>("DueOn")
+                        .HasColumnType("date")
+                        .HasColumnName("due_on");
+
+                    b.Property<string>("EncryptedNotes")
+                        .HasColumnType("text")
+                        .HasColumnName("encrypted_notes");
+
+                    b.Property<string>("EncryptedTitle")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("encrypted_title");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("StudyGroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("study_group_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedById");
+
+                    b.HasIndex("StudyGroupId", "CreatedAt");
+
+                    b.ToTable("study_group_tasks", (string)null);
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Groups.StudyGroupTaskAssignee", b =>
+                {
+                    b.Property<Guid>("StudyGroupTaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("study_group_task_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("StudyGroupTaskId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("study_group_task_assignees", (string)null);
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Groups.UserAvailability", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<TimeOnly>("AvailableUntil")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("available_until");
+
+                    b.Property<TimeOnly>("CompanyEndsAt")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("company_ends_at");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<bool>("UsePersonalAgenda")
+                        .HasColumnType("boolean")
+                        .HasColumnName("use_personal_agenda");
+
+                    b.Property<bool>("WeekendAvailable")
+                        .HasColumnType("boolean")
+                        .HasColumnName("weekend_available");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("user_availabilities", (string)null);
+                });
+
             modelBuilder.Entity("StudyFlow.Domain.Notes.DailyNote", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1035,6 +1446,10 @@ namespace StudyFlow.Infrastructure.Persistence.Migrations
                     b.Property<bool>("IsEvaluation")
                         .HasColumnType("boolean")
                         .HasColumnName("is_evaluation");
+
+                    b.Property<bool>("IsGroupWork")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_group_work");
 
                     b.Property<Guid>("SchoolClassId")
                         .HasColumnType("uuid")
@@ -1913,6 +2328,169 @@ namespace StudyFlow.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("StudyFlow.Domain.Groups.StudyGroup", b =>
+                {
+                    b.HasOne("StudyFlow.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("StudyFlow.Domain.School.Homework", "Homework")
+                        .WithMany()
+                        .HasForeignKey("HomeworkId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("StudyFlow.Domain.School.SchoolClass", "SchoolClass")
+                        .WithMany()
+                        .HasForeignKey("SchoolClassId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("StudyFlow.Domain.School.Subject", "Subject")
+                        .WithMany()
+                        .HasForeignKey("SubjectId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Homework");
+
+                    b.Navigation("SchoolClass");
+
+                    b.Navigation("Subject");
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Groups.StudyGroupMeeting", b =>
+                {
+                    b.HasOne("StudyFlow.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("ProposedById")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("StudyFlow.Domain.Groups.StudyGroup", "Group")
+                        .WithMany()
+                        .HasForeignKey("StudyGroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Groups.StudyGroupMeetingVote", b =>
+                {
+                    b.HasOne("StudyFlow.Domain.Groups.StudyGroupMeeting", "Meeting")
+                        .WithMany("Votes")
+                        .HasForeignKey("StudyGroupMeetingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("StudyFlow.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Meeting");
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Groups.StudyGroupMember", b =>
+                {
+                    b.HasOne("StudyFlow.Domain.Groups.StudyGroup", "Group")
+                        .WithMany("Members")
+                        .HasForeignKey("StudyGroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("StudyFlow.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Groups.StudyGroupMessage", b =>
+                {
+                    b.HasOne("StudyFlow.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("StudyFlow.Domain.Groups.StudyGroup", "Group")
+                        .WithMany()
+                        .HasForeignKey("StudyGroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Groups.StudyGroupResource", b =>
+                {
+                    b.HasOne("StudyFlow.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("StudyFlow.Domain.Groups.StudyGroup", "Group")
+                        .WithMany()
+                        .HasForeignKey("StudyGroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Groups.StudyGroupResourceFile", b =>
+                {
+                    b.HasOne("StudyFlow.Domain.Groups.StudyGroupResource", null)
+                        .WithOne("File")
+                        .HasForeignKey("StudyFlow.Domain.Groups.StudyGroupResourceFile", "StudyGroupResourceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Groups.StudyGroupTask", b =>
+                {
+                    b.HasOne("StudyFlow.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("StudyFlow.Domain.Groups.StudyGroup", "Group")
+                        .WithMany("Tasks")
+                        .HasForeignKey("StudyGroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Groups.StudyGroupTaskAssignee", b =>
+                {
+                    b.HasOne("StudyFlow.Domain.Groups.StudyGroupTask", "Task")
+                        .WithMany("Assignees")
+                        .HasForeignKey("StudyGroupTaskId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("StudyFlow.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Task");
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Groups.UserAvailability", b =>
+                {
+                    b.HasOne("StudyFlow.Infrastructure.Identity.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("StudyFlow.Domain.Notes.DailyNote", b =>
                 {
                     b.HasOne("StudyFlow.Infrastructure.Identity.ApplicationUser", null)
@@ -2250,6 +2828,28 @@ namespace StudyFlow.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("StudyFlow.Domain.Exams.RevisionResource", b =>
                 {
                     b.Navigation("File");
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Groups.StudyGroup", b =>
+                {
+                    b.Navigation("Members");
+
+                    b.Navigation("Tasks");
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Groups.StudyGroupMeeting", b =>
+                {
+                    b.Navigation("Votes");
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Groups.StudyGroupResource", b =>
+                {
+                    b.Navigation("File");
+                });
+
+            modelBuilder.Entity("StudyFlow.Domain.Groups.StudyGroupTask", b =>
+                {
+                    b.Navigation("Assignees");
                 });
 
             modelBuilder.Entity("StudyFlow.Domain.School.Course", b =>

@@ -6,7 +6,7 @@ import 'package:studyflow_app/core/widgets/date_time_pickers.dart';
 /// Vue calendrier de l'agenda : devoirs de la classe, évaluations, tâches et
 /// événements, école et entreprise réunis. Semaine par défaut, mois en option ;
 /// on balaie d'une période à l'autre et on touche un jour pour le détail.
-enum AgendaEntryKind { homework, evaluation, task, event }
+enum AgendaEntryKind { homework, evaluation, task, event, group }
 
 extension AgendaEntryKindStyle on AgendaEntryKind {
   String get label => switch (this) {
@@ -14,6 +14,7 @@ extension AgendaEntryKindStyle on AgendaEntryKind {
     AgendaEntryKind.evaluation => 'Évaluations',
     AgendaEntryKind.task => 'Tâches',
     AgendaEntryKind.event => 'Événements',
+    AgendaEntryKind.group => 'Groupes',
   };
 
   String get singular => switch (this) {
@@ -21,6 +22,7 @@ extension AgendaEntryKindStyle on AgendaEntryKind {
     AgendaEntryKind.evaluation => 'évaluation',
     AgendaEntryKind.task => 'tâche',
     AgendaEntryKind.event => 'événement',
+    AgendaEntryKind.group => 'travail de groupe',
   };
 
   IconData get icon => switch (this) {
@@ -28,6 +30,7 @@ extension AgendaEntryKindStyle on AgendaEntryKind {
     AgendaEntryKind.evaluation => Icons.grading_outlined,
     AgendaEntryKind.task => Icons.check_circle_outline,
     AgendaEntryKind.event => Icons.event_outlined,
+    AgendaEntryKind.group => Icons.diversity_3_outlined,
   };
 
   Color color(BuildContext context) => switch (this) {
@@ -36,6 +39,7 @@ extension AgendaEntryKindStyle on AgendaEntryKind {
     AgendaEntryKind.task => context.sfPersonal,
     AgendaEntryKind.event =>
       context.sfIsDark ? const Color(0xFFC3B8F2) : const Color(0xFF6A5AA8),
+    AgendaEntryKind.group => context.sfGroup,
   };
 }
 

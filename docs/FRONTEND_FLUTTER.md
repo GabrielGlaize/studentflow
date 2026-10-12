@@ -158,6 +158,25 @@ L’écran Alternances couvre maintenant :
 
 En mode démo, les favoris et recherches sont gardés en mémoire. En mode API réelle, le repository HTTP appelle les endpoints `/api/v1/apprenticeships/saved-searches` et `/api/v1/apprenticeships/favorite-offers`.
 
+## Travail de groupe
+
+Dossier `lib/features/groups`. Un groupe est un espace privé entre quelques
+élèves d'une même classe, rattaché si besoin à un devoir (qui donne la date de
+rendu) et à un cours :
+
+- **Discussion** en temps réel (`SignalRGroupRealtime`, hub `/hubs/groups`). Les
+  messages partent par l'API REST, qui les enregistre puis les diffuse ; si la
+  connexion temps réel tombe, l'onglet relit le fil toutes les 10 secondes ;
+- **Tâches** affectées aux membres, qui arrivent dans leur agenda ;
+- **Organiser** : créneaux communs calculés par le serveur (planning de la classe,
+  jours en entreprise, agendas perso vus seulement comme « occupé »), réunions à
+  valider par tous, rappel local 30 minutes avant ;
+- **Fichiers** : mêmes règles que les fiches de révision, chiffrés en base.
+
+Un devoir marqué « travail de groupe » affiche qui a déjà un groupe et qui est
+encore seul. En démo et dans les tests, `DemoGroupRepository` et
+`LocalGroupRealtime` remplacent le serveur.
+
 ## Notifications
 
 La V1 Flutter calcule maintenant les rappels prévus :

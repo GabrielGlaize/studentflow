@@ -83,6 +83,7 @@ public sealed class HomeworkController(
             Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
             Deadline = request.Deadline.ToUniversalTime(),
             IsEvaluation = request.IsEvaluation,
+            IsGroupWork = request.IsGroupWork,
             CreatedById = user.Id
         };
 
@@ -117,6 +118,7 @@ public sealed class HomeworkController(
         homework.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
         homework.Deadline = request.Deadline.ToUniversalTime();
         homework.IsEvaluation = request.IsEvaluation;
+        homework.IsGroupWork = request.IsGroupWork;
         homework.UpdatedAt = DateTimeOffset.UtcNow;
         homework.UpdatedById = user.Id;
 
@@ -240,7 +242,8 @@ public sealed class HomeworkController(
         homework.CreatedAt,
         homework.UpdatedAt,
         homework.ProgressItems.SingleOrDefault()?.ReminderMinutesBefore ?? ReminderDefaults.HomeworkMinutes,
-        homework.IsEvaluation);
+        homework.IsEvaluation,
+        homework.IsGroupWork);
 
     private async Task LoadCourseAsync(Homework homework, CancellationToken cancellationToken)
     {

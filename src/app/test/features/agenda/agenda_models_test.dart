@@ -49,6 +49,7 @@ void main() {
       'deadline': '2026-06-30T18:00:00.000Z',
       'courseId': null,
       'isEvaluation': true,
+      'isGroupWork': false,
     });
   });
 }
